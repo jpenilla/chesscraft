@@ -61,6 +61,9 @@ public final class StockfishProvider {
           if (Files.isRegularFile(path) && path.getFileName().toString().startsWith("stockfish-")) {
             Files.createDirectories(file.getParent());
             Files.copy(path, file);
+            if (!file.toFile().setExecutable(true, true)) {
+              this.plugin.getLogger().warning("Failed to set extracted file " + file + " executable, this may cause issues");
+            }
             break;
           }
         }
