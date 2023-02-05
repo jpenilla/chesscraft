@@ -1,0 +1,14 @@
+name: "build"
+
+on:
+  push:
+    branches: [ "**" ]
+    tags-ignore: [ "**" ]
+  pull_request:
+
+jobs:
+  call-build:
+    uses: "jpenilla/actions/.github/workflows/shared-ci.yml@master"
+    with:
+      init-submodules: true
+      artifacts-path: 'build/libs/*-all.jar'
