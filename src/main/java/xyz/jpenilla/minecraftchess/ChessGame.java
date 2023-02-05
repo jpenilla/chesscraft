@@ -40,7 +40,6 @@ import xyz.jpenilla.minecraftchess.data.piece.PieceType;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Query;
 import xyz.niflheim.stockfish.engine.enums.QueryType;
-import xyz.niflheim.stockfish.engine.enums.Variant;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
 public final class ChessGame {
@@ -68,8 +67,8 @@ public final class ChessGame {
   private PieceType blackNextPromotion = PieceType.QUEEN;
   private String currentFen;
   private PieceColor nextMove;
-  private String selectedPiece = null;
-  private Set<String> validDestinations = null;
+  private String selectedPiece;
+  private Set<String> validDestinations;
   private CompletableFuture<?> activeQuery;
 
   ChessGame(
@@ -85,7 +84,7 @@ public final class ChessGame {
     this.pieces = initBoard();
     this.loadFen(STARTING_FEN);
     try {
-      this.stockfish = createStockfishClient();
+      this.stockfish = this.createStockfishClient();
     } catch (final StockfishInitException ex) {
       throw new RuntimeException(ex);
     }
@@ -181,7 +180,7 @@ public final class ChessGame {
 
   private String pos(final int i, final int j) {
     final String l = MAPPING.inverse().get(j);
-    return l + ((7 - i) + 1);
+    return l + (8 - i);
   }
 
   public ChessPlayer player(final PieceColor color) {
@@ -321,8 +320,12 @@ public final class ChessGame {
   }
 
   public void reset() {
+    if (this.activeQuery != null && !this.activeQuery.isDone()) {
+      throw new IllegalStateException();
+    }
+    this.activeQuery = this.stockfish.uciNewGame();
+    this.activeQuery.join();
     this.loadFen(STARTING_FEN);
-    this.stockfish.uciNewGame().join();
     this.applyToWorld();
   }
 
