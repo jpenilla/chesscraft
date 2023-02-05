@@ -179,12 +179,18 @@ public final class ChessGame {
     return this.pieces[i][j];
   }
 
+  private String pos(final int i, final int j) {
+    final String l = MAPPING.inverse().get(j);
+    return l + ((7 - i) + 1);
+  }
+
   public ChessPlayer player(final PieceColor color) {
     if (color == PieceColor.WHITE) {
       return this.white;
-    } else {
+    } else if (color == PieceColor.BLACK) {
       return this.black;
     }
+    throw new IllegalArgumentException();
   }
 
   public @Nullable PieceColor color(final ChessPlayer player) {
@@ -363,8 +369,8 @@ public final class ChessGame {
     return board;
   }
 
-  private static StockfishClient createStockfishClient() throws StockfishInitException {
-    return new StockfishClient.Builder().setVariant(Variant.AVX2).build();
+  private StockfishClient createStockfishClient() throws StockfishInitException {
+    return new StockfishClient.Builder().setPath(this.board.stockfishPath()).build();
   }
 
   private interface PieceHandler {

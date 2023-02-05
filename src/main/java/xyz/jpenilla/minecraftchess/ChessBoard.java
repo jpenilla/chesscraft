@@ -1,5 +1,6 @@
 package xyz.jpenilla.minecraftchess;
 
+import java.nio.file.Path;
 import java.util.Objects;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -11,18 +12,25 @@ public final class ChessBoard {
   private final String name;
   private final MinecraftChess plugin;
   private final NamespacedKey worldKey;
+  private final Path stockfishPath;
   private @Nullable ChessGame game;
 
   public ChessBoard(
     final MinecraftChess plugin,
     final String name,
     final Vec3 loc,
-    final NamespacedKey world
+    final NamespacedKey world,
+    final Path stockfishPath
   ) {
     this.plugin = plugin;
     this.name = name;
     this.loc = loc;
     this.worldKey = world;
+    this.stockfishPath = stockfishPath;
+  }
+
+  Path stockfishPath() {
+    return this.stockfishPath;
   }
 
   public String name() {

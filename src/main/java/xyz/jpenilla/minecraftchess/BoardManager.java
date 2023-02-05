@@ -38,23 +38,24 @@ import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import xyz.jpenilla.minecraftchess.config.NamespacedKeySerializer;
+import xyz.jpenilla.minecraftchess.config.ConfigHelper;
 import xyz.jpenilla.minecraftchess.data.PVPChallenge;
 import xyz.jpenilla.minecraftchess.data.Vec3;
 
 public final class BoardManager implements Listener {
   static final NamespacedKey PIECE_KEY = new NamespacedKey("minecraftchess", "chess_piece");
   private final MinecraftChess plugin;
+  private final Path stockfishPath;
   private final Path file;
   private final Map<String, ChessBoard> boards;
   private final Cache<UUID, PVPChallenge> challenges;
 
   private BukkitTask particleTask;
 
-  public BoardManager(final MinecraftChess plugin) {
+  public BoardManager(final MinecraftChess plugin, final Path stockfishPath) {
     this.plugin = plugin;
+    this.stockfishPath = stockfishPath;
     this.file = plugin.getDataFolder().toPath().resolve("boards.yml");
     this.boards = new HashMap<>();
     this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
@@ -77,7 +78,7 @@ public final class BoardManager implements Listener {
     if (!replace && this.boards.get(name) != null) {
       return false;
     }
-    final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey());
+    final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
     return true;
   }
@@ -106,10 +107,10 @@ public final class BoardManager implements Listener {
 
   private void loadBoards() {
     try {
-      final YamlConfigurationLoader loader = this.createLoader();
+      final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
       final CommentedConfigurationNode node = loader.load();
       final Map<String, BoardData> dataMap = Objects.requireNonNull(node.get(new TypeToken<Map<String, BoardData>>() {}));
-      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position(), data.dimension())));
+      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position(), data.dimension(), this.stockfishPath)));
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
@@ -130,7 +131,7 @@ public final class BoardManager implements Listener {
 
   private void saveBoards() {
     try {
-      final YamlConfigurationLoader loader = this.createLoader();
+      final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
       final CommentedConfigurationNode node = loader.createNode();
       final Map<String, BoardData> collect = this.boards.values().stream()
         .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc())))
@@ -212,17 +213,6 @@ public final class BoardManager implements Listener {
       return;
     }
     event.setCancelled(true);
-  }
-
-  private YamlConfigurationLoader createLoader() {
-    return YamlConfigurationLoader.builder()
-      .nodeStyle(NodeStyle.BLOCK)
-      .defaultOptions(options -> options.serializers(serializers -> {
-        serializers.register(Vec3.SERIALIZER);
-        serializers.register(NamespacedKeySerializer.INSTANCE);
-      }))
-      .path(this.file)
-      .build();
   }
 
   @ConfigSerializable
