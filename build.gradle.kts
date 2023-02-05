@@ -12,6 +12,21 @@ java {
   toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 }
 
+repositories {
+  mavenCentral()
+  maven("https://repo.papermc.io/repository/maven-public/")
+}
+
+dependencies {
+  compileOnly("io.papermc.paper", "paper-api", "1.19.3-R0.1-SNAPSHOT") {
+    exclude("org.yaml", "snakeyaml")
+  }
+  implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
+  implementation(platform("cloud.commandframework:cloud-bom:1.8.0"))
+  implementation("cloud.commandframework:cloud-paper")
+  implementation("org.spongepowered:configurate-yaml:4.1.2")
+}
+
 tasks {
   withType<Jar> {
     from(layout.projectDirectory.file("LICENSE")) {
@@ -42,22 +57,6 @@ tasks {
     reloc("org.yaml.snakeyaml")
     exclude("log4j.properties", "logback.xml")
   }
-}
-
-repositories {
-  mavenCentral()
-  maven("https://repo.papermc.io/repository/maven-public/")
-  mavenLocal()
-}
-
-dependencies {
-  compileOnly("io.papermc.paper", "paper-api", "1.19.3-R0.1-SNAPSHOT") {
-    exclude("org.yaml", "snakeyaml")
-  }
-  implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.0"))
-  implementation("cloud.commandframework:cloud-paper")
-  implementation("org.spongepowered:configurate-yaml:4.1.2")
 }
 
 bukkit {
