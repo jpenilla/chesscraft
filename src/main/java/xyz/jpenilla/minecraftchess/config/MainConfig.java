@@ -18,10 +18,33 @@
 package xyz.jpenilla.minecraftchess.config;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import oshi.SystemInfo;
+import oshi.hardware.CentralProcessor;
+import xyz.niflheim.stockfish.engine.enums.Variant;
 
 @ConfigSerializable
 public record MainConfig(String stockfishEngine) {
   public MainConfig() {
-    this("15.1:AVX2");
+    this("15.1:" + bestEngine());
+  }
+
+  private static Variant bestEngine() {
+    final CentralProcessor.ProcessorIdentifier procId = new SystemInfo().getHardware().getProcessor().getProcessorIdentifier();
+    if (procId.getVendor().contains("AMD")) {
+      final int family = Integer.parseInt(procId.getFamily());
+      if (family == 23) {
+        // Zen 1-2
+        return Variant.AVX2;
+      } else if (family >= 25) {
+        // Zen 3+
+        return Variant.BMI2;
+      }
+    } else if (procId.getVendor().contains("Intel")) {
+      if (procId.getFamily().equals("6") && Integer.parseInt(procId.getModel()) >= 60) {
+        // Haswell+
+        return Variant.BMI2;
+      }
+    }
+    return Variant.DEFAULT;
   }
 }
