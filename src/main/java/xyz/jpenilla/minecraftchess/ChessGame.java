@@ -5,7 +5,9 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -392,6 +394,17 @@ public final class ChessGame {
   }
 
   private static final class ItemFramePieceHandler implements PieceHandler {
+    private static final Map<PieceType, Double> OFFSETS = new HashMap<>();
+
+    static {
+      OFFSETS.put(PieceType.PAWN, -10.0D / 16.0D);
+      OFFSETS.put(PieceType.BISHOP, -3.0D / 16.0D);
+      OFFSETS.put(PieceType.KNIGHT, -7.0D / 16.0D);
+      OFFSETS.put(PieceType.ROOK, -10.0D / 16.0D);
+      OFFSETS.put(PieceType.QUEEN, -1.0D / 16.0D);
+      OFFSETS.put(PieceType.KING, 0.0D);
+    }
+
     @Override
     public void applyToWorld(final ChessGame game, final World world) {
       PieceHandler.applyCheckerboard(game, world);
@@ -401,7 +414,7 @@ public final class ChessGame {
           final int zz = game.board.loc().z() - x;
           final Piece piece = game.pieces[i][x];
 
-          final Collection<Entity> frame = world.getNearbyEntities(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), 0.25, 0.25, 0.25, e -> e instanceof ItemFrame || e instanceof ArmorStand);
+          final Collection<Entity> frame = world.getNearbyEntities(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), 0.25, 0.5, 0.25, e -> e instanceof ItemFrame || e instanceof ArmorStand);
           for (final Entity entity : frame) {
             entity.remove();
           }
@@ -422,7 +435,7 @@ public final class ChessGame {
             itemFrame.setVisible(false);
             itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, game.board.name());
           });
-          world.spawn(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), ArmorStand.class, stand -> {
+          world.spawn(new Location(world, xx + 0.5, game.board.loc().y() + OFFSETS.get(piece.type()), zz + 0.5), ArmorStand.class, stand -> {
             stand.setInvulnerable(true);
             stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, game.board.name());
             stand.setGravity(false);
