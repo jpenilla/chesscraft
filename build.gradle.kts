@@ -3,6 +3,7 @@ plugins {
   id("com.github.johnrengelman.shadow") version "7.1.2"
   id("net.minecrell.plugin-yml.bukkit") version "0.5.2"
   id("xyz.jpenilla.run-paper") version "2.0.1"
+  id("net.kyori.indra.license-header") version "3.0.1"
 }
 
 group = "xyz.jpenilla"
@@ -25,6 +26,10 @@ dependencies {
   implementation(platform("cloud.commandframework:cloud-bom:1.8.0"))
   implementation("cloud.commandframework:cloud-paper")
   implementation("org.spongepowered:configurate-yaml:4.1.2")
+}
+
+license {
+  header.set(resources.text.fromFile(rootProject.file("LICENSE_HEADER")))
 }
 
 tasks {
