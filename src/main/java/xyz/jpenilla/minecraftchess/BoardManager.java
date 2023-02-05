@@ -1,14 +1,18 @@
 package xyz.jpenilla.minecraftchess;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import io.leangen.geantyref.TypeToken;
 import io.papermc.paper.event.player.PlayerItemFrameChangeEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -36,18 +40,24 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
+import xyz.jpenilla.minecraftchess.config.NamespacedKeySerializer;
+import xyz.jpenilla.minecraftchess.data.PVPChallenge;
+import xyz.jpenilla.minecraftchess.data.Vec3;
 
 public final class BoardManager implements Listener {
   static final NamespacedKey PIECE_KEY = new NamespacedKey("minecraftchess", "chess_piece");
+  private final MinecraftChess plugin;
   private final Path file;
   private final Map<String, ChessBoard> boards;
-  private final MinecraftChess plugin;
+  private final Cache<UUID, PVPChallenge> challenges;
+
   private BukkitTask particleTask;
 
   public BoardManager(final MinecraftChess plugin) {
     this.plugin = plugin;
-    this.boards = new HashMap<>();
     this.file = plugin.getDataFolder().toPath().resolve("boards.yml");
+    this.boards = new HashMap<>();
+    this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
       Files.createDirectories(this.file.getParent());
     } catch (final IOException ex) {
@@ -55,13 +65,28 @@ public final class BoardManager implements Listener {
     }
   }
 
+  public Cache<UUID, PVPChallenge> challenges() {
+    return this.challenges;
+  }
+
   public Collection<ChessBoard> boards() {
     return this.boards.values();
   }
 
-  public void create(final String name, final World world, final Vec3 pos) {
+  public boolean createBoard(final String name, final World world, final Vec3 pos, final boolean replace) {
+    if (!replace && this.boards.get(name) != null) {
+      return false;
+    }
     final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey());
     this.boards.put(name, board);
+    return true;
+  }
+
+  public void deleteBoard(final String board) {
+    final ChessBoard remove = this.boards.remove(board);
+    if (remove == null) {
+      throw new IllegalArgumentException(board);
+    }
   }
 
   public ChessBoard board(final String name) {

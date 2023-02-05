@@ -33,6 +33,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.minecraftchess.data.Vec3;
+import xyz.jpenilla.minecraftchess.data.piece.Piece;
+import xyz.jpenilla.minecraftchess.data.piece.PieceColor;
+import xyz.jpenilla.minecraftchess.data.piece.PieceType;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Query;
 import xyz.niflheim.stockfish.engine.enums.QueryType;
@@ -108,7 +112,7 @@ public final class ChessGame {
       final String sel = MAPPING.inverse().get(zz) + (8 - xx);
       final Piece selPiece = this.piece(sel);
       if (this.selectedPiece == null && selPiece != null) {
-        if (selPiece.white() != (color == PieceColor.WHITE)) {
+        if (selPiece.color() != color) {
           player.sendRichMessage("<red>Not your piece!");
           return true;
         }
@@ -325,7 +329,7 @@ public final class ChessGame {
     for (int r = 0; r < rows.length; r++) {
       final String row = rows[r];
       int i = 0;
-      for (char c : row.toCharArray()) {
+      for (final char c : row.toCharArray()) {
         try {
           final int x = Integer.parseInt(String.valueOf(c));
           for (int xx = 0; xx < x; xx++) {
@@ -333,11 +337,7 @@ public final class ChessGame {
           }
           i += x;
         } catch (final NumberFormatException ex) {
-          final PieceType type = PieceType.type(String.valueOf(c));
-          this.pieces[r][i] = new Piece(
-            type,
-            type.upper().equals(String.valueOf(c))
-          );
+          this.pieces[r][i] = Piece.decode(String.valueOf(c));
           i++;
         }
       }
@@ -403,10 +403,10 @@ public final class ChessGame {
           world.spawn(new Location(world, xx, game.board.loc().y(), zz), ItemFrame.class, itemFrame -> {
             final ItemStack stack = new ItemStack(Material.PAPER);
             stack.editMeta(meta -> {
-              final int add = piece.white() ? 7 : 1;
+              final int add = piece.color() == PieceColor.WHITE ? 7 : 1;
               meta.setCustomModelData(piece.type().ordinal() + add);
             });
-            itemFrame.setRotation(piece.white() ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
+            itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
             itemFrame.setItem(stack);
             itemFrame.setFacingDirection(BlockFace.UP);
             itemFrame.setInvulnerable(true);
@@ -446,7 +446,7 @@ public final class ChessGame {
           world.spawn(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), ArmorStand.class, armorStand -> {
             armorStand.setCustomNameVisible(true);
             armorStand.customName(Component.text(piece.type().name()));
-            if (piece.white()) {
+            if (piece.color() == PieceColor.WHITE) {
               armorStand.getEquipment().setChestplate(new ItemStack(Material.IRON_CHESTPLATE));
             } else {
               armorStand.getEquipment().setChestplate(new ItemStack(Material.NETHERITE_CHESTPLATE));
@@ -474,10 +474,10 @@ public final class ChessGame {
           if (piece == null) {
             world.setType(xx, game.board.loc().y(), zz, Material.AIR);
           } else {
-            world.setType(xx, game.board.loc().y(), zz, piece.white() ? Material.BIRCH_SIGN : Material.DARK_OAK_SIGN);
+            world.setType(xx, game.board.loc().y(), zz, piece.color() == PieceColor.WHITE ? Material.BIRCH_SIGN : Material.DARK_OAK_SIGN);
             final Sign blockState = (Sign) world.getBlockState(xx, game.board.loc().y(), zz);
             blockState.line(0, Component.text(piece.type().name()));
-            if (!piece.white()) {
+            if (piece.color() == PieceColor.BLACK) {
               blockState.setColor(DyeColor.WHITE);
             }
             blockState.update();

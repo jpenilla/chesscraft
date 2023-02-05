@@ -1,4 +1,4 @@
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.minecraftchess.command;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.arguments.CommandArgument;
@@ -10,42 +10,65 @@ import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
 import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgument;
 import cloud.commandframework.execution.CommandExecutionCoordinator;
 import cloud.commandframework.paper.PaperCommandManager;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.minecraftchess.BoardManager;
+import xyz.jpenilla.minecraftchess.ChessBoard;
+import xyz.jpenilla.minecraftchess.ChessGame;
+import xyz.jpenilla.minecraftchess.ChessPlayer;
+import xyz.jpenilla.minecraftchess.MinecraftChess;
+import xyz.jpenilla.minecraftchess.data.PVPChallenge;
+import xyz.jpenilla.minecraftchess.data.Vec3;
+import xyz.jpenilla.minecraftchess.data.piece.PieceColor;
+import xyz.jpenilla.minecraftchess.data.piece.PieceType;
 
 public final class Commands {
   private static final Set<PieceType> VALID_PROMOTIONS = Set.of(PieceType.BISHOP, PieceType.KNIGHT, PieceType.QUEEN, PieceType.ROOK);
 
   private final MinecraftChess plugin;
   private final PaperCommandManager<CommandSender> mgr;
-  private final Cache<UUID, PVPChallenge> challenges;
+  private final BoardManager boardManager;
 
-  Commands(final MinecraftChess plugin) {
+  public Commands(final MinecraftChess plugin) {
     this.plugin = plugin;
+    this.boardManager = plugin.boardManager();
     this.mgr = createCommandManager(plugin);
-    this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
   }
 
   public void register() {
-    this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this.challenges::cleanUp, 20L, 20L * 60L);
+    this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this.boardManager.challenges()::cleanUp, 20L, 20L * 60L);
 
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
+      .flag(this.mgr.flagBuilder("force").withAliases("f"))
       .senderType(Player.class)
       .handler(ctx -> {
         final String name = ctx.get("name");
         final Player sender = (Player) ctx.getSender();
-        this.plugin.boardManager().create(name, sender.getWorld(), Vec3.fromLocation(sender.getLocation()));
+        final boolean success = this.boardManager.createBoard(
+          name,
+          sender.getWorld(),
+          Vec3.fromLocation(sender.getLocation()),
+          ctx.flags().contains("force")
+        );
+        if (success) {
+          sender.sendRichMessage("<green>Created board");
+        } else {
+          sender.sendRichMessage("<red>Board with that name already exists. Use the --force flag to overwrite existing boards");
+        }
+      }));
+
+    this.mgr.command(chess.literal("delete_board")
+      .argument(this.boardArgument("board"))
+      .handler(ctx -> {
+        this.boardManager.deleteBoard(ctx.<ChessBoard>get("board").name());
+        ctx.getSender().sendRichMessage("<green>Deleted board");
       }));
 
     this.mgr.command(chess.literal("challenge")
@@ -75,7 +98,7 @@ public final class Commands {
       .senderType(Player.class)
       .handler(ctx -> {
         final ChessBoard board = ctx.get("board");
-        if (board.hasGame() || this.challenges.asMap().values().stream().anyMatch(c -> c.board() == board)) {
+        if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
           ctx.getSender().sendRichMessage("<red>Board is occupied.");
           return;
         }
@@ -85,7 +108,7 @@ public final class Commands {
           ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
           return;
         }
-        this.challenges.put(opponent.getUniqueId(), new PVPChallenge(board, (Player) ctx.getSender(), opponent, userColor));
+        this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, (Player) ctx.getSender(), opponent, userColor));
         opponent.sendRichMessage(
           "<green>You have been challenged to Chess by " + ctx.getSender().getName() + "! They chose to be " + userColor + ". Type /chess accept to accept. Challenge expires in 30 seconds.");
       }));
@@ -94,12 +117,18 @@ public final class Commands {
       .senderType(Player.class)
       .handler(ctx -> {
         final Player sender = (Player) ctx.getSender();
-        final @Nullable PVPChallenge challenge = this.challenges.getIfPresent(sender.getUniqueId());
+        final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
         if (challenge == null) {
           return;
         }
-        this.challenges.invalidate(sender.getUniqueId());
-        challenge.accept();
+        this.boardManager.challenges().invalidate(sender.getUniqueId());
+
+        final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
+        final ChessPlayer opp = ChessPlayer.player(challenge.player());
+        challenge.board().startGame(
+          challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
+          challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp
+        );
       }));
 
     this.mgr.command(chess.literal("next_promotion")
@@ -166,14 +195,14 @@ public final class Commands {
   private CommandArgument<CommandSender, ChessBoard> boardArgument(final String name) {
     return this.mgr.argumentBuilder(ChessBoard.class, name)
       .withParser((sender, queue) -> {
-        final ChessBoard g = this.plugin.boardManager().board(queue.peek());
+        final ChessBoard g = this.boardManager.board(queue.peek());
         if (g != null) {
           queue.poll();
           return ArgumentParseResult.success(g);
         }
         return ArgumentParseResult.failure(new IllegalArgumentException());
       })
-      .withSuggestionsProvider((sender, input) -> this.plugin.boardManager().boards().stream().map(ChessBoard::name).toList())
+      .withSuggestionsProvider((sender, input) -> this.boardManager.boards().stream().map(ChessBoard::name).toList())
       .build();
   }
 

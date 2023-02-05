@@ -1,4 +1,4 @@
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.minecraftchess.config;
 
 import io.leangen.geantyref.TypeToken;
 import java.lang.reflect.Type;

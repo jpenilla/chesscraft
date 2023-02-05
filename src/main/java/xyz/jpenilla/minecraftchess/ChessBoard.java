@@ -4,6 +4,7 @@ import java.util.Objects;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.minecraftchess.data.Vec3;
 
 public final class ChessBoard {
   private final Vec3 loc;

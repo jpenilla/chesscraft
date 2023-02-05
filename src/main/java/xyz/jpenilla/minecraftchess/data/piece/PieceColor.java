@@ -1,4 +1,4 @@
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.minecraftchess.data.piece;
 
 public enum PieceColor {
   WHITE("w"),
@@ -10,16 +10,12 @@ public enum PieceColor {
     this.abbreviation = abbreviation;
   }
 
-  public String abbreviation() {
-    return this.abbreviation;
-  }
-
   public static PieceColor decode(final String s) {
     for (final PieceColor value : values()) {
       if (value.abbreviation.equals(s)) {
         return value;
       }
     }
-    throw new IllegalArgumentException();
+    throw new IllegalArgumentException(s);
   }
 }
