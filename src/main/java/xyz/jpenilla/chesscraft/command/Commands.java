@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -120,10 +121,6 @@ public final class Commands {
       .senderType(Player.class)
       .handler(this::nextPromotion));
 
-    this.mgr.command(chess.literal("cpu_move")
-      .argument(this.boardArgument("board"))
-      .handler(this::cpuMove));
-
     this.mgr.command(chess.literal("reset")
       .argument(this.boardArgument("board"))
       .handler(this::reset));
@@ -146,7 +143,7 @@ public final class Commands {
         if (board.hasGame()) {
           builder.append(Component.text(": ", NamedTextColor.GRAY))
             .append(board.game().white().name().color(NamedTextColor.WHITE))
-            .append(Component.text(" vs ", NamedTextColor.GREEN))
+            .append(Component.text(" vs ", NamedTextColor.GREEN, TextDecoration.ITALIC))
             .append(board.game().black().name().color(NamedTextColor.DARK_GRAY));
         }
       }));
@@ -155,7 +152,7 @@ public final class Commands {
 
   private void reload(final CommandContext<CommandSender> ctx) {
     this.plugin.reloadMainConfig();
-    ctx.getSender().sendMessage("<gray><italic>Reloading configs... This will end any active matches.");
+    ctx.getSender().sendRichMessage("<gray><italic>Reloading configs... This will end any active matches.");
     this.boardManager.reload();
     ctx.getSender().sendRichMessage("<green>Reloaded configs.");
   }
@@ -261,13 +258,6 @@ public final class Commands {
     final PieceType type = ctx.get("type");
     board.game().nextPromotion(sender, type);
     sender.sendMessage(this.messages().nextPromotionSet(type));
-  }
-
-  private void cpuMove(final CommandContext<CommandSender> ctx) {
-    final ChessBoard board = ctx.get("board");
-    if (board.hasGame()) {
-      board.game().cpuMove(ctx.getSender());
-    }
   }
 
   private void deleteBoard(final CommandContext<CommandSender> ctx) {

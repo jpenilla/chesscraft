@@ -229,22 +229,6 @@ public final class ChessGame {
     this.board.pieceHandler().applyToWorld(this.board, this, this.world());
   }
 
-  public void cpuMove(final CommandSender sender) {
-    if (this.player(this.nextMove) != ChessPlayer.CPU) {
-      sender.sendRichMessage("<red>Not CPUs turn.");
-      return;
-    }
-    if (this.busy(sender)) {
-      return;
-    }
-    this.activeQuery = this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen).setDepth(10).build())
-      .thenCompose(bestMove -> this.move(bestMove, this.nextMove))
-      .exceptionally(ex -> {
-        this.plugin.getLogger().log(Level.WARNING, "Exception executing CPU move", ex);
-        return null;
-      });
-  }
-
   private CompletableFuture<Void> selectPiece(final String sel) {
     return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenAccept(valid -> {
       this.selectedPiece = sel;
@@ -278,6 +262,11 @@ public final class ChessGame {
 
         return checkForWin();
       });
+    }).thenCompose($ -> {
+      if (this.player(this.nextMove) == ChessPlayer.CPU) {
+        return this.cpuMoveFuture();
+      }
+      return CompletableFuture.completedFuture(null);
     });
   }
 
@@ -295,6 +284,21 @@ public final class ChessGame {
         this.board.endGame();
       });
     });
+  }
+
+  void cpuMove() {
+    if (this.activeQuery != null && !this.activeQuery.isDone() || this.player(this.nextMove) != ChessPlayer.CPU) {
+      throw new IllegalStateException();
+    }
+    this.activeQuery = this.cpuMoveFuture().exceptionally(ex -> {
+      this.plugin.getLogger().log(Level.WARNING, "Exception executing move", ex);
+      return null;
+    });
+  }
+
+  private CompletableFuture<Void> cpuMoveFuture() {
+    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen).setDepth(10).build())
+      .thenCompose(bestMove -> this.move(bestMove, this.nextMove));
   }
 
   public Audience players() {

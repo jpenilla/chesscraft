@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.chesscraft;
+package xyz.jpenilla.chesscraft.util;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
+import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.niflheim.stockfish.engine.enums.Variant;
 
 public final class StockfishProvider {

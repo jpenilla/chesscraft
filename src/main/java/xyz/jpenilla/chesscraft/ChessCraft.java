@@ -28,6 +28,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.command.Commands;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.config.MainConfig;
+import xyz.jpenilla.chesscraft.util.StockfishProvider;
 
 public final class ChessCraft extends JavaPlugin {
   private BoardManager boardManager;

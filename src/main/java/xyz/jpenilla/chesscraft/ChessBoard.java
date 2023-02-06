@@ -84,6 +84,9 @@ public final class ChessBoard {
     }
     this.game = new ChessGame(this.plugin, this, white, black);
     this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
+    if (white == ChessPlayer.CPU) {
+      this.game.cpuMove();
+    }
   }
 
   public void endGame() {
