@@ -21,7 +21,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 public enum PieceColor {
   WHITE("w", NamedTextColor.WHITE),
-  BLACK("b", NamedTextColor.BLACK);
+  BLACK("b", NamedTextColor.DARK_GRAY); // BLACK is too dark
 
   private final String abbreviation;
   private final NamedTextColor textColor;

@@ -38,11 +38,13 @@ public final class Messages {
       TagResolver.resolver("winner_color", Tag.styling(winner.textColor())),
       TagResolver.resolver("loser_color", Tag.styling(winner.other().textColor())),
       Placeholder.component("winner_name", win.name()),
-      Placeholder.component("loser_name", loss.name())
+      Placeholder.component("loser_name", loss.name()),
+      Placeholder.component("winner_displayname", win.displayName()),
+      Placeholder.component("loser_displayname", loss.displayName())
     );
   }
 
-  private String stalemateMessage = "<black><black_name></black> <green>ended in a stalemate with <white><white_name></white>!";
+  private String stalemateMessage = "<dark_gray><black_name></dark_gray> <green>ended in a stalemate with <white><white_name></white>!";
 
   public Component stalemateMessage(final ChessPlayer black, final ChessPlayer white) {
     return MiniMessage.miniMessage().deserialize(
