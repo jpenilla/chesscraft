@@ -159,17 +159,22 @@ public final class ChessGame {
     }
 
     final Vec3 selectedPos = this.loc(this.selectedPiece);
-    final World world = this.world();
-    this.blockParticles(world, selectedPos, Color.AQUA);
+
+    final ChessPlayer c = this.player(this.nextMove);
+    if (!(c instanceof ChessPlayer.Player chessPlayer)) {
+      return;
+    }
+    final Player player = Objects.requireNonNull(Bukkit.getPlayer(chessPlayer.uuid()));
+    this.blockParticles(player, selectedPos, Color.AQUA);
 
     if (this.validDestinations != null) {
       this.validDestinations.stream()
         .map(this::loc)
-        .forEach(pos -> this.blockParticles(world, pos, Color.GREEN));
+        .forEach(pos -> this.blockParticles(player, pos, Color.GREEN));
     }
   }
 
-  private void blockParticles(final World world, final Vec3 block, final Color particleColor) {
+  private void blockParticles(final Player player, final Vec3 block, final Color particleColor) {
     for (double dx = 0.2; dx <= 0.8; dx += 0.2) {
       for (double dz = 0.2; dz <= 0.8; dz += 0.2) {
         if (dx == 0.2 || dz == 0.2 || dx == 0.8 || dz == 0.8) {
@@ -177,8 +182,8 @@ public final class ChessGame {
             .count(1)
             .color(particleColor)
             .offset(0, 0, 0)
-            .location(world, block.x() + dx, block.y(), block.z() + dz)
-            .receivers(30, 30, 30)
+            .location(player.getWorld(), block.x() + dx, block.y(), block.z() + dz)
+            .receivers(player)
             .spawn();
         }
       }
