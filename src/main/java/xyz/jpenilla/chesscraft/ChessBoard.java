@@ -19,7 +19,9 @@ package xyz.jpenilla.chesscraft;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Vec3;
@@ -30,6 +32,7 @@ public final class ChessBoard {
   private final ChessCraft plugin;
   private final NamespacedKey worldKey;
   private final Path stockfishPath;
+  private final PieceHandler pieceHandler;
   private @Nullable ChessGame game;
 
   public ChessBoard(
@@ -44,6 +47,11 @@ public final class ChessBoard {
     this.loc = loc;
     this.worldKey = world;
     this.stockfishPath = stockfishPath;
+    this.pieceHandler = new PieceHandler.ItemFramePieceHandler();
+  }
+
+  PieceHandler pieceHandler() {
+    return this.pieceHandler;
   }
 
   Path stockfishPath() {
@@ -78,10 +86,14 @@ public final class ChessBoard {
   }
 
   public void endGame() {
+    this.endGame(false);
+  }
+
+  public void endGame(boolean removePieces) {
     if (this.game == null) {
       throw new IllegalStateException("No game to end");
     }
-    this.game.close();
+    this.game.close(removePieces);
     this.game = null;
   }
 
@@ -90,5 +102,33 @@ public final class ChessBoard {
       return this.game.handleInteract(player, x, y, z);
     }
     return false;
+  }
+
+  public void applyCheckerboard(
+    final Material black,
+    final Material white,
+    final @Nullable Material border
+  ) {
+    final World world = this.world();
+    for (int dx = 0; dx < 8; dx++) {
+      for (int dz = 0; dz < 8; dz++) {
+        final Material material = (dx * 7 + dz) % 2 == 0 ? white : black;
+        world.setType(this.loc.x() + dx, this.loc.y() - 1, this.loc.z() - dz, material);
+      }
+    }
+    if (border == null) {
+      return;
+    }
+    for (int dx = -1; dx <= 8; dx++) {
+      for (int dz = -1; dz <= 8; dz++) {
+        if (dx == -1 || dz == -1 || dx == 8 || dz == 8) {
+          world.setType(this.loc.x() + dx, this.loc.y() - 1, this.loc.z() - dz, border);
+        }
+      }
+    }
+  }
+
+  World world() {
+    return Objects.requireNonNull(this.plugin.getServer().getWorld(this.worldKey));
   }
 }

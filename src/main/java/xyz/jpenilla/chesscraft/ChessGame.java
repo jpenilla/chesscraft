@@ -21,34 +21,19 @@ import com.destroystokyo.paper.ParticleBuilder;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
-import org.bukkit.DyeColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.Rotation;
 import org.bukkit.World;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.persistence.PersistentDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
@@ -106,6 +91,10 @@ public final class ChessGame {
       throw new RuntimeException(ex);
     }
     this.applyToWorld();
+  }
+
+  Piece[][] pieces() {
+    return this.pieces;
   }
 
   public boolean handleInteract(final Player player, final int x, final int y, final int z) {
@@ -229,9 +218,7 @@ public final class ChessGame {
   }
 
   public void applyToWorld() {
-    final World world = this.world();
-    final PieceHandler handler = new ItemFramePieceHandler();
-    handler.applyToWorld(this, world);
+    this.board.pieceHandler().applyToWorld(this.board, this, this.world());
   }
 
   public void cpuMove(final CommandSender sender) {
@@ -307,11 +294,16 @@ public final class ChessGame {
   }
 
   private void announceWin(final PieceColor winner) {
-    this.players().sendMessage(this.plugin.config().messages().checkmateMessage(this.black, this.white, winner));
+    this.players().sendMessage(this.plugin.config().messages().checkmate(this.black, this.white, winner));
   }
 
   private void announceStalemate() {
-    this.players().sendMessage(this.plugin.config().messages().stalemateMessage(this.black, this.white));
+    this.players().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
+  }
+
+  public void forfeit(final PieceColor color) {
+    this.players().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
+    this.board.endGame();
   }
 
   private String nextPromotionAndReset(final PieceColor color) {
@@ -342,7 +334,10 @@ public final class ChessGame {
     return Objects.requireNonNull(Bukkit.getWorld(this.board.worldKey()), "World is not loaded");
   }
 
-  public void close() {
+  public void close(final boolean removePieces) {
+    if (removePieces) {
+      this.board.pieceHandler().removeFromWorld(this.board, this.world());
+    }
     this.stockfish.close();
   }
 
@@ -401,136 +396,5 @@ public final class ChessGame {
 
   private StockfishClient createStockfishClient() throws StockfishInitException {
     return new StockfishClient.Builder().setPath(this.board.stockfishPath()).build();
-  }
-
-  private interface PieceHandler {
-    void applyToWorld(ChessGame game, World world);
-
-    static void applyCheckerboard(final ChessGame game, final World world) {
-      for (int dx = 0; dx < 8; dx++) {
-        for (int dz = 0; dz < 8; dz++) {
-          final Material material = (dx * 7 + dz) % 2 == 0 ? Material.WHITE_CONCRETE : Material.BLACK_CONCRETE;
-          final int x = game.board.loc().x() + dx;
-          final int z = game.board.loc().z() - dz;
-          world.setType(x, game.board.loc().y() - 1, z, material);
-        }
-      }
-    }
-  }
-
-  private static final class ItemFramePieceHandler implements PieceHandler {
-    private static final Map<PieceType, Double> OFFSETS = new HashMap<>();
-
-    static {
-      OFFSETS.put(PieceType.PAWN, -10.0D / 16.0D);
-      OFFSETS.put(PieceType.BISHOP, -3.0D / 16.0D);
-      OFFSETS.put(PieceType.KNIGHT, -7.0D / 16.0D);
-      OFFSETS.put(PieceType.ROOK, -10.0D / 16.0D);
-      OFFSETS.put(PieceType.QUEEN, -1.0D / 16.0D);
-      OFFSETS.put(PieceType.KING, 0.0D);
-    }
-
-    @Override
-    public void applyToWorld(final ChessGame game, final World world) {
-      PieceHandler.applyCheckerboard(game, world);
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          final int xx = game.board.loc().x() + i;
-          final int zz = game.board.loc().z() - x;
-          final Piece piece = game.pieces[i][x];
-
-          final Collection<Entity> frame = world.getNearbyEntities(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), 0.25, 0.5, 0.25, e -> e instanceof ItemFrame || e instanceof ArmorStand);
-          for (final Entity entity : frame) {
-            entity.remove();
-          }
-
-          if (piece == null) {
-            continue;
-          }
-          world.spawn(new Location(world, xx, game.board.loc().y(), zz), ItemFrame.class, itemFrame -> {
-            final ItemStack stack = new ItemStack(Material.PAPER);
-            stack.editMeta(meta -> {
-              final int add = piece.color() == PieceColor.WHITE ? 7 : 1;
-              meta.setCustomModelData(piece.type().ordinal() + add);
-            });
-            itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
-            itemFrame.setItem(stack);
-            itemFrame.setFacingDirection(BlockFace.UP);
-            itemFrame.setInvulnerable(true);
-            itemFrame.setVisible(false);
-            itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, game.board.name());
-          });
-          world.spawn(new Location(world, xx + 0.5, game.board.loc().y() + OFFSETS.get(piece.type()), zz + 0.5), ArmorStand.class, stand -> {
-            stand.setInvulnerable(true);
-            stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, game.board.name());
-            stand.setGravity(false);
-            stand.setInvisible(true);
-          });
-        }
-      }
-    }
-  }
-
-  private static final class ArmorStandPieceHandler implements PieceHandler {
-    @Override
-    public void applyToWorld(final ChessGame game, final World world) {
-      PieceHandler.applyCheckerboard(game, world);
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          final int xx = game.board.loc().x() + i;
-          final int zz = game.board.loc().z() - x;
-          final Piece piece = game.pieces[i][x];
-
-          final Collection<Entity> stand = world.getNearbyEntities(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), 0.25, 0.25, 0.25, e -> e instanceof ArmorStand);
-          for (final Entity entity : stand) {
-            entity.remove();
-          }
-
-          if (piece == null) {
-            continue;
-          }
-
-          world.spawn(new Location(world, xx + 0.5, game.board.loc().y(), zz + 0.5), ArmorStand.class, armorStand -> {
-            armorStand.setCustomNameVisible(true);
-            armorStand.customName(Component.text(piece.type().name()));
-            if (piece.color() == PieceColor.WHITE) {
-              armorStand.getEquipment().setChestplate(new ItemStack(Material.IRON_CHESTPLATE));
-            } else {
-              armorStand.getEquipment().setChestplate(new ItemStack(Material.NETHERITE_CHESTPLATE));
-            }
-            armorStand.setRotation(90, 0);
-            armorStand.setInvulnerable(true);
-            armorStand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, game.board.name());
-            armorStand.setGravity(false);
-          });
-        }
-      }
-    }
-  }
-
-  private static final class SignPieceHandler implements PieceHandler {
-    @Override
-    public void applyToWorld(final ChessGame game, final World world) {
-      PieceHandler.applyCheckerboard(game, world);
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          final int xx = game.board.loc().x() + i;
-          final int zz = game.board.loc().z() - x;
-          final Piece piece = game.pieces[i][x];
-
-          if (piece == null) {
-            world.setType(xx, game.board.loc().y(), zz, Material.AIR);
-          } else {
-            world.setType(xx, game.board.loc().y(), zz, piece.color() == PieceColor.WHITE ? Material.BIRCH_SIGN : Material.DARK_OAK_SIGN);
-            final Sign blockState = (Sign) world.getBlockState(xx, game.board.loc().y(), zz);
-            blockState.line(0, Component.text(piece.type().name()));
-            if (piece.color() == PieceColor.BLACK) {
-              blockState.setColor(DyeColor.WHITE);
-            }
-            blockState.update();
-          }
-        }
-      }
-    }
   }
 }

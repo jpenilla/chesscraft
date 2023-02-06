@@ -19,29 +19,37 @@ package xyz.jpenilla.chesscraft.command;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.arguments.CommandArgument;
+import cloud.commandframework.arguments.flags.FlagContext;
 import cloud.commandframework.arguments.parser.ArgumentParseResult;
 import cloud.commandframework.arguments.standard.EnumArgument;
 import cloud.commandframework.arguments.standard.StringArgument;
 import cloud.commandframework.brigadier.CloudBrigadierManager;
 import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
+import cloud.commandframework.bukkit.parsers.MaterialArgument;
 import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgument;
+import cloud.commandframework.exceptions.CommandExecutionException;
 import cloud.commandframework.execution.CommandExecutionCoordinator;
+import cloud.commandframework.minecraft.extras.AudienceProvider;
+import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.paper.PaperCommandManager;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
+import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
-import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.ComponentRuntimeException;
 
 public final class Commands {
   private static final Set<PieceType> VALID_PROMOTIONS = Set.of(PieceType.BISHOP, PieceType.KNIGHT, PieceType.QUEEN, PieceType.ROOK);
@@ -61,6 +69,12 @@ public final class Commands {
 
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
+    this.mgr.command(chess.literal("version")
+      .handler(ctx -> {
+        ctx.getSender().sendRichMessage("<bold><black>Chess<white>Craft");
+        ctx.getSender().sendRichMessage("<gray><italics>  v" + this.plugin.getDescription().getVersion());
+      }));
+
     this.mgr.command(chess.literal("reload")
       .handler(ctx -> {
         this.plugin.reloadMainConfig();
@@ -70,29 +84,44 @@ public final class Commands {
 
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
-      .flag(this.mgr.flagBuilder("force").withAliases("f"))
       .senderType(Player.class)
       .handler(ctx -> {
         final String name = ctx.get("name");
         final Player sender = (Player) ctx.getSender();
-        final boolean success = this.boardManager.createBoard(
+        if (this.boardManager.board(name) != null) {
+          sender.sendMessage(this.plugin.config().messages().boardAlreadyExists(name));
+          return;
+        }
+        this.boardManager.createBoard(
           name,
           sender.getWorld(),
-          Vec3.fromLocation(sender.getLocation()),
-          ctx.flags().contains("force")
+          Vec3.fromLocation(sender.getLocation())
         );
-        if (success) {
-          sender.sendRichMessage("<green>Created board");
-        } else {
-          sender.sendRichMessage("<red>Board with that name already exists. Use the --force flag to overwrite existing boards");
-        }
+        sender.sendMessage(this.plugin.config().messages().boardCreated(name));
+      }));
+
+    this.mgr.command(chess.literal("set_checkerboard")
+      .argument(this.boardArgument("board"))
+      .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("black")))
+      .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("white")))
+      .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("border")))
+      .handler(ctx -> {
+        final ChessBoard board = ctx.get("board");
+        final FlagContext flags = ctx.flags();
+        board.applyCheckerboard(
+          flags.<Material>getValue("black").orElse(Material.BLACK_CONCRETE),
+          flags.<Material>getValue("white").orElse(Material.WHITE_CONCRETE),
+          flags.get("border")
+        );
+        ctx.getSender().sendRichMessage("<green>Set blocks to world!");
       }));
 
     this.mgr.command(chess.literal("delete_board")
       .argument(this.boardArgument("board"))
       .handler(ctx -> {
-        this.boardManager.deleteBoard(ctx.<ChessBoard>get("board").name());
-        ctx.getSender().sendRichMessage("<green>Deleted board");
+        final String board = ctx.<ChessBoard>get("board").name();
+        this.boardManager.deleteBoard(board);
+        ctx.getSender().sendMessage(this.plugin.config().messages().boardDeleted(board));
       }));
 
     this.mgr.command(chess.literal("challenge")
@@ -181,6 +210,7 @@ public final class Commands {
         final ChessBoard board = ctx.get("board");
         if (board.hasGame()) {
           board.game().reset();
+          return;
         }
       }));
 
@@ -198,8 +228,7 @@ public final class Commands {
           return;
         }
         final PieceColor color = game.color(ChessPlayer.player(sender));
-        game.players().sendMessage(Component.text(color + " forfeits."));
-        board.endGame();
+        board.game().forfeit(color);
       }));
   }
 
@@ -224,7 +253,8 @@ public final class Commands {
           queue.poll();
           return ArgumentParseResult.success(g);
         }
-        return ArgumentParseResult.failure(new IllegalArgumentException());
+        return ArgumentParseResult.failure(
+          ComponentRuntimeException.withMessage(this.plugin.config().messages().noSuchBoard(queue.peek())));
       })
       .withSuggestionsProvider((sender, input) -> this.boardManager.boards().stream().map(ChessBoard::name).toList())
       .build();
@@ -240,6 +270,20 @@ public final class Commands {
     mgr.registerBrigadier();
     final CloudBrigadierManager<CommandSender, ?> brigMgr = Objects.requireNonNull(mgr.brigadierManager());
     brigMgr.setNativeNumberSuggestions(false);
+    new MinecraftExceptionHandler<CommandSender>()
+      .withDefaultHandlers()
+      .apply(mgr, AudienceProvider.nativeAudience());
+    final BiConsumer<CommandSender, CommandExecutionException> handler = Objects.requireNonNull(mgr.getExceptionHandler(CommandExecutionException.class));
+    mgr.registerExceptionHandler(CommandExecutionException.class, (sender, ex) -> {
+      if (ex.getCause() instanceof CommandCompleted completed) {
+        final @Nullable Component message = completed.componentMessage();
+        if (message != null) {
+          sender.sendMessage(message);
+        }
+        return;
+      }
+      handler.accept(sender, ex);
+    });
     return mgr;
   }
 }

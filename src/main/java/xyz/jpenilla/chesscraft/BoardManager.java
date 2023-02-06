@@ -91,14 +91,10 @@ public final class BoardManager implements Listener {
     return this.boards.values();
   }
 
-  public boolean createBoard(final String name, final World world, final Vec3 pos, final boolean replace) {
-    if (!replace && this.boards.get(name) != null) {
-      return false;
-    }
+  public void createBoard(final String name, final World world, final Vec3 pos) {
     final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
     this.saveBoards();
-    return true;
   }
 
   public void reload() {
@@ -110,6 +106,11 @@ public final class BoardManager implements Listener {
     final ChessBoard remove = this.boards.remove(board);
     if (remove == null) {
       throw new IllegalArgumentException(board);
+    }
+    if (remove.hasGame()) {
+      remove.endGame(true);
+    } else {
+      remove.pieceHandler().removeFromWorld(remove, remove.world());
     }
   }
 

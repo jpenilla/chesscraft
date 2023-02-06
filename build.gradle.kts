@@ -25,6 +25,9 @@ dependencies {
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
   implementation(platform("cloud.commandframework:cloud-bom:1.8.0"))
   implementation("cloud.commandframework:cloud-paper")
+  implementation("cloud.commandframework:cloud-minecraft-extras") {
+    isTransitive = false
+  }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
   compileOnly("com.github.oshi:oshi-core:6.2.2")
 }
