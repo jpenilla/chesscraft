@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.data;
+package xyz.jpenilla.chesscraft.data;
 
 import io.leangen.geantyref.TypeToken;
 import java.lang.reflect.Type;

@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.config;
+package xyz.jpenilla.chesscraft.config;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import oshi.SystemInfo;

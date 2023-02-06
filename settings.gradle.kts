@@ -1,3 +1,3 @@
-rootProject.name = "minecraft-chess"
+rootProject.name = "chesscraft"
 
 includeBuild("work/Stockfish-Java")

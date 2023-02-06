@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,31 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.data.piece;
+package xyz.jpenilla.chesscraft.data.piece;
 
-import java.util.Locale;
-
-public enum PieceType {
-  PAWN("p"),
-  BISHOP("b"),
-  KNIGHT("n"),
-  ROOK("r"),
-  QUEEN("q"),
-  KING("k");
-
-  private final String abv;
-  private final String abvUpper;
-
-  PieceType(final String abv) {
-    this.abv = abv;
-    this.abvUpper = abv.toUpperCase(Locale.ENGLISH);
-  }
-
-  public String lower() {
-    return this.abv;
-  }
-
-  public String upper() {
-    return this.abvUpper;
+public record Piece(PieceType type, PieceColor color) {
+  public static Piece decode(final String s) {
+    for (final PieceType type : PieceType.values()) {
+      if (type.upper().equals(s)) {
+        return new Piece(type, PieceColor.WHITE);
+      } else if (type.lower().equals(s)) {
+        return new Piece(type, PieceColor.BLACK);
+      }
+    }
+    throw new IllegalArgumentException(s);
   }
 }

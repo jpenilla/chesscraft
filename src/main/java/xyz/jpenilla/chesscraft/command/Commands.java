@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.command;
+package xyz.jpenilla.chesscraft.command;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.arguments.CommandArgument;
@@ -33,24 +33,24 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import xyz.jpenilla.minecraftchess.BoardManager;
-import xyz.jpenilla.minecraftchess.ChessBoard;
-import xyz.jpenilla.minecraftchess.ChessGame;
-import xyz.jpenilla.minecraftchess.ChessPlayer;
-import xyz.jpenilla.minecraftchess.MinecraftChess;
-import xyz.jpenilla.minecraftchess.data.PVPChallenge;
-import xyz.jpenilla.minecraftchess.data.Vec3;
-import xyz.jpenilla.minecraftchess.data.piece.PieceColor;
-import xyz.jpenilla.minecraftchess.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.BoardManager;
+import xyz.jpenilla.chesscraft.ChessBoard;
+import xyz.jpenilla.chesscraft.ChessGame;
+import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.ChessCraft;
+import xyz.jpenilla.chesscraft.data.PVPChallenge;
+import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 public final class Commands {
   private static final Set<PieceType> VALID_PROMOTIONS = Set.of(PieceType.BISHOP, PieceType.KNIGHT, PieceType.QUEEN, PieceType.ROOK);
 
-  private final MinecraftChess plugin;
+  private final ChessCraft plugin;
   private final PaperCommandManager<CommandSender> mgr;
   private final BoardManager boardManager;
 
-  public Commands(final MinecraftChess plugin) {
+  public Commands(final ChessCraft plugin) {
     this.plugin = plugin;
     this.boardManager = plugin.boardManager();
     this.mgr = createCommandManager(plugin);
@@ -223,7 +223,7 @@ public final class Commands {
       .build();
   }
 
-  private static PaperCommandManager<CommandSender> createCommandManager(final MinecraftChess plugin) {
+  private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
     final PaperCommandManager<CommandSender> mgr;
     try {
       mgr = PaperCommandManager.createNative(plugin, CommandExecutionCoordinator.simpleCoordinator());

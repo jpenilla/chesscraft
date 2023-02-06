@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.chesscraft;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,9 +37,9 @@ public final class StockfishProvider {
   private static final String BASE_URL = "https://stockfishchess.org/files/";
 
   private final Path dir;
-  private final MinecraftChess plugin;
+  private final ChessCraft plugin;
 
-  public StockfishProvider(final MinecraftChess plugin, final Path enginesDir) {
+  public StockfishProvider(final ChessCraft plugin, final Path enginesDir) {
     this.plugin = plugin;
     this.dir = enginesDir;
     for (final Path path : List.of(this.dir.resolve("custom"), this.dir.resolve("managed"))) {

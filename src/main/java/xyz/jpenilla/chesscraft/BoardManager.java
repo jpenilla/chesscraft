@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.chesscraft;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -56,13 +56,13 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import xyz.jpenilla.minecraftchess.config.ConfigHelper;
-import xyz.jpenilla.minecraftchess.data.PVPChallenge;
-import xyz.jpenilla.minecraftchess.data.Vec3;
+import xyz.jpenilla.chesscraft.config.ConfigHelper;
+import xyz.jpenilla.chesscraft.data.PVPChallenge;
+import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class BoardManager implements Listener {
-  static final NamespacedKey PIECE_KEY = new NamespacedKey("minecraftchess", "chess_piece");
-  private final MinecraftChess plugin;
+  static final NamespacedKey PIECE_KEY = new NamespacedKey("chesscraft", "chess_piece");
+  private final ChessCraft plugin;
   private final Path stockfishPath;
   private final Path file;
   private final Map<String, ChessBoard> boards;
@@ -70,7 +70,7 @@ public final class BoardManager implements Listener {
 
   private BukkitTask particleTask;
 
-  public BoardManager(final MinecraftChess plugin, final Path stockfishPath) {
+  public BoardManager(final ChessCraft plugin, final Path stockfishPath) {
     this.plugin = plugin;
     this.stockfishPath = stockfishPath;
     this.file = plugin.getDataFolder().toPath().resolve("boards.yml");

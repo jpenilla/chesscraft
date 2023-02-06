@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,24 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.data.piece;
+package xyz.jpenilla.chesscraft.data;
 
-public enum PieceColor {
-  WHITE("w"),
-  BLACK("b");
+import org.bukkit.entity.Player;
+import xyz.jpenilla.chesscraft.ChessBoard;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
-  private final String abbreviation;
-
-  PieceColor(final String abbreviation) {
-    this.abbreviation = abbreviation;
-  }
-
-  public static PieceColor decode(final String s) {
-    for (final PieceColor value : values()) {
-      if (value.abbreviation.equals(s)) {
-        return value;
-      }
-    }
-    throw new IllegalArgumentException(s);
-  }
-}
+public record PVPChallenge(
+  ChessBoard board,
+  Player challenger,
+  Player player,
+  PieceColor challengerColor
+) {}

@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,15 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.data;
+package xyz.jpenilla.chesscraft.data.piece;
 
-import org.bukkit.entity.Player;
-import xyz.jpenilla.minecraftchess.ChessBoard;
-import xyz.jpenilla.minecraftchess.data.piece.PieceColor;
+import java.util.Locale;
 
-public record PVPChallenge(
-  ChessBoard board,
-  Player challenger,
-  Player player,
-  PieceColor challengerColor
-) {}
+public enum PieceType {
+  PAWN("p"),
+  BISHOP("b"),
+  KNIGHT("n"),
+  ROOK("r"),
+  QUEEN("q"),
+  KING("k");
+
+  private final String abv;
+  private final String abvUpper;
+
+  PieceType(final String abv) {
+    this.abv = abv;
+    this.abvUpper = abv.toUpperCase(Locale.ENGLISH);
+  }
+
+  public String lower() {
+    return this.abv;
+  }
+
+  public String upper() {
+    return this.abvUpper;
+  }
+}

@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,15 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.data.piece;
+package xyz.jpenilla.chesscraft.data.piece;
 
-public record Piece(PieceType type, PieceColor color) {
-  public static Piece decode(final String s) {
-    for (final PieceType type : PieceType.values()) {
-      if (type.upper().equals(s)) {
-        return new Piece(type, PieceColor.WHITE);
-      } else if (type.lower().equals(s)) {
-        return new Piece(type, PieceColor.BLACK);
+public enum PieceColor {
+  WHITE("w"),
+  BLACK("b");
+
+  private final String abbreviation;
+
+  PieceColor(final String abbreviation) {
+    this.abbreviation = abbreviation;
+  }
+
+  public static PieceColor decode(final String s) {
+    for (final PieceColor value : values()) {
+      if (value.abbreviation.equals(s)) {
+        return value;
       }
     }
     throw new IllegalArgumentException(s);

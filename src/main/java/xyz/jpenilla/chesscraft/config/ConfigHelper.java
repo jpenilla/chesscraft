@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess.config;
+package xyz.jpenilla.chesscraft.config;
 
 import java.nio.file.Path;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import xyz.jpenilla.minecraftchess.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class ConfigHelper {
   public static YamlConfigurationLoader createLoader(final Path file) {

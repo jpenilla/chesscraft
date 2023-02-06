@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
 import com.google.common.collect.BiMap;
@@ -52,10 +52,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import xyz.jpenilla.minecraftchess.data.Vec3;
-import xyz.jpenilla.minecraftchess.data.piece.Piece;
-import xyz.jpenilla.minecraftchess.data.piece.PieceColor;
-import xyz.jpenilla.minecraftchess.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.piece.Piece;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Query;
 import xyz.niflheim.stockfish.engine.enums.QueryType;

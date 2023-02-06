@@ -36,7 +36,7 @@ license {
 tasks {
   withType<Jar> {
     from(layout.projectDirectory.file("LICENSE")) {
-      rename { "LICENSE_minecraft-chess" }
+      rename { "LICENSE_chesscraft" }
     }
   }
   jar {
@@ -55,7 +55,7 @@ tasks {
     minecraftVersion("1.19.3")
   }
   shadowJar {
-    fun reloc(pkg: String) = relocate(pkg, "xyz.jpenilla.minecraftchess.dependency.$pkg")
+    fun reloc(pkg: String) = relocate(pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
     reloc("cloud.commandframework")
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
@@ -66,8 +66,8 @@ tasks {
 }
 
 bukkit {
-  name = "MinecraftChess"
+  name = "ChessCraft"
   author = "jmp"
-  main = "xyz.jpenilla.minecraftchess.MinecraftChess"
+  main = "xyz.jpenilla.chesscraft.ChessCraft"
   apiVersion = "1.19"
 }

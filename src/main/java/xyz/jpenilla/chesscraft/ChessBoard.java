@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,25 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.chesscraft;
 
 import java.nio.file.Path;
 import java.util.Objects;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import xyz.jpenilla.minecraftchess.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class ChessBoard {
   private final Vec3 loc;
   private final String name;
-  private final MinecraftChess plugin;
+  private final ChessCraft plugin;
   private final NamespacedKey worldKey;
   private final Path stockfishPath;
   private @Nullable ChessGame game;
 
   public ChessBoard(
-    final MinecraftChess plugin,
+    final ChessCraft plugin,
     final String name,
     final Vec3 loc,
     final NamespacedKey world,

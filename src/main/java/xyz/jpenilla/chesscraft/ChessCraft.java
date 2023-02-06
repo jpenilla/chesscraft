@@ -1,5 +1,5 @@
 /*
- * minecraft-chess
+ * chesscraft
  *
  * Copyright (c) 2023 Jason Penilla
  *
@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.minecraftchess;
+package xyz.jpenilla.chesscraft;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,11 +24,11 @@ import java.util.Objects;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import xyz.jpenilla.minecraftchess.command.Commands;
-import xyz.jpenilla.minecraftchess.config.ConfigHelper;
-import xyz.jpenilla.minecraftchess.config.MainConfig;
+import xyz.jpenilla.chesscraft.command.Commands;
+import xyz.jpenilla.chesscraft.config.ConfigHelper;
+import xyz.jpenilla.chesscraft.config.MainConfig;
 
-public final class MinecraftChess extends JavaPlugin {
+public final class ChessCraft extends JavaPlugin {
   private BoardManager boardManager;
 
   @Override
