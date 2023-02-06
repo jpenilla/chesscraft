@@ -18,34 +18,22 @@
 package xyz.jpenilla.chesscraft.config;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import xyz.niflheim.stockfish.engine.enums.Variant;
+import xyz.jpenilla.chesscraft.util.ProcessorUtil;
 
 @ConfigSerializable
-public record MainConfig(String stockfishEngine) {
-  public MainConfig() {
-    this("15.1:" + bestEngine());
+public final class MainConfig {
+  private String stockfishEngine = defaultEngine();
+  private Messages messages = new Messages();
+
+  public String stockfishEngine() {
+    return this.stockfishEngine;
   }
 
-  private static Variant bestEngine() {
-    final CentralProcessor.ProcessorIdentifier procId = new SystemInfo().getHardware().getProcessor().getProcessorIdentifier();
-    if (procId.getVendor().contains("AMD")) {
-      final int family = Integer.parseInt(procId.getFamily());
-      if (family == 23) {
-        // Zen 1-2
-        return Variant.AVX2;
-      } else if (family >= 25) {
-        // Zen 3+
-        return Variant.BMI2;
-      }
-    } else if (procId.getVendor().contains("Intel")) {
-      if (procId.getFamily().equals("6") && Integer.parseInt(procId.getModel()) >= 60) {
-        // Haswell+
-        return Variant.AVX2;
-        // return Variant.BMI2; // supposed to be right - but get stream is closed errors, need to look closer into this
-      }
-    }
-    return Variant.DEFAULT;
+  public Messages messages() {
+    return this.messages;
+  }
+
+  private static String defaultEngine() {
+    return "15.1:" + ProcessorUtil.bestEngine();
   }
 }

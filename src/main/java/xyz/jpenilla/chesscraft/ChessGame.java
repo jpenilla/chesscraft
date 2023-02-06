@@ -32,7 +32,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
@@ -50,7 +49,6 @@ import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
@@ -79,7 +77,7 @@ public final class ChessGame {
   private final ChessBoard board;
   private final StockfishClient stockfish;
   private final Piece[][] pieces;
-  private final JavaPlugin plugin;
+  private final ChessCraft plugin;
   private final ChessPlayer white;
   private final ChessPlayer black;
   private PieceType whiteNextPromotion = PieceType.QUEEN;
@@ -91,7 +89,7 @@ public final class ChessGame {
   private CompletableFuture<?> activeQuery;
 
   ChessGame(
-    final JavaPlugin plugin,
+    final ChessCraft plugin,
     final ChessBoard board,
     final ChessPlayer white,
     final ChessPlayer black
@@ -309,11 +307,11 @@ public final class ChessGame {
   }
 
   private void announceWin(final PieceColor winner) {
-    this.players().sendMessage(Component.text(winner + " wins by checkmate!", NamedTextColor.GREEN));
+    this.players().sendMessage(this.plugin.config().messages().checkmateMessage(this.black, this.white, winner));
   }
 
   private void announceStalemate() {
-    this.players().sendMessage(Component.text("It's a stalemate!", NamedTextColor.YELLOW));
+    this.players().sendMessage(this.plugin.config().messages().stalemateMessage(this.black, this.white));
   }
 
   private String nextPromotionAndReset(final PieceColor color) {

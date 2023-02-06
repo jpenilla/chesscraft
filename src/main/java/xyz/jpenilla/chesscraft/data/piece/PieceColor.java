@@ -17,14 +17,22 @@
  */
 package xyz.jpenilla.chesscraft.data.piece;
 
+import net.kyori.adventure.text.format.NamedTextColor;
+
 public enum PieceColor {
-  WHITE("w"),
-  BLACK("b");
+  WHITE("w", NamedTextColor.WHITE),
+  BLACK("b", NamedTextColor.BLACK);
 
   private final String abbreviation;
+  private final NamedTextColor textColor;
 
-  PieceColor(final String abbreviation) {
+  PieceColor(final String abbreviation, final NamedTextColor textColor) {
     this.abbreviation = abbreviation;
+    this.textColor = textColor;
+  }
+
+  public NamedTextColor textColor() {
+    return this.textColor;
   }
 
   public static PieceColor decode(final String s) {
@@ -34,5 +42,9 @@ public enum PieceColor {
       }
     }
     throw new IllegalArgumentException(s);
+  }
+
+  public PieceColor other() {
+    return this == WHITE ? BLACK : WHITE;
   }
 }

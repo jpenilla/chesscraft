@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.command.Commands;
@@ -30,16 +31,36 @@ import xyz.jpenilla.chesscraft.config.MainConfig;
 
 public final class ChessCraft extends JavaPlugin {
   private BoardManager boardManager;
+  private @MonotonicNonNull MainConfig config;
 
   @Override
   public void onEnable() {
-    final MainConfig config = this.loadConfig();
-    this.saveConfig(config);
+    this.reloadMainConfig();
     final Path stockfishPath = new StockfishProvider(this, this.getDataFolder().toPath().resolve("engines"))
-      .engine(config.stockfishEngine());
+      .engine(this.config.stockfishEngine());
     this.boardManager = new BoardManager(this, stockfishPath);
     this.boardManager.load();
     new Commands(this).register();
+  }
+
+  @Override
+  public void onDisable() {
+    if (this.boardManager != null) {
+      this.boardManager.close();
+    }
+  }
+
+  public BoardManager boardManager() {
+    return this.boardManager;
+  }
+
+  public MainConfig config() {
+    return this.config;
+  }
+
+  public void reloadMainConfig() {
+    this.config = this.loadConfig();
+    this.saveConfig(this.config);
   }
 
   private MainConfig loadConfig() {
@@ -69,16 +90,5 @@ public final class ChessCraft extends JavaPlugin {
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
-  }
-
-  @Override
-  public void onDisable() {
-    if (this.boardManager != null) {
-      this.boardManager.close();
-    }
-  }
-
-  public BoardManager boardManager() {
-    return this.boardManager;
   }
 }

@@ -27,17 +27,30 @@ import org.bukkit.Bukkit;
 public interface ChessPlayer extends Audience {
   ChessPlayer CPU = new Cpu();
 
-  Component displayName();
+  default Component displayName() {
+    return this.name();
+  }
+
+  Component name();
 
   record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
     @Override
     public Audience audience() {
-      return Objects.requireNonNull(Bukkit.getPlayer(this.uuid));
+      return player();
     }
 
     @Override
     public Component displayName() {
-      return Objects.requireNonNull(Bukkit.getPlayer(this.uuid)).displayName();
+      return player().displayName();
+    }
+
+    private org.bukkit.entity.Player player() {
+      return Objects.requireNonNull(Bukkit.getPlayer(this.uuid));
+    }
+
+    @Override
+    public Component name() {
+      return Component.text(this.player().getName());
     }
   }
 
@@ -55,7 +68,7 @@ public interface ChessPlayer extends Audience {
     }
 
     @Override
-    public Component displayName() {
+    public Component name() {
       return Component.text("CPU");
     }
   }

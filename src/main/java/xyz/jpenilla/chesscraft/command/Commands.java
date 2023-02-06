@@ -61,6 +61,13 @@ public final class Commands {
 
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
+    this.mgr.command(chess.literal("reload")
+      .handler(ctx -> {
+        this.plugin.reloadMainConfig();
+        this.boardManager.reload();
+        ctx.getSender().sendRichMessage("<green>Reloaded configs.");
+      }));
+
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
       .flag(this.mgr.flagBuilder("force").withAliases("f"))

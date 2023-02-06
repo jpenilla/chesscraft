@@ -97,7 +97,13 @@ public final class BoardManager implements Listener {
     }
     final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
+    this.saveBoards();
     return true;
+  }
+
+  public void reload() {
+    this.close();
+    this.load();
   }
 
   public void deleteBoard(final String board) {
