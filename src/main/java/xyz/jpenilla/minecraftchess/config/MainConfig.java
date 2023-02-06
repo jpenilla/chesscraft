@@ -42,7 +42,8 @@ public record MainConfig(String stockfishEngine) {
     } else if (procId.getVendor().contains("Intel")) {
       if (procId.getFamily().equals("6") && Integer.parseInt(procId.getModel()) >= 60) {
         // Haswell+
-        return Variant.BMI2;
+        return Variant.AVX2;
+        // return Variant.BMI2; // supposed to be right - but get stream is closed errors, need to look closer into this
       }
     }
     return Variant.DEFAULT;
