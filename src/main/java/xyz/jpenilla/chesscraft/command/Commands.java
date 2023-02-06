@@ -27,6 +27,7 @@ import cloud.commandframework.brigadier.CloudBrigadierManager;
 import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
 import cloud.commandframework.bukkit.parsers.MaterialArgument;
 import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgument;
+import cloud.commandframework.context.CommandContext;
 import cloud.commandframework.exceptions.CommandExecutionException;
 import cloud.commandframework.execution.CommandExecutionCoordinator;
 import cloud.commandframework.minecraft.extras.AudienceProvider;
@@ -70,78 +71,33 @@ public final class Commands {
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
     this.mgr.command(chess.literal("version")
-      .handler(ctx -> {
-        ctx.getSender().sendRichMessage("<bold><black>Chess<white>Craft");
-        ctx.getSender().sendRichMessage("<gray><italics>  v" + this.plugin.getDescription().getVersion());
-      }));
+      .handler(this::version));
 
     this.mgr.command(chess.literal("reload")
-      .handler(ctx -> {
-        this.plugin.reloadMainConfig();
-        this.boardManager.reload();
-        ctx.getSender().sendRichMessage("<green>Reloaded configs.");
-      }));
+      .handler(this::reload));
 
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final String name = ctx.get("name");
-        final Player sender = (Player) ctx.getSender();
-        if (this.boardManager.board(name) != null) {
-          sender.sendMessage(this.plugin.config().messages().boardAlreadyExists(name));
-          return;
-        }
-        this.boardManager.createBoard(
-          name,
-          sender.getWorld(),
-          Vec3.fromLocation(sender.getLocation())
-        );
-        sender.sendMessage(this.plugin.config().messages().boardCreated(name));
-      }));
+      .handler(this::createBoard));
 
     this.mgr.command(chess.literal("set_checkerboard")
       .argument(this.boardArgument("board"))
       .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("black")))
       .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("white")))
       .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("border")))
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        final FlagContext flags = ctx.flags();
-        board.applyCheckerboard(
-          flags.<Material>getValue("black").orElse(Material.BLACK_CONCRETE),
-          flags.<Material>getValue("white").orElse(Material.WHITE_CONCRETE),
-          flags.get("border")
-        );
-        ctx.getSender().sendRichMessage("<green>Set blocks to world!");
-      }));
+      .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
       .argument(this.boardArgument("board"))
-      .handler(ctx -> {
-        final String board = ctx.<ChessBoard>get("board").name();
-        this.boardManager.deleteBoard(board);
-        ctx.getSender().sendMessage(this.plugin.config().messages().boardDeleted(board));
-      }));
+      .handler(this::deleteBoard));
 
     this.mgr.command(chess.literal("challenge")
       .literal("cpu")
       .argument(this.boardArgument("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (board.hasGame()) {
-          ctx.getSender().sendRichMessage("<red>Board is occupied.");
-          return;
-        }
-        final PieceColor userColor = ctx.get("color");
-        final ChessPlayer user = ChessPlayer.player((Player) ctx.getSender());
-        board.startGame(
-          userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
-          userColor == PieceColor.BLACK ? user : ChessPlayer.CPU
-        );
-      }));
+      .handler(this::challengeCpu));
 
     this.mgr.command(chess.literal("challenge")
       .literal("player")
@@ -149,87 +105,156 @@ public final class Commands {
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
-          ctx.getSender().sendRichMessage("<red>Board is occupied.");
-          return;
-        }
-        final PieceColor userColor = ctx.get("color");
-        final Player opponent = ctx.<SinglePlayerSelector>get("player").getPlayer();
-        if (ctx.getSender().equals(opponent)) {
-          ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
-          return;
-        }
-        this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, (Player) ctx.getSender(), opponent, userColor));
-        opponent.sendRichMessage(
-          "<green>You have been challenged to Chess by " + ctx.getSender().getName() + "! They chose to be " + userColor + ". Type /chess accept to accept. Challenge expires in 30 seconds.");
-      }));
+      .handler(this::challengePlayer));
 
     this.mgr.command(chess.literal("accept")
       .senderType(Player.class)
-      .handler(ctx -> {
-        final Player sender = (Player) ctx.getSender();
-        final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
-        if (challenge == null) {
-          return;
-        }
-        this.boardManager.challenges().invalidate(sender.getUniqueId());
-
-        final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
-        final ChessPlayer opp = ChessPlayer.player(challenge.player());
-        challenge.board().startGame(
-          challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
-          challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp
-        );
-      }));
+      .handler(this::accept));
 
     this.mgr.command(chess.literal("next_promotion")
       .argument(this.boardArgument("board"))
       .argument(this.promotionArgument("type"))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (board.hasGame() && board.game().hasPlayer((Player) ctx.getSender())) {
-          board.game().nextPromotion((Player) ctx.getSender(), ctx.get("type"));
-        }
-      }));
+      .handler(this::nextPromotion));
 
     this.mgr.command(chess.literal("cpu_move")
       .argument(this.boardArgument("board"))
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (board.hasGame()) {
-          board.game().cpuMove(ctx.getSender());
-        }
-      }));
+      .handler(this::cpuMove));
 
     this.mgr.command(chess.literal("reset")
       .argument(this.boardArgument("board"))
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (board.hasGame()) {
-          board.game().reset();
-          return;
-        }
-      }));
+      .handler(this::reset));
 
     this.mgr.command(chess.literal("forfeit")
       .argument(this.boardArgument("board"))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        if (!board.hasGame()) {
-          return;
-        }
-        final ChessGame game = board.game();
-        final Player sender = (Player) ctx.getSender();
-        if (!game.hasPlayer(sender)) {
-          return;
-        }
-        final PieceColor color = game.color(ChessPlayer.player(sender));
-        board.game().forfeit(color);
-      }));
+      .handler(this::forfeit));
+  }
+
+  private void version(final CommandContext<CommandSender> ctx) {
+    ctx.getSender().sendRichMessage("<bold><black>Chess<white>Craft");
+    ctx.getSender().sendRichMessage("<gray><italic>  v" + this.plugin.getDescription().getVersion());
+  }
+
+  private void reload(final CommandContext<CommandSender> ctx) {
+    this.plugin.reloadMainConfig();
+    this.boardManager.reload();
+    ctx.getSender().sendRichMessage("<green>Reloaded configs.");
+  }
+
+  private void createBoard(final CommandContext<CommandSender> ctx) {
+    final String name = ctx.get("name");
+    final Player sender = (Player) ctx.getSender();
+    if (this.boardManager.board(name) != null) {
+      sender.sendMessage(this.plugin.config().messages().boardAlreadyExists(name));
+      return;
+    }
+    this.boardManager.createBoard(
+      name,
+      sender.getWorld(),
+      Vec3.fromLocation(sender.getLocation())
+    );
+    sender.sendMessage(this.plugin.config().messages().boardCreated(name));
+  }
+
+  private void setCheckerboard(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    final FlagContext flags = ctx.flags();
+    board.applyCheckerboard(
+      flags.<Material>getValue("black").orElse(Material.BLACK_CONCRETE),
+      flags.<Material>getValue("white").orElse(Material.WHITE_CONCRETE),
+      flags.get("border")
+    );
+    ctx.getSender().sendRichMessage("<green>Set blocks to world!");
+  }
+
+  private void challengeCpu(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame()) {
+      ctx.getSender().sendRichMessage("<red>Board is occupied.");
+      return;
+    }
+    final PieceColor userColor = ctx.get("color");
+    final ChessPlayer user = ChessPlayer.player((Player) ctx.getSender());
+    board.startGame(
+      userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
+      userColor == PieceColor.BLACK ? user : ChessPlayer.CPU
+    );
+  }
+
+  private void challengePlayer(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
+      ctx.getSender().sendRichMessage("<red>Board is occupied.");
+      return;
+    }
+    final PieceColor userColor = ctx.get("color");
+    final Player opponent = ctx.<SinglePlayerSelector>get("player").getPlayer();
+    if (ctx.getSender().equals(opponent)) {
+      ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
+      return;
+    }
+    this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, (Player) ctx.getSender(), opponent, userColor));
+    opponent.sendRichMessage(
+      "<green>You have been challenged to Chess by " + ctx.getSender().getName() + "! They chose to be " + userColor + ". Type /chess accept to accept. Challenge expires in 30 seconds.");
+  }
+
+  private void accept(final CommandContext<CommandSender> ctx) {
+    final Player sender = (Player) ctx.getSender();
+    final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
+    if (challenge == null) {
+      return;
+    }
+    this.boardManager.challenges().invalidate(sender.getUniqueId());
+
+    final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
+    final ChessPlayer opp = ChessPlayer.player(challenge.player());
+    challenge.board().startGame(
+      challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
+      challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp
+    );
+  }
+
+  private void nextPromotion(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame() && board.game().hasPlayer((Player) ctx.getSender())) {
+      board.game().nextPromotion((Player) ctx.getSender(), ctx.get("type"));
+    }
+  }
+
+  private void cpuMove(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame()) {
+      board.game().cpuMove(ctx.getSender());
+    }
+  }
+
+  private void deleteBoard(final CommandContext<CommandSender> ctx) {
+    final String board = ctx.<ChessBoard>get("board").name();
+    this.boardManager.deleteBoard(board);
+    ctx.getSender().sendMessage(this.plugin.config().messages().boardDeleted(board));
+  }
+
+  private void reset(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame()) {
+      board.game().reset();
+      return;
+    }
+  }
+
+  private void forfeit(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (!board.hasGame()) {
+      return;
+    }
+    final ChessGame game = board.game();
+    final Player sender = (Player) ctx.getSender();
+    if (!game.hasPlayer(sender)) {
+      return;
+    }
+    final PieceColor color = game.color(ChessPlayer.player(sender));
+    board.game().forfeit(color);
   }
 
   private CommandArgument<CommandSender, PieceType> promotionArgument(final String name) {
