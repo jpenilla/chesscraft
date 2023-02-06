@@ -289,17 +289,18 @@ public final class ChessGame {
   }
 
   private CompletableFuture<Void> checkForWin() {
-    // win: no legal moves & checkers is not empty
-    return this.stockfish.submit(new Query.Builder(QueryType.Checkers, this.currentFen).build()).thenCompose(checkers -> {
-      if (!checkers.isEmpty()) {
-        return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenAccept(legal -> {
-          if (legal.isEmpty()) {
-            this.announceWin(this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
-            this.board.endGame();
-          }
-        });
+    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
+      if (!legal.isEmpty()) {
+        return CompletableFuture.completedFuture(null);
       }
-      return CompletableFuture.completedFuture(null);
+      return this.stockfish.submit(new Query.Builder(QueryType.Checkers, this.currentFen).build()).thenAccept(checkers -> {
+        if (checkers.isEmpty()) {
+          this.announceStalemate();
+        } else {
+          this.announceWin(this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
+        }
+        this.board.endGame();
+      });
     });
   }
 
@@ -308,7 +309,11 @@ public final class ChessGame {
   }
 
   private void announceWin(final PieceColor winner) {
-    this.players().sendMessage(Component.text(winner + " wins!", NamedTextColor.GREEN));
+    this.players().sendMessage(Component.text(winner + " wins by checkmate!", NamedTextColor.GREEN));
+  }
+
+  private void announceStalemate() {
+    this.players().sendMessage(Component.text("It's a stalemate!", NamedTextColor.YELLOW));
   }
 
   private String nextPromotionAndReset(final PieceColor color) {
