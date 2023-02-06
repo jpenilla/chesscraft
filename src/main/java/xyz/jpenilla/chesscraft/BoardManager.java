@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -167,6 +168,10 @@ public final class BoardManager implements Listener {
     }
   }
 
+  public boolean inGame(final Player player) {
+    return this.boards.values().stream().anyMatch(board -> board.hasGame() && board.game().hasPlayer(player));
+  }
+
   @EventHandler
   public void interact(final PlayerInteractEvent event) {
     if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getHand() != EquipmentSlot.HAND) {
@@ -203,8 +208,12 @@ public final class BoardManager implements Listener {
   public void quit(final PlayerQuitEvent event) {
     for (final ChessBoard value : this.boards.values()) {
       if (value.hasGame() && value.game().hasPlayer(event.getPlayer())) {
-        value.game().reset();
         value.endGame();
+      }
+    }
+    for (final PVPChallenge value : List.copyOf(this.challenges.asMap().values())) {
+      if (value.challenger().equals(event.getPlayer()) || value.player().equals(event.getPlayer())) {
+        this.challenges.invalidate(value.player().getUniqueId());
       }
     }
   }

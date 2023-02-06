@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -44,8 +45,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
-import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -72,6 +73,9 @@ public final class Commands {
 
     this.mgr.command(chess.literal("version")
       .handler(this::version));
+
+    this.mgr.command(chess.literal("boards")
+      .handler(this::boards));
 
     this.mgr.command(chess.literal("reload")
       .handler(this::reload));
@@ -112,7 +116,6 @@ public final class Commands {
       .handler(this::accept));
 
     this.mgr.command(chess.literal("next_promotion")
-      .argument(this.boardArgument("board"))
       .argument(this.promotionArgument("type"))
       .senderType(Player.class)
       .handler(this::nextPromotion));
@@ -126,7 +129,6 @@ public final class Commands {
       .handler(this::reset));
 
     this.mgr.command(chess.literal("forfeit")
-      .argument(this.boardArgument("board"))
       .senderType(Player.class)
       .handler(this::forfeit));
   }
@@ -136,8 +138,24 @@ public final class Commands {
     ctx.getSender().sendRichMessage("<gray><italic>  v" + this.plugin.getDescription().getVersion());
   }
 
+  private void boards(final CommandContext<CommandSender> ctx) {
+    final CommandSender sender = ctx.getSender();
+    sender.sendMessage("Chess boards:");
+    for (final ChessBoard board : this.boardManager.boards()) {
+      ctx.getSender().sendMessage(Component.text().content(board.name()).apply(builder -> {
+        if (board.hasGame()) {
+          builder.append(Component.text(": ", NamedTextColor.GRAY))
+            .append(board.game().white().name().color(NamedTextColor.WHITE))
+            .append(Component.text(" vs ", NamedTextColor.GREEN))
+            .append(board.game().black().name().color(NamedTextColor.DARK_GRAY));
+        }
+      }));
+    }
+  }
+
   private void reload(final CommandContext<CommandSender> ctx) {
     this.plugin.reloadMainConfig();
+    ctx.getSender().sendMessage("<gray><italic>Reloading configs... This will end any active matches.");
     this.boardManager.reload();
     ctx.getSender().sendRichMessage("<green>Reloaded configs.");
   }
@@ -146,7 +164,7 @@ public final class Commands {
     final String name = ctx.get("name");
     final Player sender = (Player) ctx.getSender();
     if (this.boardManager.board(name) != null) {
-      sender.sendMessage(this.plugin.config().messages().boardAlreadyExists(name));
+      sender.sendMessage(this.messages().boardAlreadyExists(name));
       return;
     }
     this.boardManager.createBoard(
@@ -154,7 +172,7 @@ public final class Commands {
       sender.getWorld(),
       Vec3.fromLocation(sender.getLocation())
     );
-    sender.sendMessage(this.plugin.config().messages().boardCreated(name));
+    sender.sendMessage(this.messages().boardCreated(name));
   }
 
   private void setCheckerboard(final CommandContext<CommandSender> ctx) {
@@ -170,12 +188,17 @@ public final class Commands {
 
   private void challengeCpu(final CommandContext<CommandSender> ctx) {
     final ChessBoard board = ctx.get("board");
+    final Player sender = (Player) ctx.getSender();
+    if (this.boardManager.inGame(sender)) {
+      sender.sendMessage(this.messages().alreadyInGame());
+      return;
+    }
     if (board.hasGame()) {
-      ctx.getSender().sendRichMessage("<red>Board is occupied.");
+      sender.sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
     final PieceColor userColor = ctx.get("color");
-    final ChessPlayer user = ChessPlayer.player((Player) ctx.getSender());
+    final ChessPlayer user = ChessPlayer.player(sender);
     board.startGame(
       userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
       userColor == PieceColor.BLACK ? user : ChessPlayer.CPU
@@ -184,28 +207,41 @@ public final class Commands {
 
   private void challengePlayer(final CommandContext<CommandSender> ctx) {
     final ChessBoard board = ctx.get("board");
-    if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
-      ctx.getSender().sendRichMessage("<red>Board is occupied.");
+    final Player sender = (Player) ctx.getSender();
+    final Player opponent = Objects.requireNonNull(ctx.<SinglePlayerSelector>get("player").getPlayer());
+    if (sender.equals(opponent)) {
+      ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
+      return;
+    } else if (this.boardManager.inGame(sender)) {
+      sender.sendMessage(this.messages().alreadyInGame());
+      return;
+    } else if (this.boardManager.inGame(opponent)) {
+      sender.sendMessage(this.messages().opponentAlreadyInGame(opponent));
+      return;
+    } else if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
+      sender.sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
     final PieceColor userColor = ctx.get("color");
-    final Player opponent = ctx.<SinglePlayerSelector>get("player").getPlayer();
-    if (ctx.getSender().equals(opponent)) {
-      ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
-      return;
-    }
-    this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, (Player) ctx.getSender(), opponent, userColor));
-    opponent.sendRichMessage(
-      "<green>You have been challenged to Chess by " + ctx.getSender().getName() + "! They chose to be " + userColor + ". Type /chess accept to accept. Challenge expires in 30 seconds.");
+    final ChessPlayer user = ChessPlayer.player(sender);
+    final ChessPlayer opp = ChessPlayer.player(opponent);
+    this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, sender, opponent, userColor));
+    sender.sendMessage(this.messages().challengeSent(user, opp, userColor));
+    opponent.sendMessage(this.messages().challengeReceived(user, opp, userColor));
   }
 
   private void accept(final CommandContext<CommandSender> ctx) {
     final Player sender = (Player) ctx.getSender();
     final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
     if (challenge == null) {
+      ctx.getSender().sendMessage(this.messages().noChallengeToAccept());
       return;
     }
     this.boardManager.challenges().invalidate(sender.getUniqueId());
+    if (this.boardManager.inGame(challenge.challenger())) {
+      sender.sendMessage(this.messages().opponentAlreadyInGame(challenge.challenger()));
+      return;
+    }
 
     final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
     final ChessPlayer opp = ChessPlayer.player(challenge.player());
@@ -216,10 +252,15 @@ public final class Commands {
   }
 
   private void nextPromotion(final CommandContext<CommandSender> ctx) {
-    final ChessBoard board = ctx.get("board");
-    if (board.hasGame() && board.game().hasPlayer((Player) ctx.getSender())) {
-      board.game().nextPromotion((Player) ctx.getSender(), ctx.get("type"));
+    final Player sender = (Player) ctx.getSender();
+    final ChessBoard board = this.playerBoard(sender);
+    if (board == null) {
+      sender.sendMessage(this.messages().mustBeInMatch());
+      return;
     }
+    final PieceType type = ctx.get("type");
+    board.game().nextPromotion(sender, type);
+    sender.sendMessage(this.messages().nextPromotionSet(type));
   }
 
   private void cpuMove(final CommandContext<CommandSender> ctx) {
@@ -232,7 +273,7 @@ public final class Commands {
   private void deleteBoard(final CommandContext<CommandSender> ctx) {
     final String board = ctx.<ChessBoard>get("board").name();
     this.boardManager.deleteBoard(board);
-    ctx.getSender().sendMessage(this.plugin.config().messages().boardDeleted(board));
+    ctx.getSender().sendMessage(this.messages().boardDeleted(board));
   }
 
   private void reset(final CommandContext<CommandSender> ctx) {
@@ -244,17 +285,24 @@ public final class Commands {
   }
 
   private void forfeit(final CommandContext<CommandSender> ctx) {
-    final ChessBoard board = ctx.get("board");
-    if (!board.hasGame()) {
-      return;
-    }
-    final ChessGame game = board.game();
     final Player sender = (Player) ctx.getSender();
-    if (!game.hasPlayer(sender)) {
+    final ChessBoard board = this.playerBoard(sender);
+    if (board == null) {
+      sender.sendMessage(this.messages().mustBeInMatch());
       return;
     }
-    final PieceColor color = game.color(ChessPlayer.player(sender));
-    board.game().forfeit(color);
+    board.game().forfeit(board.game().color(ChessPlayer.player(sender)));
+  }
+
+  private @Nullable ChessBoard playerBoard(Player sender) {
+    return this.boardManager.boards().stream()
+      .filter(b -> b.hasGame() && b.game().hasPlayer(sender))
+      .findFirst()
+      .orElse(null);
+  }
+
+  private Messages messages() {
+    return this.plugin.config().messages();
   }
 
   private CommandArgument<CommandSender, PieceType> promotionArgument(final String name) {
@@ -279,7 +327,7 @@ public final class Commands {
           return ArgumentParseResult.success(g);
         }
         return ArgumentParseResult.failure(
-          ComponentRuntimeException.withMessage(this.plugin.config().messages().noSuchBoard(queue.peek())));
+          ComponentRuntimeException.withMessage(this.messages().noSuchBoard(queue.peek())));
       })
       .withSuggestionsProvider((sender, input) -> this.boardManager.boards().stream().map(ChessBoard::name).toList())
       .build();

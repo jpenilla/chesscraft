@@ -22,9 +22,12 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.entity.Player;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 @ConfigSerializable
 public final class Messages {
@@ -33,19 +36,13 @@ public final class Messages {
   public Component checkmate(final ChessPlayer black, final ChessPlayer white, final PieceColor winner) {
     final ChessPlayer win = winner == PieceColor.BLACK ? black : white;
     final ChessPlayer loss = winner == PieceColor.BLACK ? white : black;
-    return MiniMessage.miniMessage().deserialize(this.checkmate, winLoseTags(win, loss, winner));
+    return parse(this.checkmate, winLoseTags(win, loss, winner));
   }
 
   private String stalemate = "<black>♚</black><black_displayname> <green>ended in a stalemate with <white>♚</white><white_displayname>!";
 
   public Component stalemate(final ChessPlayer black, final ChessPlayer white) {
-    return MiniMessage.miniMessage().deserialize(
-      this.stalemate,
-      Placeholder.component("black_name", black.name()),
-      Placeholder.component("white_name", white.name()),
-      Placeholder.component("black_displayname", black.displayName()),
-      Placeholder.component("white_displayname", white.displayName())
-    );
+    return parse(this.stalemate, blackWhitePlayerTags(black, white));
   }
 
   private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color><winner_displayname>!";
@@ -53,25 +50,25 @@ public final class Messages {
   public Component forfeit(final ChessPlayer black, final ChessPlayer white, final PieceColor forfeited) {
     final ChessPlayer win = forfeited == PieceColor.WHITE ? black : white;
     final ChessPlayer loss = forfeited == PieceColor.WHITE ? white : black;
-    return MiniMessage.miniMessage().deserialize(this.forfeit, winLoseTags(win, loss, forfeited.other()));
+    return parse(this.forfeit, winLoseTags(win, loss, forfeited.other()));
   }
 
-  private String boardAlreadyExists = "<red>A board with the name <name> already exists!</red> <white>Use <gray><hover_event:show_text:'<green>Click to run'><click_event:run_command:'/chess delete_board <name>'>/chess delete_board <name></gray> to delete it first if you want to replace it.";
+  private String boardAlreadyExists = "<red>A board with the name <white><name></white> already exists!</red> <white>Use <gray><hover:show_text:'<green>Click to run'><click:run_command:'/chess delete_board <name>'>/chess delete_board <name></gray> to delete it first if you want to replace it.";
 
   public Component boardAlreadyExists(final String name) {
-    return MiniMessage.miniMessage().deserialize(this.boardAlreadyExists, name(name));
+    return parse(this.boardAlreadyExists, name(name));
   }
 
   private String boardCreated = "<green>Successfully created board</green><gray>:</gray> <name>";
 
   public Component boardCreated(final String name) {
-    return MiniMessage.miniMessage().deserialize(this.boardCreated, name(name));
+    return parse(this.boardCreated, name(name));
   }
 
   private String boardDeleted = "<green>Successfully <red>deleted</red> board</green><gray>:</gray> <name>";
 
   public Component boardDeleted(final String name) {
-    return MiniMessage.miniMessage().deserialize(this.boardDeleted, name(name));
+    return parse(this.boardDeleted, name(name));
   }
 
   private static TagResolver name(final String name) {
@@ -81,17 +78,95 @@ public final class Messages {
   private String noSuchBoard = "No board exists with the name '<name>'";
 
   public Component noSuchBoard(final String name) {
-    return MiniMessage.miniMessage().deserialize(this.noSuchBoard, name(name));
+    return parse(this.noSuchBoard, name(name));
   }
 
-  private static TagResolver[] winLoseTags(final ChessPlayer win, final ChessPlayer lose, final PieceColor winColor) {
-    return new TagResolver[]{
-      TagResolver.resolver("winner_color", Tag.styling(winColor.textColor())),
-      TagResolver.resolver("loser_color", Tag.styling(winColor.other().textColor())),
-      Placeholder.component("winner_name", win.name()),
-      Placeholder.component("loser_name", lose.name()),
-      Placeholder.component("winner_displayname", win.displayName()),
-      Placeholder.component("loser_displayname", lose.displayName())
-    };
+  private String boardOccupied = "<red>The <name> board is currently occupied!";
+
+  public Component boardOccupied(final String name) {
+    return parse(this.boardOccupied, name(name));
+  }
+
+  private String challengeSent = "<green>Challenge has been sent! <opponent_displayname> has 30 seconds to accept.";
+
+  public Component challengeSent(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
+    return parse(this.challengeSent, playerTags(player, "player", opponent, "opponent", playerColor));
+  }
+
+  private String challengeReceived = "<green>You have been challenged to Chess by <challenger_displayname>! They chose to be <challenger_color><challenger_color_name></challenger_color>. Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
+
+  public Component challengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor) {
+    return parse(this.challengeReceived, playerTags(challenger, "challenger", player, "player", challengerColor));
+  }
+
+  private String noChallengeToAccept = "<red>No challenge to accept!";
+
+  public Component noChallengeToAccept() {
+    return parse(this.noChallengeToAccept);
+  }
+
+  private String alreadyInGame = "<red>You are already in an active match.";
+
+  public Component alreadyInGame() {
+    return parse(this.alreadyInGame);
+  }
+
+  private String opponentAlreadyInGame = "<red><opponent_displayname> is already in an active match.";
+
+  public Component opponentAlreadyInGame(final Player opponent) {
+    return parse(
+      this.opponentAlreadyInGame,
+      Placeholder.component("opponent_name", opponent.name()),
+      Placeholder.component("opponent_displayname", opponent.displayName())
+    );
+  }
+
+  private String matchStarted = "<green>Match has started!";
+
+  public Component matchStarted(final ChessBoard board, final ChessPlayer white, final ChessPlayer black) {
+    return parse(this.matchStarted, blackWhitePlayerTags(black, white), Placeholder.unparsed("board", board.name()));
+  }
+
+  private String mustBeInMatch = "<red>You must be in a match to use this command.";
+
+  public Component mustBeInMatch() {
+    return parse(this.mustBeInMatch);
+  }
+
+  private String nextPromotionSet = "<green>Your next pawn to reach the 1/8 rank will promote to <type>, instead of the default QUEEN.";
+
+  public Component nextPromotionSet(final PieceType type) {
+    return parse(this.nextPromotionSet, Placeholder.unparsed("type", type.toString()));
+  }
+
+  private static TagResolver blackWhitePlayerTags(final ChessPlayer black, final ChessPlayer white) {
+    return playerTags(black, "black", white, "white", PieceColor.BLACK);
+  }
+
+  private static TagResolver winLoseTags(final ChessPlayer win, final ChessPlayer lose, final PieceColor winColor) {
+    return playerTags(win, "winner", lose, "loser", winColor);
+  }
+
+  private static TagResolver playerTags(
+    final ChessPlayer p1,
+    final String p1prefix,
+    final ChessPlayer p2,
+    final String p2prefix,
+    final PieceColor p1Color
+  ) {
+    return TagResolver.resolver(
+      TagResolver.resolver(p1prefix + "_color", Tag.styling(p1Color.textColor())),
+      TagResolver.resolver(p2prefix + "_color", Tag.styling(p1Color.other().textColor())),
+      Placeholder.unparsed(p1prefix + "_color_name", p1Color.toString()),
+      Placeholder.unparsed(p2prefix + "_color_name", p1Color.other().toString()),
+      Placeholder.component(p1prefix + "_name", p1.name()),
+      Placeholder.component(p2prefix + "_name", p2.name()),
+      Placeholder.component(p1prefix + "_displayname", p1.displayName()),
+      Placeholder.component(p2prefix + "_displayname", p2.displayName())
+    );
+  }
+
+  private static Component parse(final String input, final TagResolver... tagResolvers) {
+    return MiniMessage.miniMessage().deserialize(input, tagResolvers);
   }
 }

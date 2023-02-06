@@ -97,6 +97,14 @@ public final class ChessGame {
     return this.pieces;
   }
 
+  public ChessPlayer white() {
+    return this.white;
+  }
+
+  public ChessPlayer black() {
+    return this.black;
+  }
+
   public boolean handleInteract(final Player player, final int x, final int y, final int z) {
     if (x <= this.board.loc().x() + 7 && x >= this.board.loc().x()
       && z >= this.board.loc().z() - 7 && z <= this.board.loc().z()

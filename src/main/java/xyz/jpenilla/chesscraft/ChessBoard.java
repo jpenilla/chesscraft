@@ -83,6 +83,7 @@ public final class ChessBoard {
       throw new IllegalStateException("Board is occupied");
     }
     this.game = new ChessGame(this.plugin, this, white, black);
+    this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
   }
 
   public void endGame() {
