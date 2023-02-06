@@ -74,15 +74,21 @@ public final class StockfishProvider {
       }
       try (final FileSystem fs = FileSystems.newFileSystem(temp, new HashMap<>());
         final Stream<Path> s = Files.walk(fs.getPath("/"))) {
+        boolean found = false;
         for (final Path path : s.toList()) {
-          if (Files.isRegularFile(path) && path.getFileName().toString().startsWith("stockfish-")) {
+          if (Files.isRegularFile(path)
+            && (path.getFileName().toString().startsWith("stockfish-") || path.getFileName().toString().startsWith("stockfish_"))) {
             Files.createDirectories(file.getParent());
             Files.copy(path, file);
             if (!file.toFile().setExecutable(true, true)) {
               this.plugin.getLogger().warning("Failed to set extracted file " + file + " executable, this may cause issues");
             }
+            found = true;
             break;
           }
+        }
+        if (!found) {
+          throw new IllegalStateException("Could not find stockfish executable in downloaded archive");
         }
       }
       Files.delete(temp);
