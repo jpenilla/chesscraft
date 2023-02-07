@@ -46,7 +46,7 @@ public final class ChessBoard {
     this.loc = loc;
     this.worldKey = world;
     this.stockfishPath = stockfishPath;
-    this.pieceHandler = new PieceHandler.ItemFramePieceHandler();
+    this.pieceHandler = plugin.config().pieces().createHandler();
   }
 
   PieceHandler pieceHandler() {

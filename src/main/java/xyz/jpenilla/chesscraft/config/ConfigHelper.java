@@ -29,6 +29,7 @@ public final class ConfigHelper {
       .defaultOptions(options -> options.serializers(serializers -> {
         serializers.register(Vec3.SERIALIZER);
         serializers.register(NamespacedKeySerializer.INSTANCE);
+        serializers.registerExact(PieceOptions.class, PieceOptions.SERIALIZER);
       }))
       .path(file)
       .build();

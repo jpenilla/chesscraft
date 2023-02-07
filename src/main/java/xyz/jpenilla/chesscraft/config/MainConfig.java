@@ -24,6 +24,7 @@ import xyz.jpenilla.chesscraft.util.ProcessorUtil;
 public final class MainConfig {
   private String stockfishEngine = defaultEngine();
   private Messages messages = new Messages();
+  private PieceOptions pieces = new PieceOptions.ItemFrame();
 
   public String stockfishEngine() {
     return this.stockfishEngine;
@@ -31,6 +32,10 @@ public final class MainConfig {
 
   public Messages messages() {
     return this.messages;
+  }
+
+  public PieceOptions pieces() {
+    return this.pieces;
   }
 
   private static String defaultEngine() {
