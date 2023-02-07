@@ -31,7 +31,6 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.ItemFrame;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
@@ -44,10 +43,10 @@ public interface PieceHandler {
 
   void removeFromWorld(ChessBoard board, World world);
 
-  final class ItemFramePieceHandler implements PieceHandler {
+  final class ItemFrame implements PieceHandler {
     private final PieceOptions.ItemFrame options;
 
-    public ItemFramePieceHandler(final PieceOptions.ItemFrame options) {
+    public ItemFrame(final PieceOptions.ItemFrame options) {
       this.options = options;
     }
 
@@ -63,12 +62,13 @@ public interface PieceHandler {
           if (piece == null) {
             continue;
           }
-          world.spawn(new Location(world, xx, board.loc().y(), zz), ItemFrame.class, itemFrame -> {
+          world.spawn(new Location(world, xx, board.loc().y(), zz), org.bukkit.entity.ItemFrame.class, itemFrame -> {
             final ItemStack stack = new ItemStack(this.options.material());
-            stack.editMeta(meta -> {
-              final int add = piece.color() == PieceColor.WHITE ? 7 : 1;
-              meta.setCustomModelData(piece.type().ordinal() + add);
-            });
+            stack.editMeta(meta -> meta.setCustomModelData(
+              piece.color() == PieceColor.WHITE
+                ? this.options.whiteCustomModelData().get(piece.type())
+                : this.options.blackCustomModelData().get(piece.type())
+            ));
             itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
             itemFrame.setItem(stack);
             itemFrame.setFacingDirection(BlockFace.UP);
@@ -104,7 +104,7 @@ public interface PieceHandler {
         0.25,
         0.5,
         0.25,
-        e -> (e instanceof ItemFrame || e instanceof ArmorStand) && e.getPersistentDataContainer().has(BoardManager.PIECE_KEY)
+        e -> (e instanceof org.bukkit.entity.ItemFrame || e instanceof ArmorStand) && e.getPersistentDataContainer().has(BoardManager.PIECE_KEY)
       );
       for (final Entity entity : entities) {
         entity.remove();
@@ -112,10 +112,10 @@ public interface PieceHandler {
     }
   }
 
-  final class PlayerHeadPieceHandler implements PieceHandler {
+  final class PlayerHead implements PieceHandler {
     private final PieceOptions.PlayerHead options;
 
-    public PlayerHeadPieceHandler(final PieceOptions.PlayerHead options) {
+    public PlayerHead(final PieceOptions.PlayerHead options) {
       this.options = options;
     }
 

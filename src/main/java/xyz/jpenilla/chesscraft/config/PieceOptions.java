@@ -58,6 +58,22 @@ public interface PieceOptions {
       PieceType.QUEEN, -1.0D / 16.0D,
       PieceType.KING, 0.0D
     );
+    private Map<PieceType, Integer> whiteCustomModelData = Map.of(
+      PieceType.PAWN, 7,
+      PieceType.BISHOP, 8,
+      PieceType.KNIGHT, 9,
+      PieceType.ROOK, 10,
+      PieceType.QUEEN, 11,
+      PieceType.KING, 12
+    );
+    private Map<PieceType, Integer> blackCustomModelData = Map.of(
+      PieceType.PAWN, 1,
+      PieceType.BISHOP, 2,
+      PieceType.KNIGHT, 3,
+      PieceType.ROOK, 4,
+      PieceType.QUEEN, 5,
+      PieceType.KING, 6
+    );
 
     public Material material() {
       return this.material;
@@ -67,9 +83,17 @@ public interface PieceOptions {
       return this.heightOffsets;
     }
 
+    public Map<PieceType, Integer> whiteCustomModelData() {
+      return this.whiteCustomModelData;
+    }
+
+    public Map<PieceType, Integer> blackCustomModelData() {
+      return this.blackCustomModelData;
+    }
+
     @Override
     public PieceHandler createHandler() {
-      return new PieceHandler.ItemFramePieceHandler(this);
+      return new PieceHandler.ItemFrame(this);
     }
 
     @Override
@@ -107,7 +131,7 @@ public interface PieceOptions {
 
     @Override
     public PieceHandler createHandler() {
-      return new PieceHandler.PlayerHeadPieceHandler(this);
+      return new PieceHandler.PlayerHead(this);
     }
 
     @Override
