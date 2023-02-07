@@ -22,6 +22,7 @@ import cloud.commandframework.arguments.CommandArgument;
 import cloud.commandframework.arguments.flags.FlagContext;
 import cloud.commandframework.arguments.parser.ArgumentParseResult;
 import cloud.commandframework.arguments.standard.EnumArgument;
+import cloud.commandframework.arguments.standard.IntegerArgument;
 import cloud.commandframework.arguments.standard.StringArgument;
 import cloud.commandframework.brigadier.CloudBrigadierManager;
 import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
@@ -109,6 +110,7 @@ public final class Commands {
       .literal("cpu")
       .argument(this.boardArgument("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
+      .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000).asOptional())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.cpu")
       .handler(this::challengeCpu));
@@ -207,7 +209,8 @@ public final class Commands {
     final ChessPlayer user = ChessPlayer.player(sender);
     board.startGame(
       userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
-      userColor == PieceColor.BLACK ? user : ChessPlayer.CPU
+      userColor == PieceColor.BLACK ? user : ChessPlayer.CPU,
+      ctx.getOrDefault("cpu_elo", 800)
     );
   }
 

@@ -23,19 +23,19 @@ import xyz.jpenilla.chesscraft.util.ProcessorUtil;
 @ConfigSerializable
 public final class MainConfig {
   private String stockfishEngine = defaultEngine();
-  private Messages messages = new Messages();
   private PieceOptions pieces = new PieceOptions.ItemFrame();
+  private Messages messages = new Messages();
 
   public String stockfishEngine() {
     return this.stockfishEngine;
   }
 
-  public Messages messages() {
-    return this.messages;
-  }
-
   public PieceOptions pieces() {
     return this.pieces;
+  }
+
+  public Messages messages() {
+    return this.messages;
   }
 
   private static String defaultEngine() {

@@ -78,10 +78,14 @@ public final class ChessBoard {
   }
 
   public void startGame(final ChessPlayer white, final ChessPlayer black) {
+    this.startGame(white, black, -1);
+  }
+
+  public void startGame(final ChessPlayer white, final ChessPlayer black, final int cpuElo) {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
-    this.game = new ChessGame(this.plugin, this, white, black);
+    this.game = new ChessGame(this.plugin, this, white, black, cpuElo);
     this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
       this.game.cpuMove();

@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
 import org.bukkit.Color;
 import org.bukkit.Particle;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Vec3;
@@ -37,6 +36,7 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.niflheim.stockfish.engine.StockfishClient;
+import xyz.niflheim.stockfish.engine.enums.Option;
 import xyz.niflheim.stockfish.engine.enums.Query;
 import xyz.niflheim.stockfish.engine.enums.QueryType;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
@@ -74,7 +74,8 @@ public final class ChessGame {
     final ChessCraft plugin,
     final ChessBoard board,
     final ChessPlayer white,
-    final ChessPlayer black
+    final ChessPlayer black,
+    final int cpuElo
   ) {
     this.plugin = plugin;
     this.board = board;
@@ -83,7 +84,7 @@ public final class ChessGame {
     this.pieces = initBoard();
     this.loadFen(STARTING_FEN);
     try {
-      this.stockfish = this.createStockfishClient();
+      this.stockfish = this.createStockfishClient(cpuElo);
     } catch (final StockfishInitException ex) {
       throw new RuntimeException(ex);
     }
@@ -103,46 +104,47 @@ public final class ChessGame {
   }
 
   public boolean handleInteract(final Player player, final int x, final int y, final int z) {
-    if (x <= this.board.loc().x() + 7 && x >= this.board.loc().x()
-      && z >= this.board.loc().z() - 7 && z <= this.board.loc().z()
-      && (y >= this.board.loc().y() - 1 && y <= this.board.loc().y() + 1)) {
-      final PieceColor color = this.color(ChessPlayer.player(player));
-      if (color == null) {
-        player.sendRichMessage("<red>You are not a player in this game!");
-        return true;
-      } else if (color != this.nextMove) {
-        player.sendRichMessage("<red>Not your move!");
-        return true;
-      } else if (this.busy(player)) {
-        return true;
-      }
-
-      final int xx = x - this.board.loc().x();
-      final int zz = this.board.loc().z() - z;
-      final String sel = MAPPING.inverse().get(zz) + (8 - xx);
-      final Piece selPiece = this.piece(sel);
-      if (this.selectedPiece == null && selPiece != null) {
-        if (selPiece.color() != color) {
-          player.sendRichMessage("<red>Not your piece!");
-          return true;
-        }
-        this.activeQuery = this.selectPiece(sel);
-      } else if (sel.equals(this.selectedPiece)) {
-        this.selectedPiece = null;
-        this.validDestinations = null;
-      } else if (this.validDestinations != null && this.validDestinations.contains(sel)) {
-        this.activeQuery = this.move(this.selectedPiece + sel, color).exceptionally(ex -> {
-          this.plugin.getLogger().log(Level.WARNING, "Exception executing move", ex);
-          return null;
-        });
-        this.validDestinations = null;
-        this.selectedPiece = null;
-      } else if (this.selectedPiece != null) {
-        player.sendRichMessage("<red>Invalid move!");
-      }
+    if (x > this.board.loc().x() + 7 || x < this.board.loc().x()
+      || z < this.board.loc().z() - 7 || z > this.board.loc().z()
+      || y < this.board.loc().y() - 1 || y > this.board.loc().y() + 1) {
+      return false;
+    }
+    final PieceColor color = this.color(ChessPlayer.player(player));
+    if (color == null) {
+      player.sendRichMessage("<red>You are not a player in this game!");
+      return true;
+    } else if (color != this.nextMove) {
+      player.sendRichMessage("<red>Not your move!");
+      return true;
+    } else if (this.activeQuery != null && !this.activeQuery.isDone()) {
+      player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly");
       return true;
     }
-    return false;
+
+    final int xx = x - this.board.loc().x();
+    final int zz = this.board.loc().z() - z;
+    final String sel = MAPPING.inverse().get(zz) + (8 - xx);
+    final Piece selPiece = this.piece(sel);
+    if (this.selectedPiece == null && selPiece != null) {
+      if (selPiece.color() != color) {
+        player.sendRichMessage("<red>Not your piece!");
+        return true;
+      }
+      this.activeQuery = this.selectPiece(sel);
+    } else if (sel.equals(this.selectedPiece)) {
+      this.selectedPiece = null;
+      this.validDestinations = null;
+    } else if (this.validDestinations != null && this.validDestinations.contains(sel)) {
+      this.activeQuery = this.move(this.selectedPiece + sel, color).exceptionally(ex -> {
+        this.plugin.getLogger().log(Level.WARNING, "Exception executing move", ex);
+        return null;
+      });
+      this.validDestinations = null;
+      this.selectedPiece = null;
+    } else if (this.selectedPiece != null) {
+      player.sendRichMessage("<red>Invalid move!");
+    }
+    return true;
   }
 
   public void displayParticles() {
@@ -294,7 +296,10 @@ public final class ChessGame {
   }
 
   private CompletableFuture<Void> cpuMoveFuture() {
-    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen).setDepth(10).build())
+    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen)
+        //.setDepth(10)
+        .setMovetime(1000L)
+        .build())
       .thenCompose(bestMove -> this.move(bestMove, this.nextMove));
   }
 
@@ -329,14 +334,6 @@ public final class ChessGame {
       }
       default -> throw new IllegalArgumentException();
     }
-  }
-
-  private boolean busy(final CommandSender sender) {
-    if (this.activeQuery != null && !this.activeQuery.isDone()) {
-      sender.sendRichMessage("<red>Chess engine is currently processing, please try again shortly");
-      return true;
-    }
-    return false;
   }
 
   public void close(final boolean removePieces) {
@@ -399,7 +396,14 @@ public final class ChessGame {
     return board;
   }
 
-  private StockfishClient createStockfishClient() throws StockfishInitException {
-    return new StockfishClient.Builder().setPath(this.board.stockfishPath()).build();
+  private StockfishClient createStockfishClient(final int cpuElo) throws StockfishInitException {
+    final StockfishClient.Builder builder = new StockfishClient.Builder()
+      .setPath(this.board.stockfishPath())
+      .setOption(Option.Threads, 2);
+    if (cpuElo != -1) {
+      builder.setOption(Option.UCI_LIMITSTRENGTH, true)
+        .setOption(Option.UCI_ELO, cpuElo);
+    }
+    return builder.build();
   }
 }
