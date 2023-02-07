@@ -70,6 +70,8 @@ public final class Commands {
   public void register() {
     this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this.boardManager.challenges()::cleanUp, 20L, 20L * 60L);
 
+    new HelpCommand(this.mgr).register();
+
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
     this.mgr.command(chess.literal("version")
@@ -88,9 +90,9 @@ public final class Commands {
 
     this.mgr.command(chess.literal("set_checkerboard")
       .argument(this.boardArgument("board"))
-      .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("black")))
-      .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("white")))
-      .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("border")))
+      .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("material")))
+      .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("material")))
+      .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("material")))
       .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
@@ -284,9 +286,9 @@ public final class Commands {
     board.game().forfeit(board.game().color(ChessPlayer.player(sender)));
   }
 
-  private @Nullable ChessBoard playerBoard(Player sender) {
-    return this.boardManager.boards().stream()
-      .filter(b -> b.hasGame() && b.game().hasPlayer(sender))
+  private @Nullable ChessBoard playerBoard(final Player sender) {
+    return this.boardManager.activeBoards().stream()
+      .filter(b -> b.game().hasPlayer(sender))
       .findFirst()
       .orElse(null);
   }

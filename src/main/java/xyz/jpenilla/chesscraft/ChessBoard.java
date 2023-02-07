@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Vec3;
 
@@ -84,7 +83,7 @@ public final class ChessBoard {
     }
     this.game = new ChessGame(this.plugin, this, white, black);
     this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
-    if (white == ChessPlayer.CPU) {
+    if (white.isCpu()) {
       this.game.cpuMove();
     }
   }
@@ -99,13 +98,6 @@ public final class ChessBoard {
     }
     this.game.close(removePieces);
     this.game = null;
-  }
-
-  public boolean handleInteract(final int x, final int y, final int z, final Player player) {
-    if (this.game != null) {
-      return this.game.handleInteract(player, x, y, z);
-    }
-    return false;
   }
 
   public void applyCheckerboard(
@@ -133,6 +125,6 @@ public final class ChessBoard {
   }
 
   World world() {
-    return Objects.requireNonNull(this.plugin.getServer().getWorld(this.worldKey));
+    return Objects.requireNonNull(this.plugin.getServer().getWorld(this.worldKey), "World '" + this.worldKey + "' is not loaded");
   }
 }

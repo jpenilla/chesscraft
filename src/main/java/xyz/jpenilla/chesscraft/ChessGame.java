@@ -22,16 +22,13 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
-import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Particle;
-import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -159,7 +156,7 @@ public final class ChessGame {
     if (!(c instanceof ChessPlayer.Player chessPlayer)) {
       return;
     }
-    final Player player = Objects.requireNonNull(Bukkit.getPlayer(chessPlayer.uuid()));
+    final Player player = chessPlayer.player();
     this.blockParticles(player, selectedPos, Color.AQUA);
 
     if (this.validDestinations != null) {
@@ -226,7 +223,7 @@ public final class ChessGame {
   }
 
   public void applyToWorld() {
-    this.board.pieceHandler().applyToWorld(this.board, this, this.world());
+    this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
   }
 
   private CompletableFuture<Void> selectPiece(final String sel) {
@@ -263,7 +260,7 @@ public final class ChessGame {
         return checkForWin();
       });
     }).thenCompose($ -> {
-      if (this.player(this.nextMove) == ChessPlayer.CPU) {
+      if (this.player(this.nextMove).isCpu()) {
         return this.cpuMoveFuture();
       }
       return CompletableFuture.completedFuture(null);
@@ -287,7 +284,7 @@ public final class ChessGame {
   }
 
   void cpuMove() {
-    if (this.activeQuery != null && !this.activeQuery.isDone() || this.player(this.nextMove) != ChessPlayer.CPU) {
+    if (this.activeQuery != null && !this.activeQuery.isDone() || !this.player(this.nextMove).isCpu()) {
       throw new IllegalStateException();
     }
     this.activeQuery = this.cpuMoveFuture().exceptionally(ex -> {
@@ -342,13 +339,9 @@ public final class ChessGame {
     return false;
   }
 
-  private World world() {
-    return Objects.requireNonNull(Bukkit.getWorld(this.board.worldKey()), "World is not loaded");
-  }
-
   public void close(final boolean removePieces) {
     if (removePieces) {
-      this.board.pieceHandler().removeFromWorld(this.board, this.world());
+      this.board.pieceHandler().removeFromWorld(this.board, this.board.world());
     }
     this.stockfish.close();
   }

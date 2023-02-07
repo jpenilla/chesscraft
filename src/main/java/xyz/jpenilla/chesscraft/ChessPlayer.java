@@ -33,6 +33,10 @@ public interface ChessPlayer extends Audience {
 
   Component name();
 
+  default boolean isCpu() {
+    return this == CPU;
+  }
+
   record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
     @Override
     public Audience audience() {
@@ -44,13 +48,13 @@ public interface ChessPlayer extends Audience {
       return player().displayName();
     }
 
-    private org.bukkit.entity.Player player() {
-      return Objects.requireNonNull(Bukkit.getPlayer(this.uuid));
-    }
-
     @Override
     public Component name() {
       return Component.text(this.player().getName());
+    }
+
+    public org.bukkit.entity.Player player() {
+      return Objects.requireNonNull(Bukkit.getPlayer(this.uuid), "Player with UUID " + this.uuid + " not logged in.");
     }
   }
 
@@ -59,6 +63,8 @@ public interface ChessPlayer extends Audience {
   }
 
   final class Cpu implements ChessPlayer, ForwardingAudience.Single {
+    private static final Component NAME = Component.text("CPU");
+
     private Cpu() {
     }
 
@@ -69,7 +75,7 @@ public interface ChessPlayer extends Audience {
 
     @Override
     public Component name() {
-      return Component.text("CPU");
+      return NAME;
     }
   }
 }

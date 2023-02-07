@@ -92,6 +92,10 @@ public final class BoardManager implements Listener {
     return this.boards.values();
   }
 
+  public Collection<ChessBoard> activeBoards() {
+    return this.boards().stream().filter(ChessBoard::hasGame).toList();
+  }
+
   public void createBoard(final String name, final World world, final Vec3 pos) {
     final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
@@ -124,7 +128,7 @@ public final class BoardManager implements Listener {
     this.plugin.getServer().getPluginManager().registerEvents(this, this.plugin);
     this.particleTask = this.plugin.getServer().getScheduler().runTaskTimer(
       this.plugin,
-      () -> this.boards().stream().filter(ChessBoard::hasGame).forEach(board -> board.game().displayParticles()),
+      () -> this.activeBoards().forEach(board -> board.game().displayParticles()),
       0L,
       5L
     );
@@ -178,8 +182,8 @@ public final class BoardManager implements Listener {
       return;
     }
     final Block clicked = Objects.requireNonNull(event.getClickedBlock());
-    for (final ChessBoard value : this.boards.values()) {
-      if (value.handleInteract(clicked.getX(), clicked.getY(), clicked.getZ(), event.getPlayer())) {
+    for (final ChessBoard board : this.activeBoards()) {
+      if (board.game().handleInteract(event.getPlayer(), clicked.getX(), clicked.getY(), clicked.getZ())) {
         event.setCancelled(true);
         return;
       }
@@ -196,8 +200,8 @@ public final class BoardManager implements Listener {
   }
 
   private void interact(final Cancellable event, final Location loc, final Player player) {
-    for (final ChessBoard value : this.boards.values()) {
-      if (value.handleInteract(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), player)) {
+    for (final ChessBoard board : this.activeBoards()) {
+      if (board.game().handleInteract(player, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
         event.setCancelled(true);
         return;
       }
@@ -206,14 +210,14 @@ public final class BoardManager implements Listener {
 
   @EventHandler
   public void quit(final PlayerQuitEvent event) {
-    for (final ChessBoard value : this.boards.values()) {
-      if (value.hasGame() && value.game().hasPlayer(event.getPlayer())) {
-        value.endGame();
+    for (final ChessBoard board : this.activeBoards()) {
+      if (board.game().hasPlayer(event.getPlayer())) {
+        board.endGame();
       }
     }
-    for (final PVPChallenge value : List.copyOf(this.challenges.asMap().values())) {
-      if (value.challenger().equals(event.getPlayer()) || value.player().equals(event.getPlayer())) {
-        this.challenges.invalidate(value.player().getUniqueId());
+    for (final PVPChallenge challenge : List.copyOf(this.challenges.asMap().values())) {
+      if (challenge.challenger().equals(event.getPlayer()) || challenge.player().equals(event.getPlayer())) {
+        this.challenges.invalidate(challenge.player().getUniqueId());
       }
     }
   }
