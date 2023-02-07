@@ -258,6 +258,12 @@ public final class ChessGame {
       return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, this.currentFen).setMove(finalMove).build()).thenCompose(newFen -> {
         this.loadFen(newFen);
         this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
+        this.players().sendMessage(this.plugin.config().messages().madeMove(
+          this.player(color),
+          this.player(color.other()),
+          color,
+          finalMove
+        ));
 
         return checkForWin();
       });
@@ -296,6 +302,7 @@ public final class ChessGame {
   }
 
   private CompletableFuture<Void> cpuMoveFuture() {
+    this.players().sendMessage(this.plugin.config().messages().cpuThinking());
     return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen)
         //.setDepth(10)
         .setMovetime(1000L)

@@ -139,6 +139,18 @@ public final class Messages {
     return parse(this.nextPromotionSet, Placeholder.unparsed("type", type.toString()));
   }
 
+  private String cpuThinking = "<italic><gray>CPU is thinking...";
+
+  public Component cpuThinking() {
+    return parse(this.cpuThinking);
+  }
+
+  private String madeMove = "<move_color>♚</move_color><move_displayname><gray>:</gray> <move>";
+
+  public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String move) {
+    return parse(this.madeMove, playerTags(mover, "move", opponent, "opponent", moverColor), Placeholder.unparsed("move", move));
+  }
+
   private static TagResolver blackWhitePlayerTags(final ChessPlayer black, final ChessPlayer white) {
     return playerTags(black, "black", white, "white", PieceColor.BLACK);
   }
