@@ -48,6 +48,7 @@ public final class HelpCommand {
     this.manager.command(this.manager.commandBuilder("chess")
       .literal("help")
       .argument(this.helpQueryArgument)
+      .permission("chesscraft.command.help")
       .handler(this::executeHelp));
   }
 

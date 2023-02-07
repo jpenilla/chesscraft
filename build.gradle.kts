@@ -1,3 +1,5 @@
+import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
+
 plugins {
   `java-library`
   id("com.github.johnrengelman.shadow") version "7.1.2"
@@ -73,4 +75,19 @@ bukkit {
   author = "jmp"
   main = "xyz.jpenilla.chesscraft.ChessCraft"
   apiVersion = "1.19"
+  permissions {
+    val defaultTrue = listOf(
+      "chesscraft.command.help",
+      "chesscraft.command.challenge.cpu",
+      "chesscraft.command.challenge.player",
+      "chesscraft.command.accept",
+      "chesscraft.command.next_promotion",
+      "chesscraft.command.forfeit",
+    )
+    defaultTrue.forEach {
+      register(it) {
+        default = BukkitPluginDescription.Permission.Default.TRUE
+      }
+    }
+  }
 }

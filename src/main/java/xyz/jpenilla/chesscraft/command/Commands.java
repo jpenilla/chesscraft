@@ -75,17 +75,21 @@ public final class Commands {
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
     this.mgr.command(chess.literal("version")
+      .permission("chesscraft.command.version")
       .handler(this::version));
 
     this.mgr.command(chess.literal("boards")
+      .permission("chesscraft.command.boards")
       .handler(this::boards));
 
     this.mgr.command(chess.literal("reload")
+      .permission("chesscraft.command.reload")
       .handler(this::reload));
 
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
       .senderType(Player.class)
+      .permission("chesscraft.command.create_board")
       .handler(this::createBoard));
 
     this.mgr.command(chess.literal("set_checkerboard")
@@ -93,10 +97,12 @@ public final class Commands {
       .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("material")))
       .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("material")))
       .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("material")))
+      .permission("chesscraft.command.set_checkerboard")
       .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
       .argument(this.boardArgument("board"))
+      .permission("chesscraft.command.delete_board")
       .handler(this::deleteBoard));
 
     this.mgr.command(chess.literal("challenge")
@@ -104,6 +110,7 @@ public final class Commands {
       .argument(this.boardArgument("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .senderType(Player.class)
+      .permission("chesscraft.command.challenge.cpu")
       .handler(this::challengeCpu));
 
     this.mgr.command(chess.literal("challenge")
@@ -112,23 +119,23 @@ public final class Commands {
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .senderType(Player.class)
+      .permission("chesscraft.command.challenge.player")
       .handler(this::challengePlayer));
 
     this.mgr.command(chess.literal("accept")
       .senderType(Player.class)
+      .permission("chesscraft.command.accept")
       .handler(this::accept));
 
     this.mgr.command(chess.literal("next_promotion")
       .argument(this.promotionArgument("type"))
       .senderType(Player.class)
+      .permission("chesscraft.command.next_promotion")
       .handler(this::nextPromotion));
-
-    this.mgr.command(chess.literal("reset")
-      .argument(this.boardArgument("board"))
-      .handler(this::reset));
 
     this.mgr.command(chess.literal("forfeit")
       .senderType(Player.class)
+      .permission("chesscraft.command.forfeit")
       .handler(this::forfeit));
   }
 
@@ -266,14 +273,6 @@ public final class Commands {
     final String board = ctx.<ChessBoard>get("board").name();
     this.boardManager.deleteBoard(board);
     ctx.getSender().sendMessage(this.messages().boardDeleted(board));
-  }
-
-  private void reset(final CommandContext<CommandSender> ctx) {
-    final ChessBoard board = ctx.get("board");
-    if (board.hasGame()) {
-      board.game().reset();
-      return;
-    }
   }
 
   private void forfeit(final CommandContext<CommandSender> ctx) {
