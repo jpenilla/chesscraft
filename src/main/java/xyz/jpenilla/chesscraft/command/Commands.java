@@ -18,9 +18,7 @@
 package xyz.jpenilla.chesscraft.command;
 
 import cloud.commandframework.Command;
-import cloud.commandframework.arguments.CommandArgument;
 import cloud.commandframework.arguments.flags.FlagContext;
-import cloud.commandframework.arguments.parser.ArgumentParseResult;
 import cloud.commandframework.arguments.standard.EnumArgument;
 import cloud.commandframework.arguments.standard.IntegerArgument;
 import cloud.commandframework.arguments.standard.StringArgument;
@@ -38,7 +36,6 @@ import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.paper.PaperCommandManager;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -52,6 +49,7 @@ import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
+import xyz.jpenilla.chesscraft.command.argument.PromotionArgument;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
@@ -60,7 +58,6 @@ import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 public final class Commands {
   public static final CloudKey<ChessCraft> PLUGIN = SimpleCloudKey.of("chesscraft", TypeToken.get(ChessCraft.class));
-  private static final Set<PieceType> VALID_PROMOTIONS = Set.of(PieceType.BISHOP, PieceType.KNIGHT, PieceType.QUEEN, PieceType.ROOK);
 
   private final ChessCraft plugin;
   private final PaperCommandManager<CommandSender> mgr;
@@ -134,7 +131,7 @@ public final class Commands {
       .handler(this::accept));
 
     this.mgr.command(chess.literal("next_promotion")
-      .argument(this.promotionArgument("type"))
+      .argument(PromotionArgument.create("type"))
       .senderType(Player.class)
       .permission("chesscraft.command.next_promotion")
       .handler(this::nextPromotion));
@@ -301,19 +298,6 @@ public final class Commands {
 
   private Messages messages() {
     return this.plugin.config().messages();
-  }
-
-  private CommandArgument<CommandSender, PieceType> promotionArgument(final String name) {
-    return this.mgr.argumentBuilder(PieceType.class, name)
-      .withParser(new EnumArgument.EnumParser<CommandSender, PieceType>(PieceType.class).map((ctx, type) -> {
-        if (VALID_PROMOTIONS.contains(type)) {
-          return ArgumentParseResult.success(type);
-        } else {
-          return ArgumentParseResult.failure(new IllegalArgumentException());
-        }
-      }))
-      .withSuggestionsProvider((sender, input) -> VALID_PROMOTIONS.stream().map(Enum::name).toList())
-      .build();
   }
 
   private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
