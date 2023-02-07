@@ -31,9 +31,12 @@ import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgume
 import cloud.commandframework.context.CommandContext;
 import cloud.commandframework.exceptions.CommandExecutionException;
 import cloud.commandframework.execution.CommandExecutionCoordinator;
+import cloud.commandframework.keys.CloudKey;
+import cloud.commandframework.keys.SimpleCloudKey;
 import cloud.commandframework.minecraft.extras.AudienceProvider;
 import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.paper.PaperCommandManager;
+import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -48,14 +51,15 @@ import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
-import xyz.jpenilla.chesscraft.util.ComponentRuntimeException;
 
 public final class Commands {
+  public static final CloudKey<ChessCraft> PLUGIN = SimpleCloudKey.of("chesscraft", TypeToken.get(ChessCraft.class));
   private static final Set<PieceType> VALID_PROMOTIONS = Set.of(PieceType.BISHOP, PieceType.KNIGHT, PieceType.QUEEN, PieceType.ROOK);
 
   private final ChessCraft plugin;
@@ -94,7 +98,7 @@ public final class Commands {
       .handler(this::createBoard));
 
     this.mgr.command(chess.literal("set_checkerboard")
-      .argument(this.boardArgument("board"))
+      .argument(ChessBoardArgument.create("board"))
       .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("material")))
       .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("material")))
       .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("material")))
@@ -102,13 +106,13 @@ public final class Commands {
       .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
-      .argument(this.boardArgument("board"))
+      .argument(ChessBoardArgument.create("board"))
       .permission("chesscraft.command.delete_board")
       .handler(this::deleteBoard));
 
     this.mgr.command(chess.literal("challenge")
       .literal("cpu")
-      .argument(this.boardArgument("board"))
+      .argument(ChessBoardArgument.create("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000).asOptional())
       .senderType(Player.class)
@@ -117,7 +121,7 @@ public final class Commands {
 
     this.mgr.command(chess.literal("challenge")
       .literal("player")
-      .argument(this.boardArgument("board"))
+      .argument(ChessBoardArgument.create("board"))
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .senderType(Player.class)
@@ -312,21 +316,6 @@ public final class Commands {
       .build();
   }
 
-  private CommandArgument<CommandSender, ChessBoard> boardArgument(final String name) {
-    return this.mgr.argumentBuilder(ChessBoard.class, name)
-      .withParser((sender, queue) -> {
-        final ChessBoard g = this.boardManager.board(queue.peek());
-        if (g != null) {
-          queue.poll();
-          return ArgumentParseResult.success(g);
-        }
-        return ArgumentParseResult.failure(
-          ComponentRuntimeException.withMessage(this.messages().noSuchBoard(queue.peek())));
-      })
-      .withSuggestionsProvider((sender, input) -> this.boardManager.boards().stream().map(ChessBoard::name).toList())
-      .build();
-  }
-
   private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
     final PaperCommandManager<CommandSender> mgr;
     try {
@@ -351,6 +340,7 @@ public final class Commands {
       }
       handler.accept(sender, ex);
     });
+    mgr.registerCommandPreProcessor(ctx -> ctx.getCommandContext().set(PLUGIN, plugin));
     return mgr;
   }
 }
