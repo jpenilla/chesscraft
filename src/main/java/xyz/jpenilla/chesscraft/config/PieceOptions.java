@@ -21,12 +21,15 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Map;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
 import xyz.jpenilla.chesscraft.PieceHandler;
+import xyz.jpenilla.chesscraft.data.piece.Piece;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 public interface PieceOptions {
@@ -75,20 +78,21 @@ public interface PieceOptions {
       PieceType.KING, 6
     );
 
-    public Material material() {
-      return this.material;
+    public double heightOffset(final PieceType type) {
+      return this.heightOffsets.getOrDefault(type, 0.0D);
     }
 
-    public Map<PieceType, Double> heightOffsets() {
-      return this.heightOffsets;
+    private int customModelData(final Piece piece) {
+      if (piece.color() == PieceColor.WHITE) {
+        return this.whiteCustomModelData.get(piece.type());
+      }
+      return this.blackCustomModelData.get(piece.type());
     }
 
-    public Map<PieceType, Integer> whiteCustomModelData() {
-      return this.whiteCustomModelData;
-    }
-
-    public Map<PieceType, Integer> blackCustomModelData() {
-      return this.blackCustomModelData;
+    public ItemStack item(final Piece piece) {
+      final ItemStack stack = new ItemStack(this.material);
+      stack.editMeta(meta -> meta.setCustomModelData(this.customModelData(piece)));
+      return stack;
     }
 
     @Override
@@ -121,12 +125,11 @@ public interface PieceOptions {
       PieceType.KING, "7ec2822c66ea3a523a8b3c6820580c8c44fdf373b5dc3f55f70028d6cf6d2e44"
     );
 
-    public Map<PieceType, String> white() {
-      return this.white;
-    }
-
-    public Map<PieceType, String> black() {
-      return this.black;
+    public String texture(final Piece piece) {
+      if (piece.color() == PieceColor.WHITE) {
+        return this.white.get(piece.type());
+      }
+      return this.black.get(piece.type());
     }
 
     @Override

@@ -31,10 +31,10 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
+import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
@@ -52,55 +52,39 @@ public interface PieceHandler {
 
     @Override
     public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          removePieceAt(board, world, i, x);
-          final int xx = board.loc().x() + i;
-          final int zz = board.loc().z() - x;
-          final Piece piece = game.pieces()[i][x];
+      board.forEachPosition(boardPosition -> {
+        final Vec3 pos = board.loc(boardPosition);
+        removePieceAt(world, pos);
+        final Piece piece = game.piece(boardPosition);
 
-          if (piece == null) {
-            continue;
-          }
-          world.spawn(new Location(world, xx, board.loc().y(), zz), org.bukkit.entity.ItemFrame.class, itemFrame -> {
-            final ItemStack stack = new ItemStack(this.options.material());
-            stack.editMeta(meta -> meta.setCustomModelData(
-              piece.color() == PieceColor.WHITE
-                ? this.options.whiteCustomModelData().get(piece.type())
-                : this.options.blackCustomModelData().get(piece.type())
-            ));
-            itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
-            itemFrame.setItem(stack);
-            itemFrame.setFacingDirection(BlockFace.UP);
-            itemFrame.setInvulnerable(true);
-            itemFrame.setVisible(false);
-            itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
-          });
-          world.spawn(new Location(world, xx + 0.5, board.loc().y() + this.options.heightOffsets().getOrDefault(piece.type(), 0.0D), zz + 0.5), ArmorStand.class, stand -> {
-            stand.setInvulnerable(true);
-            stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
-            stand.setGravity(false);
-            stand.setInvisible(true);
-          });
+        if (piece == null) {
+          return;
         }
-      }
+        world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
+          itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
+          itemFrame.setItem(this.options.item(piece));
+          itemFrame.setFacingDirection(BlockFace.UP);
+          itemFrame.setInvulnerable(true);
+          itemFrame.setVisible(false);
+          itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+        });
+        world.spawn(new Location(world, pos.x() + 0.5, pos.y() + this.options.heightOffset(piece.type()), pos.z() + 0.5), ArmorStand.class, stand -> {
+          stand.setInvulnerable(true);
+          stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+          stand.setGravity(false);
+          stand.setInvisible(true);
+        });
+      });
     }
 
     @Override
     public void removeFromWorld(final ChessBoard board, final World world) {
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          removePieceAt(board, world, i, x);
-        }
-      }
+      board.forEachPosition(pos -> removePieceAt(world, board.loc(pos)));
     }
 
-    private static void removePieceAt(final ChessBoard board, final World world, final int i, final int x) {
-      final int xx = board.loc().x() + i;
-      final int zz = board.loc().z() - x;
-
+    private static void removePieceAt(final World world, final Vec3 pos) {
       final Collection<Entity> entities = world.getNearbyEntities(
-        new Location(world, xx + 0.5, board.loc().y(), zz + 0.5),
+        new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5),
         0.25,
         0.5,
         0.25,
@@ -121,42 +105,32 @@ public interface PieceHandler {
 
     @Override
     public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          final int xx = board.loc().x() + i;
-          final int zz = board.loc().z() - x;
-          final Piece piece = game.pieces()[i][x];
+      board.forEachPosition(boardPosition -> {
+        final Location loc = board.loc(boardPosition).toLocation(world);
+        final Piece piece = game.piece(boardPosition);
 
-          if (piece == null) {
-            world.setType(xx, board.loc().y(), zz, Material.AIR);
-            continue;
-          }
-          world.setType(xx, board.loc().y(), zz, Material.PLAYER_HEAD);
-          final Skull state = (Skull) world.getBlockState(xx, board.loc().y(), zz);
-          final PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
-          final String get = piece.color() == PieceColor.WHITE ? this.options.white().get(piece.type()) : this.options.black().get(piece.type());
-          final PlayerTextures textures = profile.getTextures();
-          try {
-            textures.setSkin(new URL("https://textures.minecraft.net/texture/" + get));
-          } catch (final IOException ex) {
-            throw new RuntimeException(ex);
-          }
-          profile.setTextures(textures);
-          state.setPlayerProfile(profile);
-          state.update();
+        if (piece == null) {
+          world.setType(loc, Material.AIR);
+          return;
         }
-      }
+        world.setType(loc, Material.PLAYER_HEAD);
+        final Skull state = (Skull) world.getBlockState(loc);
+        final PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
+        final PlayerTextures textures = profile.getTextures();
+        try {
+          textures.setSkin(new URL("https://textures.minecraft.net/texture/" + this.options.texture(piece)));
+        } catch (final IOException ex) {
+          throw new RuntimeException(ex);
+        }
+        profile.setTextures(textures);
+        state.setPlayerProfile(profile);
+        state.update();
+      });
     }
 
     @Override
     public void removeFromWorld(final ChessBoard board, final World world) {
-      for (int i = 0; i < 8; i++) {
-        for (int x = 0; x < 8; x++) {
-          final int xx = board.loc().x() + i;
-          final int zz = board.loc().z() - x;
-          world.setType(xx, board.loc().y(), zz, Material.AIR);
-        }
-      }
+      board.forEachPosition(boardPosition -> world.setType(board.loc(boardPosition).toLocation(world), Material.AIR));
     }
   }
 }

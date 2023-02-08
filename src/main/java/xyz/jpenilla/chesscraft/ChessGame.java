@@ -18,8 +18,6 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,6 +29,7 @@ import org.bukkit.Color;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -43,21 +42,10 @@ import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
 public final class ChessGame {
   private static final String STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-  private static final BiMap<String, Integer> MAPPING = HashBiMap.create(8);
-
-  static {
-    MAPPING.put("a", 0);
-    MAPPING.put("b", 1);
-    MAPPING.put("c", 2);
-    MAPPING.put("d", 3);
-    MAPPING.put("e", 4);
-    MAPPING.put("f", 5);
-    MAPPING.put("g", 6);
-    MAPPING.put("h", 7);
-  }
 
   private final ChessBoard board;
   private final StockfishClient stockfish;
+  // Rank 0-7 (8-1), File 0-7 (A-H)
   private final Piece[][] pieces;
   private final ChessCraft plugin;
   private final ChessPlayer white;
@@ -91,10 +79,6 @@ public final class ChessGame {
     this.applyToWorld();
   }
 
-  Piece[][] pieces() {
-    return this.pieces;
-  }
-
   public ChessPlayer white() {
     return this.white;
   }
@@ -103,39 +87,32 @@ public final class ChessGame {
     return this.black;
   }
 
-  public boolean handleInteract(final Player player, final int x, final int y, final int z) {
-    if (x > this.board.loc().x() + 7 || x < this.board.loc().x()
-      || z < this.board.loc().z() - 7 || z > this.board.loc().z()
-      || y < this.board.loc().y() - 1 || y > this.board.loc().y() + 1) {
-      return false;
-    }
+  public void handleInteract(final Player player, final BoardPosition rightClicked) {
     final PieceColor color = this.color(ChessPlayer.player(player));
     if (color == null) {
       player.sendRichMessage("<red>You are not a player in this game!");
-      return true;
+      return;
     } else if (color != this.nextMove) {
       player.sendRichMessage("<red>Not your move!");
-      return true;
+      return;
     } else if (this.activeQuery != null && !this.activeQuery.isDone()) {
       player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly");
-      return true;
+      return;
     }
 
-    final int xx = x - this.board.loc().x();
-    final int zz = this.board.loc().z() - z;
-    final String sel = MAPPING.inverse().get(zz) + (8 - xx);
-    final Piece selPiece = this.piece(sel);
+    final String selNotation = rightClicked.notation();
+    final Piece selPiece = this.piece(rightClicked);
     if (this.selectedPiece == null && selPiece != null) {
       if (selPiece.color() != color) {
         player.sendRichMessage("<red>Not your piece!");
-        return true;
+        return;
       }
-      this.activeQuery = this.selectPiece(sel);
-    } else if (sel.equals(this.selectedPiece)) {
+      this.activeQuery = this.selectPiece(selNotation);
+    } else if (selNotation.equals(this.selectedPiece)) {
       this.selectedPiece = null;
       this.validDestinations = null;
-    } else if (this.validDestinations != null && this.validDestinations.contains(sel)) {
-      this.activeQuery = this.move(this.selectedPiece + sel, color).exceptionally(ex -> {
+    } else if (this.validDestinations != null && this.validDestinations.contains(selNotation)) {
+      this.activeQuery = this.move(this.selectedPiece + selNotation, color).exceptionally(ex -> {
         this.plugin.getLogger().log(Level.WARNING, "Exception executing move", ex);
         return null;
       });
@@ -144,7 +121,6 @@ public final class ChessGame {
     } else if (this.selectedPiece != null) {
       player.sendRichMessage("<red>Invalid move!");
     }
-    return true;
   }
 
   public void displayParticles() {
@@ -152,7 +128,7 @@ public final class ChessGame {
       return;
     }
 
-    final Vec3 selectedPos = this.loc(this.selectedPiece);
+    final Vec3 selectedPos = this.board.loc(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
     if (!(c instanceof ChessPlayer.Player chessPlayer)) {
@@ -163,7 +139,7 @@ public final class ChessGame {
 
     if (this.validDestinations != null) {
       this.validDestinations.stream()
-        .map(this::loc)
+        .map(this.board::loc)
         .forEach(pos -> this.blockParticles(player, pos, Color.GREEN));
     }
   }
@@ -184,21 +160,8 @@ public final class ChessGame {
     }
   }
 
-  private Vec3 loc(final String pos) {
-    final int x = this.board.loc().x() + 8 - Integer.parseInt(String.valueOf(pos.charAt(1)));
-    final int z = this.board.loc().z() - MAPPING.get(String.valueOf(pos.charAt(0)));
-    return new Vec3(x, this.board.loc().y(), z);
-  }
-
-  private @Nullable Piece piece(final String pos) {
-    final int i = 7 - (Integer.parseInt(String.valueOf(pos.charAt(1))) - 1);
-    final int j = MAPPING.get(String.valueOf(pos.charAt(0)));
-    return this.pieces[i][j];
-  }
-
-  private String pos(final int i, final int j) {
-    final String l = MAPPING.inverse().get(j);
-    return l + (8 - i);
+  @Nullable Piece piece(final BoardPosition pos) {
+    return this.pieces[pos.rank()][pos.file()];
   }
 
   public ChessPlayer player(final PieceColor color) {
@@ -365,20 +328,20 @@ public final class ChessGame {
     final String[] arr = fenString.split(" ");
     final String positions = arr[0];
     this.nextMove = PieceColor.decode(arr[1]);
-    final String[] rows = positions.split("/");
-    for (int r = 0; r < rows.length; r++) {
-      final String row = rows[r];
-      int i = 0;
-      for (final char c : row.toCharArray()) {
+    final String[] ranks = positions.split("/");
+    for (int rank = 0; rank < ranks.length; rank++) {
+      final String rankString = ranks[rank];
+      int file = 0;
+      for (final char c : rankString.toCharArray()) {
         try {
-          final int x = Integer.parseInt(String.valueOf(c));
-          for (int xx = 0; xx < x; xx++) {
-            this.pieces[r][i + xx] = null;
+          final int empty = Integer.parseInt(String.valueOf(c));
+          for (int i = 0; i < empty; i++) {
+            this.pieces[rank][file + i] = null;
           }
-          i += x;
+          file += empty;
         } catch (final NumberFormatException ex) {
-          this.pieces[r][i] = Piece.decode(String.valueOf(c));
-          i++;
+          this.pieces[rank][file] = Piece.decode(String.valueOf(c));
+          file++;
         }
       }
     }
@@ -397,8 +360,8 @@ public final class ChessGame {
 
   private static Piece[][] initBoard() {
     final Piece[][] board = new Piece[8][8];
-    for (int i = 0; i < board.length; i++) {
-      board[i] = new Piece[8];
+    for (int rank = 0; rank < board.length; rank++) {
+      board[rank] = new Piece[8];
     }
     return board;
   }

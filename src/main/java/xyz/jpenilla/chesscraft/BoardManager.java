@@ -183,7 +183,7 @@ public final class BoardManager implements Listener {
     }
     final Block clicked = Objects.requireNonNull(event.getClickedBlock());
     for (final ChessBoard board : this.activeBoards()) {
-      if (board.game().handleInteract(event.getPlayer(), clicked.getX(), clicked.getY(), clicked.getZ())) {
+      if (board.handleInteract(event.getPlayer(), clicked.getX(), clicked.getY(), clicked.getZ())) {
         event.setCancelled(true);
         return;
       }
@@ -201,7 +201,7 @@ public final class BoardManager implements Listener {
 
   private void interact(final Cancellable event, final Location loc, final Player player) {
     for (final ChessBoard board : this.activeBoards()) {
-      if (board.game().handleInteract(player, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
+      if (board.handleInteract(player, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
         event.setCancelled(true);
         return;
       }

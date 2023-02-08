@@ -19,10 +19,13 @@ package xyz.jpenilla.chesscraft;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.function.Consumer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class ChessBoard {
@@ -63,6 +66,44 @@ public final class ChessBoard {
 
   public Vec3 loc() {
     return this.loc;
+  }
+
+  public Vec3 loc(final BoardPosition boardPosition) {
+    return new Vec3(
+      this.loc.x() + boardPosition.rank(),
+      this.loc.y(),
+      this.loc.z() - boardPosition.file()
+    );
+  }
+
+  public Vec3 loc(final String pos) {
+    return this.loc(BoardPosition.fromString(pos));
+  }
+
+  public void forEachPosition(final Consumer<BoardPosition> consumer) {
+    for (int rank = 0; rank < 8; rank++) {
+      for (int file = 0; file < 8; file++) {
+        consumer.accept(new BoardPosition(rank, file));
+      }
+    }
+  }
+
+  public boolean handleInteract(final Player player, final int x, final int y, final int z) {
+    if (this.hasGame() && this.worldKey.equals(player.getWorld().getKey()) && this.contains(x, y, z)) {
+      this.game().handleInteract(player, this.toBoard(x, z));
+      return true;
+    }
+    return false;
+  }
+
+  private boolean contains(final int x, final int y, final int z) {
+    return x <= this.loc.x() + 7 && x >= this.loc.x()
+      && z >= this.loc.z() - 7 && z <= this.loc.z()
+      && y >= this.loc.y() - 1 && y <= this.loc.y() + 1;
+  }
+
+  private BoardPosition toBoard(final int worldX, final int worldZ) {
+    return new BoardPosition(worldX - this.loc.x(), this.loc.z() - worldZ);
   }
 
   public NamespacedKey worldKey() {

@@ -21,11 +21,16 @@ import io.leangen.geantyref.TypeToken;
 import java.lang.reflect.Type;
 import java.util.function.Predicate;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.spongepowered.configurate.serialize.ScalarSerializer;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 public record Vec3(int x, int y, int z) {
   public static ScalarSerializer<Vec3> SERIALIZER = new Serializer();
+
+  public Location toLocation(final World world) {
+    return new Location(world, this.x, this.y, this.z);
+  }
 
   public static Vec3 fromLocation(final Location loc) {
     return new Vec3(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
