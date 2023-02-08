@@ -18,7 +18,6 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
-import it.unimi.dsi.fastutil.Pair;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
@@ -63,8 +62,7 @@ public interface PieceHandler {
           return;
         }
         world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
-          final Pair<Rotation, Rotation> pair = rotationPair(board.facing());
-          itemFrame.setRotation(piece.color() == PieceColor.BLACK ? pair.first() : pair.second());
+          itemFrame.setRotation(rotation(board.facing(), piece));
           itemFrame.setItem(this.options.item(piece));
           itemFrame.setFacingDirection(BlockFace.UP);
           itemFrame.setInvulnerable(true);
@@ -80,18 +78,22 @@ public interface PieceHandler {
       });
     }
 
-    private static Pair<Rotation, Rotation> rotationPair(final CardinalDirection facing) {
-      Rotation black = Rotation.NONE;
+    private static Rotation rotation(final CardinalDirection facing, final Piece piece) {
+      Rotation rot = Rotation.NONE;
+      // translate
       final double deg = facing.radians() * 180 / Math.PI;
       final int rots = (int) (deg / 45);
       for (int i = 0; i < rots; i++) {
-        black = black.rotateClockwise();
+        rot = rot.rotateClockwise();
       }
-      Rotation white = black;
+      if (piece.color() == PieceColor.BLACK) {
+        return rot;
+      }
+      // flip
       for (int i = 0; i < 4; i++) {
-        white = white.rotateClockwise();
+        rot = rot.rotateClockwise();
       }
-      return Pair.of(black, white);
+      return rot;
     }
 
     @Override

@@ -140,7 +140,7 @@ public final class BoardManager implements Listener {
       final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
       final CommentedConfigurationNode node = loader.load();
       final Map<String, BoardData> dataMap = Objects.requireNonNull(node.get(new TypeToken<Map<String, BoardData>>() {}));
-      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position(), data.facing(), data.dimension(), this.stockfishPath)));
+      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position, data.facing, data.dimension, this.stockfishPath)));
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
@@ -254,5 +254,19 @@ public final class BoardManager implements Listener {
   }
 
   @ConfigSerializable
-  public record BoardData(NamespacedKey dimension, Vec3 position, CardinalDirection facing) {}
+  public static final class BoardData {
+    private NamespacedKey dimension = NamespacedKey.minecraft("overworld");
+    private Vec3 position = new Vec3(0, 0, 0);
+    private CardinalDirection facing = CardinalDirection.NORTH;
+
+    @SuppressWarnings("unused")
+    BoardData() {
+    }
+
+    BoardData(final NamespacedKey dimension, final Vec3 position, final CardinalDirection facing) {
+      this.dimension = dimension;
+      this.position = position;
+      this.facing = facing;
+    }
+  }
 }
