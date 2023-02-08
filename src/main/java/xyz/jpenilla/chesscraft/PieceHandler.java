@@ -18,6 +18,7 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
+import it.unimi.dsi.fastutil.Pair;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
@@ -34,6 +35,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
+import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -61,9 +63,8 @@ public interface PieceHandler {
           return;
         }
         world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
-          if (piece.color() == PieceColor.WHITE) {
-            itemFrame.setRotation(Rotation.FLIPPED);
-          }
+          final Pair<Rotation, Rotation> pair = rotationPair(board.facing());
+          itemFrame.setRotation(piece.color() == PieceColor.BLACK ? pair.first() : pair.second());
           itemFrame.setItem(this.options.item(piece));
           itemFrame.setFacingDirection(BlockFace.UP);
           itemFrame.setInvulnerable(true);
@@ -77,6 +78,20 @@ public interface PieceHandler {
           stand.setInvisible(true);
         });
       });
+    }
+
+    private static Pair<Rotation, Rotation> rotationPair(final CardinalDirection facing) {
+      Rotation black = Rotation.NONE;
+      final double deg = facing.radians() * 180 / Math.PI;
+      final int rots = (int) (deg / 45);
+      for (int i = 0; i < rots; i++) {
+        black = black.rotateClockwise();
+      }
+      Rotation white = black;
+      for (int i = 0; i < 4; i++) {
+        white = white.rotateClockwise();
+      }
+      return Pair.of(black, white);
     }
 
     @Override

@@ -31,7 +31,7 @@ import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class ChessBoard {
-  // a1 pos
+  // southwest corner pos
   private final Vec3 loc;
   private final CardinalDirection facing;
   private final String name;
