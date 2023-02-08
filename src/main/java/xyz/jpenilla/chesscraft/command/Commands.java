@@ -51,6 +51,7 @@ import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
 import xyz.jpenilla.chesscraft.command.argument.PromotionArgument;
 import xyz.jpenilla.chesscraft.config.Messages;
+import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -90,6 +91,7 @@ public final class Commands {
 
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
+      .argument(EnumArgument.of(CardinalDirection.class, "facing"))
       .senderType(Player.class)
       .permission("chesscraft.command.create_board")
       .handler(this::createBoard));
@@ -179,7 +181,8 @@ public final class Commands {
     this.boardManager.createBoard(
       name,
       sender.getWorld(),
-      Vec3.fromLocation(sender.getLocation())
+      Vec3.fromLocation(sender.getLocation()),
+      ctx.get("facing")
     );
     sender.sendMessage(this.messages().boardCreated(name));
   }

@@ -58,6 +58,7 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
+import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3;
 
@@ -96,8 +97,8 @@ public final class BoardManager implements Listener {
     return this.boards().stream().filter(ChessBoard::hasGame).toList();
   }
 
-  public void createBoard(final String name, final World world, final Vec3 pos) {
-    final ChessBoard board = new ChessBoard(this.plugin, name, pos, world.getKey(), this.stockfishPath);
+  public void createBoard(final String name, final World world, final Vec3 pos, final CardinalDirection facing) {
+    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
     this.saveBoards();
   }
@@ -139,7 +140,7 @@ public final class BoardManager implements Listener {
       final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
       final CommentedConfigurationNode node = loader.load();
       final Map<String, BoardData> dataMap = Objects.requireNonNull(node.get(new TypeToken<Map<String, BoardData>>() {}));
-      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position(), data.dimension(), this.stockfishPath)));
+      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position(), data.facing(), data.dimension(), this.stockfishPath)));
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
@@ -163,7 +164,7 @@ public final class BoardManager implements Listener {
       final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
       final CommentedConfigurationNode node = loader.createNode();
       final Map<String, BoardData> collect = this.boards.values().stream()
-        .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc())))
+        .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing())))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       node.set(new TypeToken<Map<String, BoardData>>() {}, collect);
       loader.save(node);
@@ -253,5 +254,5 @@ public final class BoardManager implements Listener {
   }
 
   @ConfigSerializable
-  public record BoardData(NamespacedKey dimension, Vec3 position) {}
+  public record BoardData(NamespacedKey dimension, Vec3 position, CardinalDirection facing) {}
 }

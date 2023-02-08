@@ -128,7 +128,7 @@ public final class ChessGame {
       return;
     }
 
-    final Vec3 selectedPos = this.board.loc(this.selectedPiece);
+    final Vec3 selectedPos = this.board.toWorld(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
     if (!(c instanceof ChessPlayer.Player chessPlayer)) {
@@ -139,7 +139,7 @@ public final class ChessGame {
 
     if (this.validDestinations != null) {
       this.validDestinations.stream()
-        .map(this.board::loc)
+        .map(this.board::toWorld)
         .forEach(pos -> this.blockParticles(player, pos, Color.GREEN));
     }
   }

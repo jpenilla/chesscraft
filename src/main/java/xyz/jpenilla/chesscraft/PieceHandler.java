@@ -53,7 +53,7 @@ public interface PieceHandler {
     @Override
     public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
       board.forEachPosition(boardPosition -> {
-        final Vec3 pos = board.loc(boardPosition);
+        final Vec3 pos = board.toWorld(boardPosition);
         removePieceAt(world, pos);
         final Piece piece = game.piece(boardPosition);
 
@@ -61,7 +61,9 @@ public interface PieceHandler {
           return;
         }
         world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
-          itemFrame.setRotation(piece.color() == PieceColor.WHITE ? Rotation.CLOCKWISE : Rotation.COUNTER_CLOCKWISE);
+          if (piece.color() == PieceColor.WHITE) {
+            itemFrame.setRotation(Rotation.FLIPPED);
+          }
           itemFrame.setItem(this.options.item(piece));
           itemFrame.setFacingDirection(BlockFace.UP);
           itemFrame.setInvulnerable(true);
@@ -79,7 +81,7 @@ public interface PieceHandler {
 
     @Override
     public void removeFromWorld(final ChessBoard board, final World world) {
-      board.forEachPosition(pos -> removePieceAt(world, board.loc(pos)));
+      board.forEachPosition(pos -> removePieceAt(world, board.toWorld(pos)));
     }
 
     private static void removePieceAt(final World world, final Vec3 pos) {
@@ -106,7 +108,7 @@ public interface PieceHandler {
     @Override
     public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
       board.forEachPosition(boardPosition -> {
-        final Location loc = board.loc(boardPosition).toLocation(world);
+        final Location loc = board.toWorld(boardPosition).toLocation(world);
         final Piece piece = game.piece(boardPosition);
 
         if (piece == null) {
@@ -130,7 +132,7 @@ public interface PieceHandler {
 
     @Override
     public void removeFromWorld(final ChessBoard board, final World world) {
-      board.forEachPosition(boardPosition -> world.setType(board.loc(boardPosition).toLocation(world), Material.AIR));
+      board.forEachPosition(boardPosition -> world.setType(board.toWorld(boardPosition).toLocation(world), Material.AIR));
     }
   }
 }
