@@ -195,7 +195,7 @@ public final class Commands {
       flags.<Material>getValue("white").orElse(Material.WHITE_CONCRETE),
       flags.get("border")
     );
-    ctx.getSender().sendRichMessage("<green>Set blocks to world!");
+    ctx.getSender().sendRichMessage("<green>Set blocks to world.");
   }
 
   private void challengeCpu(final CommandContext<CommandSender> ctx) {

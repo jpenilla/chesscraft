@@ -90,13 +90,13 @@ public final class ChessGame {
   public void handleInteract(final Player player, final BoardPosition rightClicked) {
     final PieceColor color = this.color(ChessPlayer.player(player));
     if (color == null) {
-      player.sendRichMessage("<red>You are not a player in this game!");
+      player.sendMessage(this.plugin.config().messages().notInThisGame());
       return;
     } else if (color != this.nextMove) {
-      player.sendRichMessage("<red>Not your move!");
+      player.sendMessage(this.plugin.config().messages().notYourMove());
       return;
     } else if (this.activeQuery != null && !this.activeQuery.isDone()) {
-      player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly");
+      player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly.");
       return;
     }
 
@@ -104,7 +104,7 @@ public final class ChessGame {
     final Piece selPiece = this.piece(rightClicked);
     if (this.selectedPiece == null && selPiece != null) {
       if (selPiece.color() != color) {
-        player.sendRichMessage("<red>Not your piece!");
+        player.sendMessage(this.plugin.config().messages().notYourPiece());
         return;
       }
       this.activeQuery = this.selectPiece(selNotation);
@@ -119,7 +119,7 @@ public final class ChessGame {
       this.validDestinations = null;
       this.selectedPiece = null;
     } else if (this.selectedPiece != null) {
-      player.sendRichMessage("<red>Invalid move!");
+      player.sendMessage(this.plugin.config().messages().invalidMove());
     }
   }
 

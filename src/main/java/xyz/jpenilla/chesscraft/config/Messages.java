@@ -151,6 +151,30 @@ public final class Messages {
     return parse(this.madeMove, playerTags(mover, "move", opponent, "opponent", moverColor), Placeholder.unparsed("move", move));
   }
 
+  private String notInThisGame = "<red>You are not a player in this match.";
+
+  public Component notInThisGame() {
+    return parse(this.notInThisGame);
+  }
+
+  private String notYourMove = "<red>Not your move.";
+
+  public Component notYourMove() {
+    return parse(this.notYourMove);
+  }
+
+  private String notYourPiece = "<red>Not your piece.";
+
+  public Component notYourPiece() {
+    return parse(this.notYourPiece);
+  }
+
+  private String invalidMove = "<red>Invalid move.";
+
+  public Component invalidMove() {
+    return parse(this.invalidMove);
+  }
+
   private static TagResolver blackWhitePlayerTags(final ChessPlayer black, final ChessPlayer white) {
     return playerTags(black, "black", white, "white", PieceColor.BLACK);
   }

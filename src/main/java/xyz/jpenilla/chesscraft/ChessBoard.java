@@ -113,7 +113,7 @@ public final class ChessBoard {
     return new BoardPosition(rotated.secondInt(), rotated.firstInt());
   }
 
-  private static IntIntPair rotatePoint(int x, int z, double centerX, double centerZ, double angleRadians) {
+  private static IntIntPair rotatePoint(final int x, final int z, final double centerX, final double centerZ, final double angleRadians) {
     final double cos = Math.cos(angleRadians);
     final double sin = Math.sin(angleRadians);
     final int nX = (int) Math.round((x - centerX) * cos - (z - centerZ) * sin + centerX);
