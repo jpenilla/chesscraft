@@ -26,6 +26,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
 import org.bukkit.Color;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -41,6 +42,7 @@ import xyz.niflheim.stockfish.engine.enums.QueryType;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
 public final class ChessGame {
+  public static final NamespacedKey HIDE_LEGAL_MOVES_KEY = new NamespacedKey("chesscraft", "hide_legal_moves");
   private static final String STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
   private final ChessBoard board;
@@ -137,7 +139,7 @@ public final class ChessGame {
     final Player player = chessPlayer.player();
     this.blockParticles(player, selectedPos, Color.AQUA);
 
-    if (this.validDestinations != null) {
+    if (this.validDestinations != null && !player.getPersistentDataContainer().has(HIDE_LEGAL_MOVES_KEY)) {
       this.validDestinations.stream()
         .map(this.board::toWorld)
         .forEach(pos -> this.blockParticles(player, pos, Color.GREEN));

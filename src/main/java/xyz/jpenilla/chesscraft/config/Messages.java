@@ -175,6 +175,31 @@ public final class Messages {
     return parse(this.invalidMove);
   }
 
+  private String showingLegalMoves = "Highlighting of legal moves<gray>:</gray> <on_off>";
+
+  public Component showingLegalMoves(final boolean value) {
+    return parse(this.showingLegalMoves, this.onOff(value));
+  }
+
+  private String on = "<green>On";
+
+  public Component on() {
+    return parse(this.on);
+  }
+
+  private String off = "<red>Off";
+
+  public Component off() {
+    return parse(this.off);
+  }
+
+  private TagResolver onOff(final boolean value) {
+    if (value) {
+      return Placeholder.component("on_off", this.on());
+    }
+    return Placeholder.component("on_off", this.off());
+  }
+
   private static TagResolver blackWhitePlayerTags(final ChessPlayer black, final ChessPlayer white) {
     return playerTags(black, "black", white, "white", PieceColor.BLACK);
   }

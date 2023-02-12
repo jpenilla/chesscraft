@@ -43,10 +43,12 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
+import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
 import xyz.jpenilla.chesscraft.command.argument.PromotionArgument;
@@ -137,6 +139,11 @@ public final class Commands {
       .senderType(Player.class)
       .permission("chesscraft.command.next_promotion")
       .handler(this::nextPromotion));
+
+    this.mgr.command(chess.literal("show_legal_moves")
+      .senderType(Player.class)
+      .permission("chesscraft.command.show_legal_moves")
+      .handler(this::showLegalMoves));
 
     this.mgr.command(chess.literal("forfeit")
       .senderType(Player.class)
@@ -274,6 +281,17 @@ public final class Commands {
     final PieceType type = ctx.get("type");
     board.game().nextPromotion(sender, type);
     sender.sendMessage(this.messages().nextPromotionSet(type));
+  }
+
+  private void showLegalMoves(final CommandContext<CommandSender> ctx) {
+    final Player player = (Player) ctx.getSender();
+    final boolean hidden = player.getPersistentDataContainer().has(ChessGame.HIDE_LEGAL_MOVES_KEY);
+    if (hidden) {
+      player.getPersistentDataContainer().remove(ChessGame.HIDE_LEGAL_MOVES_KEY);
+    } else {
+      player.getPersistentDataContainer().set(ChessGame.HIDE_LEGAL_MOVES_KEY, PersistentDataType.BYTE, (byte) 1);
+    }
+    player.sendMessage(this.messages().showingLegalMoves(hidden));
   }
 
   private void deleteBoard(final CommandContext<CommandSender> ctx) {

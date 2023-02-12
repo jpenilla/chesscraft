@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "xyz.jpenilla"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0-SNAPSHOT"
 
 java {
   toolchain.languageVersion.set(JavaLanguageVersion.of(17))
@@ -93,6 +93,7 @@ bukkit {
       "chesscraft.command.accept",
       "chesscraft.command.next_promotion",
       "chesscraft.command.forfeit",
+      "chesscraft.command.show_legal_moves"
     )
     defaultTrue.forEach {
       register(it) {
