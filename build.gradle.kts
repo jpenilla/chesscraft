@@ -31,7 +31,13 @@ dependencies {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
-  compileOnly("com.github.oshi:oshi-core:6.2.2")
+
+  val cpuFeaturesJniVersion = "1.0.1"
+  implementation("io.github.aecsocket:cpu-features-jni:$cpuFeaturesJniVersion")
+  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-linux:$cpuFeaturesJniVersion")
+  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-windows:$cpuFeaturesJniVersion")
+  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-macos:$cpuFeaturesJniVersion")
+  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-macos-arm64:$cpuFeaturesJniVersion")
 }
 
 license {
@@ -66,7 +72,11 @@ tasks {
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")
     reloc("org.yaml.snakeyaml")
+    reloc("io.github.aecsocket.jniglue")
     exclude("log4j.properties", "logback.xml")
+    dependencies {
+      exclude(dependency("com.google.code.findbugs:jsr305"))
+    }
   }
 }
 

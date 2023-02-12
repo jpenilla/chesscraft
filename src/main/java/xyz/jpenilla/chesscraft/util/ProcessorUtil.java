@@ -17,8 +17,9 @@
  */
 package xyz.jpenilla.chesscraft.util;
 
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
+import cpufeatures.CpuFeatures;
+import java.util.List;
+import java.util.Objects;
 import xyz.niflheim.stockfish.engine.enums.Variant;
 
 public final class ProcessorUtil {
@@ -26,22 +27,18 @@ public final class ProcessorUtil {
   }
 
   public static Variant bestEngine() {
-    final CentralProcessor.ProcessorIdentifier procId = new SystemInfo().getHardware().getProcessor().getProcessorIdentifier();
-    if (procId.getVendor().contains("AMD")) {
-      final int family = Integer.parseInt(procId.getFamily());
-      if (family == 23) {
-        // Zen 1-2
-        return Variant.AVX2;
-      } else if (family >= 25) {
-        // Zen 3+
-        return Variant.BMI2;
-      }
-    } else if (procId.getVendor().contains("Intel")) {
-      if (procId.getFamily().equals("6") && Integer.parseInt(procId.getModel()) >= 60) {
-        // Haswell+
-        return Variant.AVX2;
-        // return Variant.BMI2; // supposed to be right - but get stream is closed errors, need to look closer into this
-      }
+    CpuFeatures.load();
+    final List<String> features = switch (CpuFeatures.getArchitecture()) {
+      case AARCH64 -> CpuFeatures.getAarch64Info().featureList().stream().map(Objects::toString).toList();
+      case X86 -> CpuFeatures.getX86Info().featureList().stream().map(Objects::toString).toList();
+      default -> List.of();
+    };
+    if (features.contains("BMI2")) {
+      return Variant.BMI2;
+    } else if (features.contains("AVX2")) {
+      return Variant.AVX2;
+    } else if (features.contains("POPCNT")) {
+      return Variant.POPCNT;
     }
     return Variant.DEFAULT;
   }
