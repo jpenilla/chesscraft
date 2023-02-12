@@ -17,21 +17,26 @@
  */
 package xyz.jpenilla.chesscraft.util;
 
+import cpufeatures.CpuArchitecture;
 import cpufeatures.CpuFeatures;
 import java.util.List;
-import java.util.Objects;
+import org.slf4j.Logger;
 import xyz.niflheim.stockfish.engine.enums.Variant;
 
 public final class ProcessorUtil {
   private ProcessorUtil() {
   }
 
-  public static Variant bestEngine() {
+  public static Variant bestVariant(final Logger logger) {
     CpuFeatures.load();
-    final List<String> features = switch (CpuFeatures.getArchitecture()) {
-      case AARCH64 -> CpuFeatures.getAarch64Info().featureList().stream().map(Objects::toString).toList();
-      case X86 -> CpuFeatures.getX86Info().featureList().stream().map(Objects::toString).toList();
-      default -> List.of();
+    final CpuArchitecture arch = CpuFeatures.getArchitecture();
+    final List<String> features = switch (arch) {
+      case AARCH64 -> CpuFeatures.getAarch64Info().featureList().stream().map(Object::toString).toList();
+      case X86 -> CpuFeatures.getX86Info().featureList().stream().map(Object::toString).toList();
+      default -> {
+        logger.info("Unable to determine best Stockfish variant for architecture '{}', falling back to default variant.", arch);
+        yield List.of();
+      }
     };
     if (features.contains("BMI2")) {
       return Variant.BMI2;

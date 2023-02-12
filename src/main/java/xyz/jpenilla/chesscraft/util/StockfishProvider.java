@@ -58,7 +58,12 @@ public final class StockfishProvider {
     }
     final String[] split = configValue.split(":");
     final String version = split[0];
-    final Variant variant = Variant.valueOf(split[1].toUpperCase(Locale.ENGLISH));
+    Variant variant;
+    if (split[1].equalsIgnoreCase("auto")) {
+      variant = ProcessorUtil.bestVariant(this.plugin.getSLF4JLogger());
+    } else {
+      variant = Variant.valueOf(split[1].toUpperCase(Locale.ENGLISH));
+    }
     final Path file = this.dir.resolve("managed/" + variant.fileName(windows(), version, false));
     if (Files.isRegularFile(file)) {
       return file;

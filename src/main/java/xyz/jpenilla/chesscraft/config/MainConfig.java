@@ -18,11 +18,10 @@
 package xyz.jpenilla.chesscraft.config;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import xyz.jpenilla.chesscraft.util.ProcessorUtil;
 
 @ConfigSerializable
 public final class MainConfig {
-  private String stockfishEngine = defaultEngine();
+  private String stockfishEngine = "15.1:AUTO";
   private PieceOptions pieces = new PieceOptions.ItemFrame();
   private Messages messages = new Messages();
 
@@ -36,9 +35,5 @@ public final class MainConfig {
 
   public Messages messages() {
     return this.messages;
-  }
-
-  private static String defaultEngine() {
-    return "15.1:" + ProcessorUtil.bestEngine();
   }
 }
