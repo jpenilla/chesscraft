@@ -1,5 +1,5 @@
 # ChessCraft
-![license](https://img.shields.io/github/license/jpenilla/chesscraft) <!-- commented until a release ![release](https://img.shields.io/github/v/release/jpenilla/chesscraft?color=blue&label=version)--> [![actions](https://github.com/jpenilla/chesscraft/workflows/build/badge.svg?branch=master)](https://github.com/jpenilla/chesscraft/actions)
+![license](https://img.shields.io/github/license/jpenilla/chesscraft) ![release](https://img.shields.io/github/v/release/jpenilla/chesscraft?color=blue&label=version) [![actions](https://github.com/jpenilla/chesscraft/workflows/build/badge.svg?branch=master)](https://github.com/jpenilla/chesscraft/actions)
 
 ChessCraft is a Paper plugin that adds in-world chess matches against other players and chess engines.
 With ChessCraft, players can challenge each other to intense chess battles in a Minecraft environment.
