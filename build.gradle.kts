@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "xyz.jpenilla"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 java {
   toolchain.languageVersion.set(JavaLanguageVersion.of(17))
@@ -111,6 +111,7 @@ hangarPublish.publications.register("plugin") {
   slug.set("ChessCraft")
   channel.set("Release")
   changelog.set(providers.environmentVariable("RELEASE_NOTES"))
+  apiKey.set(providers.environmentVariable("HANGAR_UPLOAD_KEY"))
   platforms {
     register(Platforms.PAPER) {
       jar.set(tasks.shadowJar.flatMap { it.archiveFile })
