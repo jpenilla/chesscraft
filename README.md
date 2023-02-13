@@ -36,3 +36,10 @@ Then, use the `/chess challenge player|cpu` commands to challenge an opponent. T
 
 Chess boards will not automatically place or remove blocks from the world (besides the pieces if configured to use block pieces), they will only manage pieces. This is to allow
 building your chess board in any way you like. However, the `/chess set_checkerboard` command can be used to automatically place blocks for a standard board.
+
+## Contact
+
+[![Discord](https://img.shields.io/discord/714316281918128163?color=8C9CFE&label=Discord&logo=discord&logoColor=white)](https://discord.gg/86Ekw8H)
+
+For questions and support prefer asking in the Discord linked above before opening an issue.
+The [issue tracker](https://github.com/jpenilla/chesscraft/issues) is intended for tracking bugs, feature requests, and etc., not support requests.
