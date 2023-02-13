@@ -1,3 +1,4 @@
+import io.papermc.hangarpublishplugin.model.Platforms
 import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
@@ -6,6 +7,7 @@ plugins {
   id("net.minecrell.plugin-yml.bukkit") version "0.5.2"
   id("xyz.jpenilla.run-paper") version "2.0.1"
   id("net.kyori.indra.license-header") version "3.0.1"
+  id("io.papermc.hangar-publish-plugin") version "0.0.3"
 }
 
 group = "xyz.jpenilla"
@@ -99,6 +101,20 @@ bukkit {
       register(it) {
         default = BukkitPluginDescription.Permission.Default.TRUE
       }
+    }
+  }
+}
+
+hangarPublish.publications.register("plugin") {
+  version.set(project.version as String)
+  owner.set("jmp")
+  slug.set("ChessCraft")
+  channel.set("Release")
+  changelog.set(providers.environmentVariable("RELEASE_NOTES"))
+  platforms {
+    register(Platforms.PAPER) {
+      jar.set(tasks.shadowJar.flatMap { it.archiveFile })
+      platformVersions.set(listOf("1.19"))
     }
   }
 }

@@ -9,6 +9,8 @@ on:
 jobs:
   call-build:
     uses: "jpenilla/actions/.github/workflows/shared-ci.yml@master"
+    secrets: inherit
     with:
+      hangar-publish: true
       init-submodules: true
       artifacts-path: 'build/libs/*-all.jar'
