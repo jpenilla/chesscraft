@@ -35,6 +35,7 @@ dependencies {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
+  implementation("io.papermc:paperlib:1.0.8")
 
   val cpuFeaturesJniVersion = "1.0.1"
   implementation("io.github.aecsocket:cpu-features-jni:$cpuFeaturesJniVersion")
@@ -77,6 +78,7 @@ tasks {
     reloc("org.spongepowered.configurate")
     reloc("org.yaml.snakeyaml")
     reloc("io.github.aecsocket.jniglue")
+    reloc("io.papermc.lib")
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
