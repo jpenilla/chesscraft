@@ -8,7 +8,7 @@ plugins {
   id("xyz.jpenilla.run-paper") version "2.0.1"
   id("net.kyori.indra.license-header") version "3.0.1"
   id("io.papermc.hangar-publish-plugin") version "0.0.3"
-  id("com.modrinth.minotaur") version "2.7.1"
+  id("com.modrinth.minotaur") version "2.7.2"
 }
 
 group = "xyz.jpenilla"
@@ -126,7 +126,7 @@ hangarPublish.publications.register("plugin") {
 modrinth {
   projectId.set("PYmT3jyX")
   versionType.set("release")
-  (uploadFile as Property<Task>).set(tasks.shadowJar) // Why is this a Provider<Object>???
+  file.set(tasks.shadowJar.flatMap { it.archiveFile })
   gameVersions.set(listOf("1.19.3"))
   loaders.set(listOf("paper"))
   changelog.set(releaseNotes)
