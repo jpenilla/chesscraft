@@ -24,6 +24,7 @@ import cloud.commandframework.arguments.standard.IntegerArgument;
 import cloud.commandframework.arguments.standard.StringArgument;
 import cloud.commandframework.brigadier.CloudBrigadierManager;
 import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
+import cloud.commandframework.bukkit.internal.MinecraftArgumentTypes;
 import cloud.commandframework.bukkit.parsers.MaterialArgument;
 import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgument;
 import cloud.commandframework.context.CommandContext;
@@ -34,6 +35,7 @@ import cloud.commandframework.keys.SimpleCloudKey;
 import cloud.commandframework.minecraft.extras.AudienceProvider;
 import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.paper.PaperCommandManager;
+import com.mojang.brigadier.arguments.ArgumentType;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -41,6 +43,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
@@ -52,6 +55,7 @@ import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
 import xyz.jpenilla.chesscraft.command.argument.PromotionArgument;
+import xyz.jpenilla.chesscraft.command.argument.TimeControlArgument;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
@@ -115,6 +119,7 @@ public final class Commands {
       .literal("cpu")
       .argument(ChessBoardArgument.create("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
+      .argument(TimeControlArgument.create("time_control"))
       .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000).asOptional())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.cpu")
@@ -125,6 +130,7 @@ public final class Commands {
       .argument(ChessBoardArgument.create("board"))
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
+      .argument(TimeControlArgument.create("time_control"))
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.player")
       .handler(this::challengePlayer));
@@ -221,6 +227,7 @@ public final class Commands {
     board.startGame(
       userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
       userColor == PieceColor.BLACK ? user : ChessPlayer.CPU,
+      ctx.get("time_control"),
       ctx.getOrDefault("cpu_elo", 800)
     );
   }
@@ -267,7 +274,8 @@ public final class Commands {
     final ChessPlayer opp = ChessPlayer.player(challenge.player());
     challenge.board().startGame(
       challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
-      challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp
+      challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
+      ctx.get("time_control")
     );
   }
 
@@ -331,6 +339,14 @@ public final class Commands {
     mgr.registerBrigadier();
     final CloudBrigadierManager<CommandSender, ?> brigMgr = Objects.requireNonNull(mgr.brigadierManager());
     brigMgr.setNativeNumberSuggestions(false);
+    brigMgr.registerMapping(TypeToken.get(TimeControlArgument.Parser.class), builder -> {
+      try {
+        builder.toConstant((ArgumentType<?>) MinecraftArgumentTypes.getClassByKey(NamespacedKey.minecraft("resource_location")).getConstructors()[0].newInstance());
+      } catch (final ReflectiveOperationException ex) {
+        throw new RuntimeException(ex);
+      }
+      builder.cloudSuggestions();
+    });
     new MinecraftExceptionHandler<CommandSender>()
       .withDefaultHandlers()
       .apply(mgr, AudienceProvider.nativeAudience());

@@ -30,6 +30,7 @@ dependencies {
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
   implementation(platform("cloud.commandframework:cloud-bom:1.8.0"))
   implementation("cloud.commandframework:cloud-paper")
+  compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("cloud.commandframework:cloud-minecraft-extras") {
     isTransitive = false
   }

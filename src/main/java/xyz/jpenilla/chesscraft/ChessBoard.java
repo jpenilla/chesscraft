@@ -28,6 +28,7 @@ import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3;
 
 public final class ChessBoard {
@@ -159,15 +160,24 @@ public final class ChessBoard {
     return Objects.requireNonNull(this.game, "No game active");
   }
 
-  public void startGame(final ChessPlayer white, final ChessPlayer black) {
-    this.startGame(white, black, -1);
+  public void startGame(
+    final ChessPlayer white,
+    final ChessPlayer black,
+    final @Nullable TimeControlSettings timeControl
+  ) {
+    this.startGame(white, black, timeControl, -1);
   }
 
-  public void startGame(final ChessPlayer white, final ChessPlayer black, final int cpuElo) {
+  public void startGame(
+    final ChessPlayer white,
+    final ChessPlayer black,
+    final @Nullable TimeControlSettings timeControl,
+    final int cpuElo
+  ) {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
-    this.game = new ChessGame(this.plugin, this, white, black, cpuElo);
+    this.game = new ChessGame(this.plugin, this, white, black, timeControl, cpuElo);
     this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
       this.game.cpuMove();

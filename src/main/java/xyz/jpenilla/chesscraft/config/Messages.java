@@ -25,6 +25,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.entity.Player;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.ChessBoard;
+import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
@@ -179,6 +180,33 @@ public final class Messages {
 
   public Component showingLegalMoves(final boolean value) {
     return parse(this.showingLegalMoves, this.onOff(value));
+  }
+
+  private String timeDisplay = "<opponent_color>♚</opponent_color><opponent_time>s <gray>|</gray> <player_color>♚</player_color><player_time>s";
+
+  public Component timeDisplay(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(
+      this.timeDisplay,
+      playerTags(player, "player", opp, "opponent", playerColor),
+      Placeholder.unparsed("player_time", game.time(player).timeLeft()),
+      Placeholder.unparsed("opponent_time", game.time(opp).timeLeft())
+    );
+  }
+
+  private String invalidTimeControl = "Invalid time control '<input>', expected format is '<time>[:<increment>]'";
+
+  public Component invalidTimeControl(final String input) {
+    return parse(this.invalidTimeControl, Placeholder.unparsed("input", input));
+  }
+
+  private String ranOutOfTime = "<player_color>♚</player_color><player_name> ran out of time!";
+
+  public Component ranOutOfTime(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(this.ranOutOfTime, playerTags(player, "player", opp, "opponent", playerColor));
   }
 
   private String on = "<green>On";

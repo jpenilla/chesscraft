@@ -18,6 +18,7 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,8 +30,10 @@ import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -54,6 +57,9 @@ public final class ChessGame {
   private final ChessPlayer black;
   private PieceType whiteNextPromotion = PieceType.QUEEN;
   private PieceType blackNextPromotion = PieceType.QUEEN;
+  private final @Nullable TimeControl whiteTime;
+  private final @Nullable TimeControl blackTime;
+  private final @Nullable BukkitTask timeControlTask;
   private String currentFen;
   private PieceColor nextMove;
   private String selectedPiece;
@@ -65,6 +71,7 @@ public final class ChessGame {
     final ChessBoard board,
     final ChessPlayer white,
     final ChessPlayer black,
+    final @Nullable TimeControlSettings timeControl,
     final int cpuElo
   ) {
     this.plugin = plugin;
@@ -77,6 +84,15 @@ public final class ChessGame {
       this.stockfish = this.createStockfishClient(cpuElo);
     } catch (final StockfishInitException ex) {
       throw new RuntimeException(ex);
+    }
+    if (timeControl != null) {
+      this.whiteTime = new TimeControl(timeControl);
+      this.blackTime = new TimeControl(timeControl);
+      this.timeControlTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tickTime, 0L, 1L);
+    } else {
+      this.whiteTime = null;
+      this.blackTime = null;
+      this.timeControlTask = null;
     }
     this.applyToWorld();
   }
@@ -230,7 +246,7 @@ public final class ChessGame {
           finalMove
         ));
 
-        return checkForWin();
+        return this.checkForWinAfterMove();
       });
     }).thenCompose($ -> {
       if (this.player(this.nextMove).isCpu()) {
@@ -240,9 +256,13 @@ public final class ChessGame {
     });
   }
 
-  private CompletableFuture<Void> checkForWin() {
+  private CompletableFuture<Void> checkForWinAfterMove() {
     return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
       if (!legal.isEmpty()) {
+        final @Nullable TimeControl time = this.nextMove == PieceColor.WHITE ? this.blackTime : this.whiteTime;
+        if (time != null) {
+          time.move();
+        }
         return CompletableFuture.completedFuture(null);
       }
       return this.stockfish.submit(new Query.Builder(QueryType.Checkers, this.currentFen).build()).thenAccept(checkers -> {
@@ -312,6 +332,9 @@ public final class ChessGame {
     if (removePieces) {
       this.board.pieceHandler().removeFromWorld(this.board, this.board.world());
     }
+    if (this.timeControlTask != null) {
+      this.timeControlTask.cancel();
+    }
     this.stockfish.close();
   }
 
@@ -377,5 +400,53 @@ public final class ChessGame {
         .setOption(Option.UCI_ELO, cpuElo);
     }
     return builder.build();
+  }
+
+  private void tickTime() {
+    if (this.nextMove == PieceColor.WHITE && this.whiteTime.tick()) {
+      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
+      this.board.endGame();
+    } else if (this.nextMove == PieceColor.BLACK && this.blackTime.tick()) {
+      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
+      this.board.endGame();
+    }
+    if (this.plugin.getServer().getCurrentTick() % 4 == 0) {
+      this.white.sendActionBar(this.plugin.config().messages().timeDisplay(this, PieceColor.WHITE));
+      this.black.sendActionBar(this.plugin.config().messages().timeDisplay(this, PieceColor.BLACK));
+    }
+  }
+
+  public TimeControl time(final ChessPlayer player) {
+    if (player.equals(this.white)) {
+      return this.whiteTime;
+    } else if (player.equals(this.black)) {
+      return this.blackTime;
+    }
+    throw new IllegalArgumentException();
+  }
+
+  public static final class TimeControl {
+    private static final DecimalFormat DF = new DecimalFormat("0.00");
+
+    private final long increment;
+    private volatile long timeLeft;
+
+    TimeControl(final TimeControlSettings timeControl) {
+      this.timeLeft = timeControl.time().toSeconds() * 20;
+      this.increment = timeControl.increment().toSeconds() * 20;
+    }
+
+    synchronized void move() {
+      this.timeLeft += this.increment;
+    }
+
+    synchronized boolean tick() {
+      this.timeLeft--;
+      return this.timeLeft < 1;
+    }
+
+    public String timeLeft() {
+      return DF.format(this.timeLeft / 20.0D);
+    }
   }
 }
