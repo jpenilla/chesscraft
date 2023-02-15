@@ -182,7 +182,7 @@ public final class Messages {
     return parse(this.showingLegalMoves, this.onOff(value));
   }
 
-  private String timeDisplay = "<opponent_color>♚</opponent_color><opponent_time>s <gray>|</gray> <player_color>♚</player_color><player_time>s";
+  private String timeDisplay = "<opponent_color>♚</opponent_color><opponent_time> <gray>|</gray> <player_color>♚</player_color><player_time>";
 
   public Component timeDisplay(final ChessGame game, final PieceColor playerColor) {
     final ChessPlayer player = game.player(playerColor);
