@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.spongepowered.configurate.CommentedConfigurationNode;
@@ -49,6 +50,8 @@ public final class ChessCraft extends JavaPlugin {
     this.boardManager = new BoardManager(this, stockfishPath);
     this.boardManager.load();
     new Commands(this).register();
+
+    new Metrics(this, 17745);
   }
 
   @Override

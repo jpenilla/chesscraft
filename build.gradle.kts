@@ -36,6 +36,7 @@ dependencies {
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
   implementation("io.papermc:paperlib:1.0.8")
+  implementation("org.bstats", "bstats-bukkit", "3.0.1")
 
   val cpuFeaturesJniVersion = "1.0.1"
   implementation("io.github.aecsocket:cpu-features-jni:$cpuFeaturesJniVersion")
@@ -79,6 +80,7 @@ tasks {
     reloc("org.yaml.snakeyaml")
     reloc("io.github.aecsocket.jniglue")
     reloc("io.papermc.lib")
+    reloc("org.bstats")
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
