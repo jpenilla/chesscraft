@@ -40,7 +40,7 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
 public interface PieceHandler {
-  void applyToWorld(ChessBoard board, ChessGame game, World world);
+  void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
 
   void removeFromWorld(ChessBoard board, World world);
 
@@ -52,7 +52,7 @@ public interface PieceHandler {
     }
 
     @Override
-    public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
+    public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
         final Vec3 pos = board.toWorld(boardPosition);
         removePieceAt(world, pos);
@@ -123,7 +123,7 @@ public interface PieceHandler {
     }
 
     @Override
-    public void applyToWorld(final ChessBoard board, final ChessGame game, final World world) {
+    public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
         final Location loc = board.toWorld(boardPosition).toLocation(world);
         final Piece piece = game.piece(boardPosition);

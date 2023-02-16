@@ -28,8 +28,10 @@ import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
+import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.piece.Piece;
 
 public final class ChessBoard {
   // southwest corner pos
@@ -221,5 +223,24 @@ public final class ChessBoard {
 
   World world() {
     return Objects.requireNonNull(this.plugin.getServer().getWorld(this.worldKey), "World '" + this.worldKey + "' is not loaded");
+  }
+
+  public void reset(final boolean clear) {
+    if (this.hasGame()) {
+      throw new IllegalStateException("Can't reset with an active game");
+    }
+    if (clear) {
+      this.pieceHandler.removeFromWorld(this, this.world());
+    } else {
+      this.pieceHandler.applyToWorld(this, Fen.STARTING_FEN, this.world());
+    }
+  }
+
+  public static Piece[][] initBoard() {
+    final Piece[][] board = new Piece[8][8];
+    for (int rank = 0; rank < board.length; rank++) {
+      board[rank] = new Piece[8];
+    }
+    return board;
   }
 }

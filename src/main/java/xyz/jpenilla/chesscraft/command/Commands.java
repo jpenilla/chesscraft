@@ -161,6 +161,12 @@ public final class Commands {
       .senderType(Player.class)
       .permission("chesscraft.command.forfeit")
       .handler(this::forfeit));
+
+    this.mgr.command(chess.literal("reset_board")
+      .argument(ChessBoardArgument.create("board"))
+      .flag(this.mgr.flagBuilder("clear"))
+      .permission("chesscraft.command.reset_board")
+      .handler(this::resetBoard));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
@@ -351,6 +357,16 @@ public final class Commands {
       return;
     }
     board.game().forfeit(board.game().color(ChessPlayer.player(sender)));
+  }
+
+  private void resetBoard(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame()) {
+      ctx.getSender().sendMessage(this.messages().boardOccupied(board.name()));
+      return;
+    }
+    board.reset(ctx.flags().hasFlag("clear"));
+    ctx.getSender().sendMessage(this.messages().resetBoard(board));
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {

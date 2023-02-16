@@ -33,6 +33,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
+import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
@@ -45,9 +46,8 @@ import xyz.niflheim.stockfish.engine.enums.Query;
 import xyz.niflheim.stockfish.engine.enums.QueryType;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
-public final class ChessGame {
+public final class ChessGame implements BoardStateHolder {
   public static final NamespacedKey HIDE_LEGAL_MOVES_KEY = new NamespacedKey("chesscraft", "hide_legal_moves");
-  private static final String STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
   private final ChessBoard board;
   private final StockfishClient stockfish;
@@ -79,8 +79,8 @@ public final class ChessGame {
     this.board = board;
     this.white = white;
     this.black = black;
-    this.pieces = initBoard();
-    this.loadFen(STARTING_FEN);
+    this.pieces = ChessBoard.initBoard();
+    this.loadFen(Fen.STARTING_FEN);
     try {
       this.stockfish = this.createStockfishClient(cpuElo);
     } catch (final Exception ex) {
@@ -179,7 +179,8 @@ public final class ChessGame {
     }
   }
 
-  @Nullable Piece piece(final BoardPosition pos) {
+  @Override
+  public @Nullable Piece piece(final BoardPosition pos) {
     return this.pieces[pos.rank()][pos.file()];
   }
 
@@ -238,7 +239,7 @@ public final class ChessGame {
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
       return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, this.currentFen).setMove(finalMove).build()).thenCompose(newFen -> {
-        this.loadFen(newFen);
+        this.loadFen(Fen.read(newFen));
         this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
         this.players().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
@@ -345,32 +346,14 @@ public final class ChessGame {
     }
     this.activeQuery = this.stockfish.uciNewGame();
     this.activeQuery.join();
-    this.loadFen(STARTING_FEN);
+    this.loadFen(Fen.STARTING_FEN);
     this.applyToWorld();
   }
 
-  private void loadFen(final String fenString) {
-    this.currentFen = fenString;
-    final String[] arr = fenString.split(" ");
-    final String positions = arr[0];
-    this.nextMove = PieceColor.decode(arr[1]);
-    final String[] ranks = positions.split("/");
-    for (int rank = 0; rank < ranks.length; rank++) {
-      final String rankString = ranks[rank];
-      int file = 0;
-      for (final char c : rankString.toCharArray()) {
-        try {
-          final int empty = Integer.parseInt(String.valueOf(c));
-          for (int i = 0; i < empty; i++) {
-            this.pieces[rank][file + i] = null;
-          }
-          file += empty;
-        } catch (final NumberFormatException ex) {
-          this.pieces[rank][file] = Piece.decode(String.valueOf(c));
-          file++;
-        }
-      }
-    }
+  private void loadFen(final Fen fen) {
+    this.currentFen = fen.fenString();
+    this.nextMove = fen.nextMove();
+    System.arraycopy(fen.pieces(), 0, this.pieces, 0, fen.pieces().length);
   }
 
   public void nextPromotion(final Player sender, final PieceType type) {
@@ -382,14 +365,6 @@ public final class ChessGame {
     } else {
       throw new IllegalArgumentException();
     }
-  }
-
-  private static Piece[][] initBoard() {
-    final Piece[][] board = new Piece[8][8];
-    for (int rank = 0; rank < board.length; rank++) {
-      board[rank] = new Piece[8];
-    }
-    return board;
   }
 
   private StockfishClient createStockfishClient(final int cpuElo) throws StockfishInitException {

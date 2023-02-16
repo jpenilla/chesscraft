@@ -231,6 +231,12 @@ public final class Messages {
     return parse(this.ranOutOfTime, playerOpponentTags(player, opp, playerColor));
   }
 
+  private String resetBoard = "<green>Successfully reset board '<name>'.";
+
+  public Component resetBoard(final ChessBoard board) {
+    return parse(this.resetBoard, name(board.name()));
+  }
+
   private String on = "<green>On";
 
   public Component on() {
