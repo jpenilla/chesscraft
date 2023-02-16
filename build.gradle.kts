@@ -97,6 +97,7 @@ bukkit {
       "chesscraft.command.challenge.cpu",
       "chesscraft.command.challenge.player",
       "chesscraft.command.accept",
+      "chesscraft.command.deny",
       "chesscraft.command.next_promotion",
       "chesscraft.command.forfeit",
       "chesscraft.command.show_legal_moves"

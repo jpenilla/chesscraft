@@ -140,6 +140,11 @@ public final class Commands {
       .permission("chesscraft.command.accept")
       .handler(this::accept));
 
+    this.mgr.command(chess.literal("deny")
+      .senderType(Player.class)
+      .permission("chesscraft.command.deny")
+      .handler(this::deny));
+
     this.mgr.command(chess.literal("next_promotion")
       .argument(PromotionArgument.create("type"))
       .senderType(Player.class)
@@ -258,15 +263,12 @@ public final class Commands {
   }
 
   private void accept(final CommandContext<CommandSender> ctx) {
-    final Player sender = (Player) ctx.getSender();
-    final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
+    final @Nullable PVPChallenge challenge = this.pollChallenge(ctx);
     if (challenge == null) {
-      ctx.getSender().sendMessage(this.messages().noChallengeToAccept());
       return;
     }
-    this.boardManager.challenges().invalidate(sender.getUniqueId());
     if (this.boardManager.inGame(challenge.challenger())) {
-      sender.sendMessage(this.messages().opponentAlreadyInGame(challenge.challenger()));
+      ctx.getSender().sendMessage(this.messages().opponentAlreadyInGame(challenge.challenger()));
       return;
     }
 
@@ -277,6 +279,34 @@ public final class Commands {
       challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
       ctx.get("time_control")
     );
+  }
+
+  private void deny(final CommandContext<CommandSender> ctx) {
+    final @Nullable PVPChallenge challenge = this.pollChallenge(ctx);
+    if (challenge == null) {
+      return;
+    }
+    challenge.challenger().sendMessage(this.messages().challengeDenied(
+      ChessPlayer.player(challenge.challenger()),
+      ChessPlayer.player(challenge.player()),
+      challenge.challengerColor()
+    ));
+    ctx.getSender().sendMessage(this.messages().challengeDeniedFeedback(
+      ChessPlayer.player(challenge.challenger()),
+      ChessPlayer.player(challenge.player()),
+      challenge.challengerColor()
+    ));
+  }
+
+  private @Nullable PVPChallenge pollChallenge(final CommandContext<CommandSender> ctx) {
+    final Player sender = (Player) ctx.getSender();
+    final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
+    if (challenge == null) {
+      ctx.getSender().sendMessage(this.messages().noPendingChallenge());
+      return null;
+    }
+    this.boardManager.challenges().invalidate(sender.getUniqueId());
+    return challenge;
   }
 
   private void nextPromotion(final CommandContext<CommandSender> ctx) {

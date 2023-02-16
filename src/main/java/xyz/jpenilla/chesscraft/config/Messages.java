@@ -91,19 +91,31 @@ public final class Messages {
   private String challengeSent = "<green>Challenge has been sent! <opponent_displayname> has 30 seconds to accept.";
 
   public Component challengeSent(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
-    return parse(this.challengeSent, playerTags(player, "player", opponent, "opponent", playerColor));
+    return parse(this.challengeSent, playerOpponentTags(player, opponent, playerColor));
   }
 
   private String challengeReceived = "<green>You have been challenged to Chess by <challenger_displayname>! They chose to be <challenger_color><challenger_color_name></challenger_color>. Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
 
   public Component challengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor) {
-    return parse(this.challengeReceived, playerTags(challenger, "challenger", player, "player", challengerColor));
+    return parse(this.challengeReceived, challengerPlayerTags(challenger, player, challengerColor));
   }
 
-  private String noChallengeToAccept = "<red>No challenge to accept!";
+  private String noPendingChallenge = "<red>You do not have an incoming challenge!";
 
-  public Component noChallengeToAccept() {
-    return parse(this.noChallengeToAccept);
+  public Component noPendingChallenge() {
+    return parse(this.noPendingChallenge);
+  }
+
+  private String challengeDenied = "<opponent_displayname><red> denied your challenge.";
+
+  public Component challengeDenied(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
+    return parse(this.challengeDenied, playerOpponentTags(player, opponent, playerColor));
+  }
+
+  private String challengeDeniedFeedback = "<green>Denied </green><challenger_displayname>'s <green>challenge.";
+
+  public Component challengeDeniedFeedback(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor) {
+    return parse(this.challengeDeniedFeedback, challengerPlayerTags(challenger, player, challengerColor));
   }
 
   private String alreadyInGame = "<red>You are already in an active match.";
@@ -146,10 +158,10 @@ public final class Messages {
     return parse(this.cpuThinking);
   }
 
-  private String madeMove = "<move_color>♚</move_color><move_displayname><gray>:</gray> <move>";
+  private String madeMove = "<player_color>♚</player_color><player_displayname><gray>:</gray> <move>";
 
   public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String move) {
-    return parse(this.madeMove, playerTags(mover, "move", opponent, "opponent", moverColor), Placeholder.unparsed("move", move));
+    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), Placeholder.unparsed("move", move));
   }
 
   private String notInThisGame = "<red>You are not a player in this match.";
@@ -189,7 +201,7 @@ public final class Messages {
     final ChessPlayer opp = game.player(playerColor.other());
     return parse(
       this.timeDisplay,
-      playerTags(player, "player", opp, "opponent", playerColor),
+      playerOpponentTags(player, opp, playerColor),
       Placeholder.unparsed("player_time", game.time(player).timeLeft()),
       Placeholder.unparsed("opponent_time", game.time(opp).timeLeft())
     );
@@ -201,12 +213,12 @@ public final class Messages {
     return parse(this.invalidTimeControl, Placeholder.unparsed("input", input));
   }
 
-  private String ranOutOfTime = "<player_color>♚</player_color><player_name> ran out of time!";
+  private String ranOutOfTime = "<player_color>♚</player_color><player_displayname> ran out of time!";
 
   public Component ranOutOfTime(final ChessGame game, final PieceColor playerColor) {
     final ChessPlayer player = game.player(playerColor);
     final ChessPlayer opp = game.player(playerColor.other());
-    return parse(this.ranOutOfTime, playerTags(player, "player", opp, "opponent", playerColor));
+    return parse(this.ranOutOfTime, playerOpponentTags(player, opp, playerColor));
   }
 
   private String on = "<green>On";
@@ -226,6 +238,14 @@ public final class Messages {
       return Placeholder.component("on_off", this.on());
     }
     return Placeholder.component("on_off", this.off());
+  }
+
+  private static TagResolver playerOpponentTags(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
+    return playerTags(player, "player", opponent, "opponent", playerColor);
+  }
+
+  private static TagResolver challengerPlayerTags(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor) {
+    return playerTags(challenger, "challenger", player, "player", challengerColor);
   }
 
   private static TagResolver blackWhitePlayerTags(final ChessPlayer black, final ChessPlayer white) {
