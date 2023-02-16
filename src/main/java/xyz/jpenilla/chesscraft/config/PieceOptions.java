@@ -54,12 +54,12 @@ public interface PieceOptions {
   final class ItemFrame implements PieceOptions {
     private Material material = Material.PAPER;
     private Map<PieceType, Double> heightOffsets = Map.of(
-      PieceType.PAWN, -13.0D / 16.0D,
-      PieceType.BISHOP, -4.0D / 16.0D,
-      PieceType.KNIGHT, -10.0D / 16.0D,
-      PieceType.ROOK, -12.0D / 16.0D,
+      PieceType.PAWN, -11.5D / 16.0D,
+      PieceType.BISHOP, -3.5D / 16.0D,
+      PieceType.KNIGHT, -9.0D / 16.0D,
+      PieceType.ROOK, -10.0D / 16.0D,
       PieceType.QUEEN, -4.0D / 16.0D,
-      PieceType.KING, -1.0D / 16.0D
+      PieceType.KING, 0.0D
     );
     private Map<PieceType, Integer> whiteCustomModelData = Map.of(
       PieceType.PAWN, 7,
