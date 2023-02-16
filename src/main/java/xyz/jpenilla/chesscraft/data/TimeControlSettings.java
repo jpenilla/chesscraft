@@ -18,5 +18,14 @@
 package xyz.jpenilla.chesscraft.data;
 
 import java.time.Duration;
+import xyz.jpenilla.chesscraft.util.TimeUtil;
 
-public record TimeControlSettings(Duration time, Duration increment) {}
+public record TimeControlSettings(Duration time, Duration increment) {
+  @Override
+  public String toString() {
+    if (this.increment.toSeconds() < 1) {
+      return TimeUtil.formatDurationClock(this.time, TimeUtil.ClockFormatMode.TIME);
+    }
+    return TimeUtil.formatDurationClock(this.time, TimeUtil.ClockFormatMode.TIME) + "|" + TimeUtil.formatDurationClock(this.increment, TimeUtil.ClockFormatMode.INCREMENT);
+  }
+}

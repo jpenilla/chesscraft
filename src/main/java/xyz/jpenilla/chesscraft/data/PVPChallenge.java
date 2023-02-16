@@ -18,6 +18,7 @@
 package xyz.jpenilla.chesscraft.data;
 
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
@@ -25,5 +26,6 @@ public record PVPChallenge(
   ChessBoard board,
   Player challenger,
   Player player,
-  PieceColor challengerColor
+  PieceColor challengerColor,
+  @Nullable TimeControlSettings timeControl
 ) {}

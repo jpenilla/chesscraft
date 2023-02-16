@@ -18,7 +18,6 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
-import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -39,6 +38,7 @@ import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.TimeUtil;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Option;
 import xyz.niflheim.stockfish.engine.enums.Query;
@@ -427,8 +427,6 @@ public final class ChessGame {
   }
 
   public static final class TimeControl {
-    private static final DecimalFormat DF = new DecimalFormat(".00");
-
     private final long increment;
     private volatile long timeLeft;
 
@@ -448,16 +446,7 @@ public final class ChessGame {
 
     public String timeLeft() {
       final Duration d = Duration.ofMillis(Math.round(this.timeLeft / 20.0D * 1000.0D));
-      final long hours = d.toHours();
-      final long minutes = d.toMinutesPart();
-      final long seconds = d.toSecondsPart();
-      if (hours == 0 && minutes == 0 && seconds <= 30) {
-        final double partialSeconds = d.toMillisPart() / 1000.0D;
-        return String.format("0:%02d%s", seconds, DF.format(partialSeconds));
-      } else if (hours > 0) {
-        return String.format("%d:%d:%02d", hours, minutes, seconds);
-      }
-      return String.format("%d:%02d", minutes, seconds);
+      return TimeUtil.formatDurationClock(d);
     }
   }
 }

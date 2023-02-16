@@ -23,10 +23,12 @@ import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
@@ -94,10 +96,18 @@ public final class Messages {
     return parse(this.challengeSent, playerOpponentTags(player, opponent, playerColor));
   }
 
-  private String challengeReceived = "<green>You have been challenged to Chess by <challenger_displayname>! They chose to be <challenger_color><challenger_color_name></challenger_color>. Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
+  private String challengeReceived = "<green>You have been challenged to Chess by </green><challenger_displayname><green>! They chose to be <challenger_color><challenger_color_name></challenger_color>.\n" +
+    "Time controls<gray>:</gray> <white><time_control></white>\n" +
+    "Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
 
-  public Component challengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor) {
-    return parse(this.challengeReceived, challengerPlayerTags(challenger, player, challengerColor));
+  private String noTimeControls = "None";
+
+  public Component challengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor, final @Nullable TimeControlSettings timeControl) {
+    return parse(
+      this.challengeReceived,
+      challengerPlayerTags(challenger, player, challengerColor),
+      timeControl != null ? Placeholder.unparsed("time_control", timeControl.toString()) : Placeholder.component("time_control", parse(this.noTimeControls))
+    );
   }
 
   private String noPendingChallenge = "<red>You do not have an incoming challenge!";

@@ -59,6 +59,7 @@ import xyz.jpenilla.chesscraft.command.argument.TimeControlArgument;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
@@ -119,8 +120,8 @@ public final class Commands {
       .literal("cpu")
       .argument(ChessBoardArgument.create("board"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
-      .argument(TimeControlArgument.create("time_control"))
-      .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000).asOptional())
+      .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000))
+      .argument(TimeControlArgument.builder("time_control").asOptional())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.cpu")
       .handler(this::challengeCpu));
@@ -130,7 +131,7 @@ public final class Commands {
       .argument(ChessBoardArgument.create("board"))
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
-      .argument(TimeControlArgument.create("time_control"))
+      .argument(TimeControlArgument.builder("time_control").asOptional())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.player")
       .handler(this::challengePlayer));
@@ -232,7 +233,7 @@ public final class Commands {
     board.startGame(
       userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
       userColor == PieceColor.BLACK ? user : ChessPlayer.CPU,
-      ctx.get("time_control"),
+      ctx.<TimeControlSettings>getOptional("time_control").orElse(null),
       ctx.getOrDefault("cpu_elo", 800)
     );
   }
@@ -257,9 +258,13 @@ public final class Commands {
     final PieceColor userColor = ctx.get("color");
     final ChessPlayer user = ChessPlayer.player(sender);
     final ChessPlayer opp = ChessPlayer.player(opponent);
-    this.boardManager.challenges().put(opponent.getUniqueId(), new PVPChallenge(board, sender, opponent, userColor));
+    final @Nullable TimeControlSettings timeControl = ctx.<TimeControlSettings>getOptional("time_control").orElse(null);
+    this.boardManager.challenges().put(
+      opponent.getUniqueId(),
+      new PVPChallenge(board, sender, opponent, userColor, timeControl)
+    );
     sender.sendMessage(this.messages().challengeSent(user, opp, userColor));
-    opponent.sendMessage(this.messages().challengeReceived(user, opp, userColor));
+    opponent.sendMessage(this.messages().challengeReceived(user, opp, userColor, timeControl));
   }
 
   private void accept(final CommandContext<CommandSender> ctx) {
@@ -277,7 +282,7 @@ public final class Commands {
     challenge.board().startGame(
       challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
       challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
-      ctx.get("time_control")
+      challenge.timeControl()
     );
   }
 
