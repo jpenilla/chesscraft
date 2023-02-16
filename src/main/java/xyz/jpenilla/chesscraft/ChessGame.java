@@ -83,8 +83,8 @@ public final class ChessGame {
     this.loadFen(STARTING_FEN);
     try {
       this.stockfish = this.createStockfishClient(cpuElo);
-    } catch (final StockfishInitException ex) {
-      throw new RuntimeException(ex);
+    } catch (final Exception ex) {
+      throw new RuntimeException("Failed to initialize and/or connect to chess engine process", ex);
     }
     if (timeControl != null) {
       this.whiteTime = new TimeControl(timeControl);
