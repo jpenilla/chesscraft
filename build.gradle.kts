@@ -55,6 +55,9 @@ tasks {
     from(layout.projectDirectory.file("LICENSE")) {
       rename { "LICENSE_chesscraft" }
     }
+    from(generateBukkitPluginDescription.flatMap { it.outputDirectory }) {
+      rename { "paper-plugin.yml" }
+    }
   }
   jar {
     manifest {
