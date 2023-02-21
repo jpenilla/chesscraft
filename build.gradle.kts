@@ -138,6 +138,7 @@ modrinth {
   gameVersions.set(versions)
   loaders.set(listOf("paper"))
   changelog.set(releaseNotes)
+  token.set(providers.environmentVariable("MODRINTH_TOKEN"))
 }
 
 fun lastCommitHash(): String = indraGit.commit()?.name?.substring(0, 7)
