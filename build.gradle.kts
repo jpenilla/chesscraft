@@ -2,20 +2,21 @@ import io.papermc.hangarpublishplugin.model.Platforms
 import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
-  `java-library`
   id("com.github.johnrengelman.shadow") version "7.1.2"
   id("net.minecrell.plugin-yml.bukkit") version "0.5.2"
   id("xyz.jpenilla.run-paper") version "2.0.1"
-  id("net.kyori.indra.license-header") version "3.0.1"
+  val indraVer = "3.0.1"
+  id("net.kyori.indra") version indraVer
+  id("net.kyori.indra.git") version indraVer
+  id("net.kyori.indra.license-header") version indraVer
   id("io.papermc.hangar-publish-plugin") version "0.0.3"
   id("com.modrinth.minotaur") version "2.7.2"
 }
 
-group = "xyz.jpenilla"
-version = "0.1.1-SNAPSHOT"
+decorateVersion()
 
-java {
-  toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+indra {
+  javaVersions().target(17)
 }
 
 repositories {
@@ -63,10 +64,6 @@ tasks {
     manifest {
       attributes("Multi-Release" to true)
     }
-  }
-  compileJava {
-    options.encoding = Charsets.UTF_8.name()
-    options.release.set(17)
   }
   assemble {
     dependsOn(shadowJar)
@@ -116,6 +113,8 @@ bukkit {
 }
 
 val releaseNotes = providers.environmentVariable("RELEASE_NOTES")
+val versions = listOf("1.19.3")
+val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
 hangarPublish.publications.register("plugin") {
   version.set(project.version as String)
@@ -126,8 +125,8 @@ hangarPublish.publications.register("plugin") {
   apiKey.set(providers.environmentVariable("HANGAR_UPLOAD_KEY"))
   platforms {
     register(Platforms.PAPER) {
-      jar.set(tasks.shadowJar.flatMap { it.archiveFile })
-      platformVersions.set(listOf("1.19"))
+      jar.set(shadowJar)
+      platformVersions.set(versions)
     }
   }
 }
@@ -135,8 +134,20 @@ hangarPublish.publications.register("plugin") {
 modrinth {
   projectId.set("PYmT3jyX")
   versionType.set("release")
-  file.set(tasks.shadowJar.flatMap { it.archiveFile })
-  gameVersions.set(listOf("1.19.3"))
+  file.set(shadowJar)
+  gameVersions.set(versions)
   loaders.set(listOf("paper"))
   changelog.set(releaseNotes)
+}
+
+fun lastCommitHash(): String = indraGit.commit()?.name?.substring(0, 7)
+  ?: error("Could not determine commit hash")
+
+fun decorateVersion() {
+  val versionString = version as String
+  version = if (versionString.endsWith("-SNAPSHOT")) {
+    "$versionString+${lastCommitHash()}"
+  } else {
+    versionString
+  }
 }
