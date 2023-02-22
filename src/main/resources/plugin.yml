@@ -1,0 +1,5 @@
+name: ChessCraft
+version: $version
+main: xyz.jpenilla.chesscraft.dependency.io.papermc.papertrail.RequiresPaperPlugins
+author: jmp
+api-version: 1.13

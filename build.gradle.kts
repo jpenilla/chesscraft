@@ -1,9 +1,7 @@
 import io.papermc.hangarpublishplugin.model.Platforms
-import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
   id("com.github.johnrengelman.shadow") version "7.1.2"
-  id("net.minecrell.plugin-yml.bukkit") version "0.5.2"
   id("xyz.jpenilla.run-paper") version "2.0.1"
   val indraVer = "3.0.1"
   id("net.kyori.indra") version indraVer
@@ -36,7 +34,7 @@ dependencies {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
-  implementation("io.papermc:paperlib:1.0.8")
+  runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
   implementation("org.bstats", "bstats-bukkit", "3.0.1")
 
   val cpuFeaturesJniVersion = "1.0.1"
@@ -56,9 +54,6 @@ tasks {
     from(layout.projectDirectory.file("LICENSE")) {
       rename { "LICENSE_chesscraft" }
     }
-    from(generateBukkitPluginDescription.flatMap { it.outputDirectory }) {
-      rename { "paper-plugin.yml" }
-    }
   }
   jar {
     manifest {
@@ -71,6 +66,15 @@ tasks {
   runServer {
     minecraftVersion("1.19.3")
   }
+  processResources {
+    val props = mapOf(
+      "version" to project.version
+    )
+    inputs.properties(props)
+    filesMatching("*.yml") {
+      expand(props)
+    }
+  }
   shadowJar {
     fun reloc(pkg: String) = relocate(pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
     reloc("cloud.commandframework")
@@ -79,35 +83,11 @@ tasks {
     reloc("org.spongepowered.configurate")
     reloc("org.yaml.snakeyaml")
     reloc("io.github.aecsocket.jniglue")
-    reloc("io.papermc.lib")
+    reloc("io.papermc.papertrail")
     reloc("org.bstats")
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
-    }
-  }
-}
-
-bukkit {
-  name = "ChessCraft"
-  author = "jmp"
-  main = "xyz.jpenilla.chesscraft.ChessCraft"
-  apiVersion = "1.19"
-  permissions {
-    val defaultTrue = listOf(
-      "chesscraft.command.help",
-      "chesscraft.command.challenge.cpu",
-      "chesscraft.command.challenge.player",
-      "chesscraft.command.accept",
-      "chesscraft.command.deny",
-      "chesscraft.command.next_promotion",
-      "chesscraft.command.forfeit",
-      "chesscraft.command.show_legal_moves"
-    )
-    defaultTrue.forEach {
-      register(it) {
-        default = BukkitPluginDescription.Permission.Default.TRUE
-      }
     }
   }
 }
