@@ -17,13 +17,10 @@
  */
 package xyz.jpenilla.chesscraft;
 
-import io.papermc.lib.PaperLib;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -40,10 +37,6 @@ public final class ChessCraft extends JavaPlugin {
 
   @Override
   public void onEnable() {
-    if (!this.checkForPaper()) {
-      return;
-    }
-
     this.reloadMainConfig();
     final Path stockfishPath = new StockfishProvider(this, this.getDataFolder().toPath().resolve("engines"))
       .engine(this.config.stockfishEngine());
@@ -101,22 +94,5 @@ public final class ChessCraft extends JavaPlugin {
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
-  }
-
-  private boolean checkForPaper() {
-    if (PaperLib.isPaper()) {
-      return true;
-    }
-    PaperLib.suggestPaper(this, Level.SEVERE);
-    final String message = String.join("\n", List.of(
-      "",
-      " *",
-      " * ChessCraft only supports Paper and derivatives, not Spigot or CraftBukkit.",
-      " * Download Paper from https://papermc.io/downloads",
-      " *"
-    ));
-    this.getLogger().log(Level.SEVERE, message, new RuntimeException("Unsupported platform"));
-    this.getServer().getPluginManager().disablePlugin(this);
-    return false;
   }
 }

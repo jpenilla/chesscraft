@@ -1,0 +1,22 @@
+name: ChessCraft
+version: $version
+main: xyz.jpenilla.chesscraft.ChessCraft
+author: jmp
+permissions:
+  chesscraft.command.accept:
+    default: "true"
+  chesscraft.command.challenge.cpu:
+    default: "true"
+  chesscraft.command.challenge.player:
+    default: "true"
+  chesscraft.command.deny:
+    default: "true"
+  chesscraft.command.forfeit:
+    default: "true"
+  chesscraft.command.help:
+    default: "true"
+  chesscraft.command.next_promotion:
+    default: "true"
+  chesscraft.command.show_legal_moves:
+    default: "true"
+api-version: 1.19
