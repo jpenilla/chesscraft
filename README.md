@@ -23,7 +23,7 @@ Downloads can be obtained from the [releases](https://github.com/jpenilla/chessc
 <details>
 <summary>Development builds</summary>
 
-> Development builds are available at https://link.link
+> Development builds are available at https://jenkins.jpenilla.xyz/job/ChessCraft
 </details>
 
 ## Installation
