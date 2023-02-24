@@ -103,11 +103,9 @@ hangarPublish.publications.register("plugin") {
   channel.set("Release")
   changelog.set(releaseNotes)
   apiKey.set(providers.environmentVariable("HANGAR_UPLOAD_KEY"))
-  platforms {
-    register(Platforms.PAPER) {
-      jar.set(shadowJar)
-      platformVersions.set(versions)
-    }
+  platforms.register(Platforms.PAPER) {
+    jar.set(shadowJar)
+    platformVersions.set(versions)
   }
 }
 
