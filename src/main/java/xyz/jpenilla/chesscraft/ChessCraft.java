@@ -17,15 +17,10 @@
  */
 package xyz.jpenilla.chesscraft;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.spongepowered.configurate.CommentedConfigurationNode;
-import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.command.Commands;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.config.MainConfig;
@@ -68,31 +63,14 @@ public final class ChessCraft extends JavaPlugin {
   }
 
   private MainConfig loadConfig() {
-    final Path file = this.getDataFolder().toPath().resolve("config.yml");
-    try {
-      Files.createDirectories(file.getParent());
-      if (Files.isRegularFile(file)) {
-        final YamlConfigurationLoader loader = ConfigHelper.createLoader(file);
-        final CommentedConfigurationNode node = loader.load();
-        return Objects.requireNonNull(node.get(MainConfig.class));
-      } else {
-        return new MainConfig();
-      }
-    } catch (final IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    return ConfigHelper.loadConfig(MainConfig.class, this.configFile());
   }
 
   private void saveConfig(final MainConfig config) {
-    final Path file = this.getDataFolder().toPath().resolve("config.yml");
-    try {
-      Files.createDirectories(file.getParent());
-      final YamlConfigurationLoader loader = ConfigHelper.createLoader(file);
-      final CommentedConfigurationNode node = loader.createNode();
-      node.set(config);
-      loader.save(node);
-    } catch (final IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    ConfigHelper.saveConfig(this.configFile(), config);
+  }
+
+  private Path configFile() {
+    return this.getDataFolder().toPath().resolve("config.yml");
   }
 }

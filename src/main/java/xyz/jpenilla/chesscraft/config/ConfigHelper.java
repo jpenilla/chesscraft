@@ -17,7 +17,13 @@
  */
 package xyz.jpenilla.chesscraft.config;
 
+import io.leangen.geantyref.TypeToken;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
+import java.util.function.Supplier;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.data.Vec3;
@@ -33,5 +39,60 @@ public final class ConfigHelper {
       }))
       .path(file)
       .build();
+  }
+
+  public static <T> T loadConfig(
+    final TypeToken<T> configType,
+    final Path path,
+    final Supplier<T> defaultConfigFactory
+  ) {
+    try {
+      if (Files.isRegularFile(path)) {
+        final YamlConfigurationLoader loader = createLoader(path);
+        final CommentedConfigurationNode node = loader.load();
+        return Objects.requireNonNull(node.get(configType));
+      } else {
+        return defaultConfigFactory.get();
+      }
+    } catch (final Exception ex) {
+      throw new RuntimeException("Failed to load config of type '" + configType.getType().getTypeName() + "' from file at '" + path + "'.", ex);
+    }
+  }
+
+  // For @ConfigSerializable types with no args constructor
+  public static <T> T loadConfig(final Class<T> configType, final Path path) {
+    return loadConfig(TypeToken.get(configType), path, () -> {
+      try {
+        return configType.getConstructor().newInstance();
+      } catch (final ReflectiveOperationException ex) {
+        throw new RuntimeException("Failed to create instance of type " + configType.getName() + ", does it have a public no args constructor?");
+      }
+    });
+  }
+
+  public static <T> void saveConfig(final Path path, final TypeToken<T> configType, final T config) {
+    saveConfig(path, config, configType);
+  }
+
+  // For @ConfigSerializable types
+  public static void saveConfig(final Path path, final Object config) {
+    saveConfig(path, config, null);
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private static void saveConfig(final Path path, final Object config, final @Nullable TypeToken<?> configType) {
+    try {
+      Files.createDirectories(path.getParent());
+      final YamlConfigurationLoader loader = createLoader(path);
+      final CommentedConfigurationNode node = loader.createNode();
+      if (configType != null) {
+        node.set((TypeToken) configType, config);
+      } else {
+        node.set(config);
+      }
+      loader.save(node);
+    } catch (final Exception ex) {
+      throw new RuntimeException("Failed to save config of type '" + (configType != null ? configType.getType().getTypeName() : config.getClass().getName()) + "' to file at '" + path + "'.", ex);
+    }
   }
 }

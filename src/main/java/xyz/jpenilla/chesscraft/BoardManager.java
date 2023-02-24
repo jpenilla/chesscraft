@@ -54,9 +54,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
@@ -136,14 +134,8 @@ public final class BoardManager implements Listener {
   }
 
   private void loadBoards() {
-    try {
-      final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
-      final CommentedConfigurationNode node = loader.load();
-      final Map<String, BoardData> dataMap = Objects.requireNonNull(node.get(new TypeToken<Map<String, BoardData>>() {}));
-      dataMap.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position, data.facing, data.dimension, this.stockfishPath)));
-    } catch (final IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    final Map<String, BoardData> read = ConfigHelper.loadConfig(new TypeToken<Map<String, BoardData>>() {}, this.file, HashMap::new);
+    read.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position, data.facing, data.dimension, this.stockfishPath)));
   }
 
   public void close() {
@@ -160,17 +152,10 @@ public final class BoardManager implements Listener {
   }
 
   private void saveBoards() {
-    try {
-      final YamlConfigurationLoader loader = ConfigHelper.createLoader(this.file);
-      final CommentedConfigurationNode node = loader.createNode();
-      final Map<String, BoardData> collect = this.boards.values().stream()
-        .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing())))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-      node.set(new TypeToken<Map<String, BoardData>>() {}, collect);
-      loader.save(node);
-    } catch (final IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    final Map<String, BoardData> collect = this.boards.values().stream()
+      .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing())))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    ConfigHelper.saveConfig(this.file, new TypeToken<>() {}, collect);
   }
 
   public boolean inGame(final Player player) {
