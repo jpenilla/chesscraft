@@ -20,9 +20,10 @@ package xyz.jpenilla.chesscraft.config;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @ConfigSerializable
+@SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class MainConfig {
   private String stockfishEngine = "15.1:AUTO";
-  private PieceOptions pieces = new PieceOptions.ItemFrame();
+  private PieceOptions pieces = new PieceOptions.DisplayEntity();
   private Messages messages = new Messages();
 
   public String stockfishEngine() {

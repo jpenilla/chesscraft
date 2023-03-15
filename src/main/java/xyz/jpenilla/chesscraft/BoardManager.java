@@ -178,7 +178,11 @@ public final class BoardManager implements Listener {
 
   @EventHandler
   public void interact(final PlayerInteractAtEntityEvent event) {
-    if (event.getRightClicked().getType() != EntityType.ARMOR_STAND) {
+    if (event.getRightClicked().getType() != EntityType.ARMOR_STAND
+      && event.getRightClicked().getType() != EntityType.INTERACTION) {
+      return;
+    }
+    if (!event.getRightClicked().getPersistentDataContainer().has(BoardManager.PIECE_KEY)) {
       return;
     }
     final Location loc = event.getRightClicked().getLocation();

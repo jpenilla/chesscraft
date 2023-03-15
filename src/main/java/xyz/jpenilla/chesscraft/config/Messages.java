@@ -33,6 +33,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 @ConfigSerializable
+@SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class Messages {
   private String checkmate = "<winner_color>♚</winner_color><winner_displayname> <green>beat <loser_color>♚</loser_color><loser_displayname> by checkmate!";
 

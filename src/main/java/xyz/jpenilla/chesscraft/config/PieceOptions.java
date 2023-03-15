@@ -32,6 +32,7 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
+@SuppressWarnings("FieldMayBeFinal")
 public interface PieceOptions {
   Serializer SERIALIZER = new Serializer();
 
@@ -40,6 +41,7 @@ public interface PieceOptions {
   Mode mode();
 
   enum Mode {
+    DISPLAY_ENTITY(DisplayEntity.class),
     ITEM_FRAME(ItemFrame.class),
     PLAYER_HEAD(PlayerHead.class);
 
@@ -47,6 +49,62 @@ public interface PieceOptions {
 
     Mode(final Class<? extends PieceOptions> type) {
       this.type = type;
+    }
+  }
+
+  @ConfigSerializable
+  final class DisplayEntity implements PieceOptions {
+    private Material material = Material.PAPER;
+    private Map<PieceType, Double> heights = Map.of(
+      PieceType.PAWN, 2.0D - 11.5D / 16.0D,
+      PieceType.BISHOP, 2.0D - 3.5D / 16.0D,
+      PieceType.KNIGHT, 2.0D - 9.0D / 16.0D,
+      PieceType.ROOK, 2.0D - 10.0D / 16.0D,
+      PieceType.QUEEN, 2.0D - 4.0D / 16.0D,
+      PieceType.KING, 2.0D
+    );
+    private Map<PieceType, Integer> whiteCustomModelData = Map.of(
+      PieceType.PAWN, 7,
+      PieceType.BISHOP, 8,
+      PieceType.KNIGHT, 9,
+      PieceType.ROOK, 10,
+      PieceType.QUEEN, 11,
+      PieceType.KING, 12
+    );
+    private Map<PieceType, Integer> blackCustomModelData = Map.of(
+      PieceType.PAWN, 1,
+      PieceType.BISHOP, 2,
+      PieceType.KNIGHT, 3,
+      PieceType.ROOK, 4,
+      PieceType.QUEEN, 5,
+      PieceType.KING, 6
+    );
+
+    private int customModelData(final Piece piece) {
+      if (piece.color() == PieceColor.WHITE) {
+        return this.whiteCustomModelData.get(piece.type());
+      }
+      return this.blackCustomModelData.get(piece.type());
+    }
+
+    public ItemStack item(final Piece piece) {
+      final ItemStack stack = new ItemStack(this.material);
+      stack.editMeta(meta -> meta.setCustomModelData(this.customModelData(piece)));
+      return stack;
+    }
+
+    public double height(final PieceType type) {
+      return this.heights.getOrDefault(type, 2.0D);
+    }
+
+    @Override
+    public PieceHandler createHandler() {
+      return new PieceHandler.DisplayEntity(this);
+    }
+
+    @Override
+    public Mode mode() {
+      return Mode.DISPLAY_ENTITY;
     }
   }
 

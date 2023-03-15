@@ -23,11 +23,11 @@ repositories {
 }
 
 dependencies {
-  compileOnly("io.papermc.paper", "paper-api", "1.19.3-R0.1-SNAPSHOT") {
+  compileOnly("io.papermc.paper", "paper-api", "1.19.4-R0.1-SNAPSHOT") {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.1"))
+  implementation(platform("cloud.commandframework:cloud-bom:1.8.2"))
   implementation("cloud.commandframework:cloud-paper")
   compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("cloud.commandframework:cloud-minecraft-extras") {
@@ -64,7 +64,7 @@ tasks {
     dependsOn(shadowJar)
   }
   runServer {
-    minecraftVersion("1.19.3")
+    minecraftVersion("1.19.4")
   }
   processResources {
     val props = mapOf(
@@ -93,7 +93,7 @@ tasks {
 }
 
 val releaseNotes = providers.environmentVariable("RELEASE_NOTES")
-val versions = listOf("1.19.3")
+val versions = listOf("1.19.4")
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
 hangarPublish.publications.register("plugin") {

@@ -20,7 +20,9 @@ package xyz.jpenilla.chesscraft;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -30,9 +32,15 @@ import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3;
@@ -43,6 +51,86 @@ public interface PieceHandler {
   void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
 
   void removeFromWorld(ChessBoard board, World world);
+
+  final class DisplayEntity implements PieceHandler {
+    private final PieceOptions.DisplayEntity options;
+
+    public DisplayEntity(final PieceOptions.DisplayEntity options) {
+      this.options = options;
+    }
+
+    @Override
+    public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
+      board.forEachPosition(boardPosition -> {
+        final Vec3 pos = board.toWorld(boardPosition);
+        removePieceAt(world, pos);
+        final Piece piece = game.piece(boardPosition);
+
+        if (piece == null) {
+          return;
+        }
+        world.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
+          itemDisplay.setTransformation(new Transformation(
+            // center on block
+            new Vector3f(0.5f, 0, 0.5f),
+            // flip upwards
+            new AxisAngle4f((float) Math.toRadians(90.0D), 1, 0, 0),
+            // scale
+            new Vector3f(0.5f),
+            // piece rotation
+            new AxisAngle4f((float) Math.toRadians(rotation(board.facing(), piece)), 0, 0, 1)
+          ));
+          itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+          itemDisplay.setItemStack(this.options.item(piece));
+          itemDisplay.setInvulnerable(true);
+          itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+        });
+        world.spawn(new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5), Interaction.class, interaction -> {
+          interaction.setInvulnerable(true);
+          interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+          interaction.setResponsive(true);
+          interaction.setInteractionHeight((float) this.options.height(piece.type()));
+          interaction.setInteractionWidth(0.5f);
+        });
+      });
+    }
+
+    private static float rotation(final CardinalDirection facing, final Piece piece) {
+      final double deg = facing.radians() * 180 / Math.PI;
+      if (piece.color() == PieceColor.WHITE) {
+        return (float) deg;
+      }
+      return (float) deg + 180f;
+    }
+
+    @Override
+    public void removeFromWorld(final ChessBoard board, final World world) {
+      board.forEachPosition(pos -> removePieceAt(world, board.toWorld(pos)));
+    }
+
+    private static void removePieceAt(final World world, final Vec3 pos) {
+      final List<Entity> entities = new ArrayList<>();
+      entities.addAll(world.getNearbyEntities(
+        pos.toLocation(world),
+        0.25,
+        0.5,
+        0.25,
+        e -> e instanceof Display
+      ));
+      entities.addAll(world.getNearbyEntities(
+        new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5),
+        0.25,
+        0.5,
+        0.25,
+        e -> e instanceof Interaction
+      ));
+      for (final Entity entity : entities) {
+        if (entity.getPersistentDataContainer().has(BoardManager.PIECE_KEY)) {
+          entity.remove();
+        }
+      }
+    }
+  }
 
   final class ItemFrame implements PieceHandler {
     private final PieceOptions.ItemFrame options;
