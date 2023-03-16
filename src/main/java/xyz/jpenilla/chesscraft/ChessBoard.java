@@ -59,6 +59,9 @@ public final class ChessBoard {
     this.name = name;
     this.loc = loc;
     this.facing = facing;
+    if (scale < 1) {
+      throw new IllegalArgumentException("Scale cannot be less than 1.");
+    }
     this.scale = scale;
     this.worldKey = world;
     this.stockfishPath = stockfishPath;

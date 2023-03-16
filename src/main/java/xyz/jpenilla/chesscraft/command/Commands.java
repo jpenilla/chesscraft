@@ -99,7 +99,7 @@ public final class Commands {
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
       .argument(EnumArgument.of(CardinalDirection.class, "facing"))
-      .argument(IntegerArgument.optional("scale", 1))
+      .argument(IntegerArgument.<CommandSender>builder("scale").asOptionalWithDefault(1).withMin(1))
       .senderType(Player.class)
       .permission("chesscraft.command.create_board")
       .handler(this::createBoard));
