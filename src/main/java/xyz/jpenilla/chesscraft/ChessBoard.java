@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.ints.IntIntPair;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Consumer;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -37,6 +38,7 @@ public final class ChessBoard {
   // southwest corner pos
   private final Vec3 loc;
   private final CardinalDirection facing;
+  private final int scale;
   private final String name;
   private final ChessCraft plugin;
   private final NamespacedKey worldKey;
@@ -49,6 +51,7 @@ public final class ChessBoard {
     final String name,
     final Vec3 loc,
     final CardinalDirection facing,
+    final int scale,
     final NamespacedKey world,
     final Path stockfishPath
   ) {
@@ -56,6 +59,7 @@ public final class ChessBoard {
     this.name = name;
     this.loc = loc;
     this.facing = facing;
+    this.scale = scale;
     this.worldKey = world;
     this.stockfishPath = stockfishPath;
     this.pieceHandler = plugin.config().pieces().createHandler();
@@ -81,15 +85,19 @@ public final class ChessBoard {
     return this.facing;
   }
 
+  public int scale() {
+    return this.scale;
+  }
+
   public Vec3 toWorld(final BoardPosition boardPosition) {
     return this.toWorld0(rotate(boardPosition, this.facing.radians()));
   }
 
   private Vec3 toWorld0(final BoardPosition boardPosition) {
     return new Vec3(
-      this.loc.x() + boardPosition.file(),
+      this.loc.x() + boardPosition.file() * this.scale,
       this.loc.y(),
-      this.loc.z() + boardPosition.rank() - 7
+      this.loc.z() + (boardPosition.rank() - 7) * this.scale
     );
   }
 
@@ -100,8 +108,8 @@ public final class ChessBoard {
 
   private BoardPosition toBoard0(final int worldX, final int worldZ) {
     return new BoardPosition(
-      7 + worldZ - this.loc.z(),
-      worldX - this.loc.x()
+      (7 * this.scale + worldZ - this.loc.z()) / this.scale,
+      (worldX - this.loc.x()) / this.scale
     );
   }
 
@@ -145,9 +153,9 @@ public final class ChessBoard {
   }
 
   private boolean contains(final int x, final int y, final int z) {
-    return x <= this.loc.x() + 7 && x >= this.loc.x()
-      && z >= this.loc.z() - 7 && z <= this.loc.z()
-      && y >= this.loc.y() - 1 && y <= this.loc.y() + 1;
+    return x <= this.loc.x() + 7 * this.scale + this.scale - 1 && x >= this.loc.x()
+      && z >= this.loc.z() - 7 * this.scale && z <= this.loc.z() + this.scale - 1
+      && y >= this.loc.y() - 1 && y <= this.loc.y() + this.scale * 2 - 1;
   }
 
   public NamespacedKey worldKey() {
@@ -207,17 +215,32 @@ public final class ChessBoard {
     this.forEachPosition(pos -> {
       final Vec3 loc = this.toWorld(pos);
       final Material material = (pos.rank() * 7 + pos.file()) % 2 == 0 ? white : black;
-      world.setType(loc.x(), loc.y() - 1, loc.z(), material);
+      for (int i = 0; i < this.scale; i++) {
+        for (int h = 0; h < this.scale; h++) {
+          world.setType(loc.x() + i, loc.y() - 1, loc.z() + h, material);
+        }
+      }
     });
     if (border == null) {
       return;
     }
-    for (int dx = -1; dx <= 8; dx++) {
-      for (int dz = -1; dz <= 8; dz++) {
-        if (dx == -1 || dz == -1 || dx == 8 || dz == 8) {
-          world.setType(this.loc.x() + dx, this.loc.y() - 1, this.loc.z() - dz, border);
-        }
-      }
+
+    this.applyBorder(world, border);
+  }
+
+  private void applyBorder(final World world, final Material border) {
+    final int minX = this.loc.x() - 1;
+    final int maxZ = this.loc.z() + this.scale;
+    final int minZ = this.loc.z() - this.scale * 7 - 1;
+    final int maxX = this.loc.x() + this.scale * 8;
+
+    for (int x = minX; x <= maxX; x++) {
+      world.setType(new Location(world, x, this.loc.y() - 1, minZ), border);
+      world.setType(new Location(world, x, this.loc.y() - 1, maxZ), border);
+    }
+    for (int z = minZ; z <= maxZ; z++) {
+      world.setType(new Location(world, minX, this.loc.y() - 1, z), border);
+      world.setType(new Location(world, maxX, this.loc.y() - 1, z), border);
     }
   }
 

@@ -63,7 +63,7 @@ public interface PieceHandler {
     public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
         final Vec3 pos = board.toWorld(boardPosition);
-        removePieceAt(world, pos);
+        removePieceAt(world, board, pos);
         final Piece piece = game.piece(boardPosition);
 
         if (piece == null) {
@@ -71,13 +71,13 @@ public interface PieceHandler {
         }
         world.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
           itemDisplay.setTransformation(new Transformation(
-            // center on block
-            new Vector3f(0.5f, 0, 0.5f),
+            // center
+            new Vector3f(0.5f * board.scale(), 0, 0.5f * board.scale()),
             // flip upwards
             new AxisAngle4f((float) Math.toRadians(90.0D), 1, 0, 0),
             // scale
-            new Vector3f(0.5f),
-            // piece rotation
+            new Vector3f(0.5f * board.scale()),
+            // rotate
             new AxisAngle4f((float) Math.toRadians(rotation(board.facing(), piece)), 0, 0, 1)
           ));
           itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
@@ -85,12 +85,12 @@ public interface PieceHandler {
           itemDisplay.setInvulnerable(true);
           itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
         });
-        world.spawn(new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5), Interaction.class, interaction -> {
+        world.spawn(new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()), Interaction.class, interaction -> {
           interaction.setInvulnerable(true);
           interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
           interaction.setResponsive(true);
-          interaction.setInteractionHeight((float) this.options.height(piece.type()));
-          interaction.setInteractionWidth(0.5f);
+          interaction.setInteractionHeight((float) this.options.height(piece.type()) * board.scale());
+          interaction.setInteractionWidth(0.5f * board.scale());
         });
       });
     }
@@ -105,10 +105,10 @@ public interface PieceHandler {
 
     @Override
     public void removeFromWorld(final ChessBoard board, final World world) {
-      board.forEachPosition(pos -> removePieceAt(world, board.toWorld(pos)));
+      board.forEachPosition(pos -> removePieceAt(world, board, board.toWorld(pos)));
     }
 
-    private static void removePieceAt(final World world, final Vec3 pos) {
+    private static void removePieceAt(final World world, final ChessBoard board, final Vec3 pos) {
       final List<Entity> entities = new ArrayList<>();
       entities.addAll(world.getNearbyEntities(
         pos.toLocation(world),
@@ -118,7 +118,7 @@ public interface PieceHandler {
         e -> e instanceof Display
       ));
       entities.addAll(world.getNearbyEntities(
-        new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5),
+        new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()),
         0.25,
         0.5,
         0.25,

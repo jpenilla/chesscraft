@@ -95,8 +95,8 @@ public final class BoardManager implements Listener {
     return this.boards().stream().filter(ChessBoard::hasGame).toList();
   }
 
-  public void createBoard(final String name, final World world, final Vec3 pos, final CardinalDirection facing) {
-    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, world.getKey(), this.stockfishPath);
+  public void createBoard(final String name, final World world, final Vec3 pos, final CardinalDirection facing, final int scale) {
+    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, scale, world.getKey(), this.stockfishPath);
     this.boards.put(name, board);
     this.saveBoards();
   }
@@ -135,7 +135,15 @@ public final class BoardManager implements Listener {
 
   private void loadBoards() {
     final Map<String, BoardData> read = ConfigHelper.loadConfig(new TypeToken<Map<String, BoardData>>() {}, this.file, HashMap::new);
-    read.forEach((key, data) -> this.boards.put(key, new ChessBoard(this.plugin, key, data.position, data.facing, data.dimension, this.stockfishPath)));
+    read.forEach((key, data) -> this.boards.put(key, new ChessBoard(
+      this.plugin,
+      key,
+      data.position,
+      data.facing,
+      data.scale,
+      data.dimension,
+      this.stockfishPath
+    )));
   }
 
   public void close() {
@@ -153,7 +161,7 @@ public final class BoardManager implements Listener {
 
   private void saveBoards() {
     final Map<String, BoardData> collect = this.boards.values().stream()
-      .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing())))
+      .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing(), b.scale())))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     ConfigHelper.saveConfig(this.file, new TypeToken<>() {}, collect);
   }
@@ -247,15 +255,17 @@ public final class BoardManager implements Listener {
     private NamespacedKey dimension = NamespacedKey.minecraft("overworld");
     private Vec3 position = new Vec3(0, 0, 0);
     private CardinalDirection facing = CardinalDirection.NORTH;
+    private int scale = 1;
 
     @SuppressWarnings("unused")
     BoardData() {
     }
 
-    BoardData(final NamespacedKey dimension, final Vec3 position, final CardinalDirection facing) {
+    BoardData(final NamespacedKey dimension, final Vec3 position, final CardinalDirection facing, final int scale) {
       this.dimension = dimension;
       this.position = position;
       this.facing = facing;
+      this.scale = scale;
     }
   }
 }

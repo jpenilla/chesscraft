@@ -164,19 +164,44 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private void blockParticles(final Player player, final Vec3 block, final Color particleColor) {
-    for (double dx = 0.2; dx <= 0.8; dx += 0.2) {
-      for (double dz = 0.2; dz <= 0.8; dz += 0.2) {
-        if (dx == 0.2 || dz == 0.2 || dx == 0.8 || dz == 0.8) {
-          new ParticleBuilder(Particle.REDSTONE)
-            .count(1)
-            .color(particleColor)
-            .offset(0, 0, 0)
-            .location(player.getWorld(), block.x() + dx, block.y(), block.z() + dz)
-            .receivers(player)
-            .spawn();
-        }
+    // 0.02 buffer around pieces
+    final double min = 0.18D * this.board.scale();
+    final double max = 0.82D * this.board.scale();
+    final double minX = block.x() + min;
+    final double minZ = block.z() + min;
+    final double maxX = block.x() + max;
+    final double maxZ = block.z() + max;
+
+    boolean handledMaxCorner = false;
+    for (double x = minX; x <= maxX; x += 0.2) {
+      particle(player, particleColor, x, block.y(), minZ);
+      particle(player, particleColor, x, block.y(), maxZ);
+      if (x == maxX) {
+        handledMaxCorner = true;
       }
     }
+
+    // handle maximum corners if we didn't before (distance indivisible by increment)
+    if (!handledMaxCorner) {
+      particle(player, particleColor, maxX, block.y(), minZ);
+      particle(player, particleColor, maxX, block.y(), maxZ);
+    }
+
+    // skip corners this time
+    for (double z = minZ + 0.2; z <= maxZ - 0.2; z += 0.2) {
+      particle(player, particleColor, minX, block.y(), z);
+      particle(player, particleColor, maxX, block.y(), z);
+    }
+  }
+
+  private static void particle(final Player player, final Color particleColor, final double x, final double y, final double z) {
+    new ParticleBuilder(Particle.REDSTONE)
+      .count(1)
+      .color(particleColor)
+      .offset(0, 0, 0)
+      .location(player.getWorld(), x, y, z)
+      .receivers(player)
+      .spawn();
   }
 
   @Override

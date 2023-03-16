@@ -99,6 +99,7 @@ public final class Commands {
     this.mgr.command(chess.literal("create_board")
       .argument(StringArgument.single("name"))
       .argument(EnumArgument.of(CardinalDirection.class, "facing"))
+      .argument(IntegerArgument.optional("scale", 1))
       .senderType(Player.class)
       .permission("chesscraft.command.create_board")
       .handler(this::createBoard));
@@ -207,7 +208,8 @@ public final class Commands {
       name,
       sender.getWorld(),
       Vec3.fromLocation(sender.getLocation()),
-      ctx.get("facing")
+      ctx.get("facing"),
+      ctx.get("scale")
     );
     sender.sendMessage(this.messages().boardCreated(name));
   }
