@@ -56,6 +56,11 @@ public final class StockfishProvider {
     if (!configValue.contains(":")) {
       return this.dir.resolve("custom/" + configValue);
     }
+    if (true) {
+      throw new IllegalArgumentException("Automatic downloads of Stockfish engine are currently broken. " +
+        "Download the appropriate executable for your platform from https://stockfishchess.org/download/ and place it in ChessCraft/engines/custom. " +
+        "Then set 'stockfish-engine' in config.yml to the name of the executable file.");
+    }
     final String[] split = configValue.split(":");
     final String version = split[0];
     Variant variant;
