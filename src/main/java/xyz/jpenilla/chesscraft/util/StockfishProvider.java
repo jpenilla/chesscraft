@@ -17,6 +17,7 @@
  */
 package xyz.jpenilla.chesscraft.util;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +36,19 @@ import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.niflheim.stockfish.engine.enums.Variant;
 
 public final class StockfishProvider {
-  private static final String BASE_URL = "https://stockfishchess.org/files/";
+  // Stockfish removed their pre-v16 downloads, new downloads for v16+ are on GitHub Releases.
+  // archive.org has some of the removed versions, but not all.
+  // The timestamp in the URL is for the newest archived build of 15.1, but archive.org seems to redirect
+  // each URL to the most recently archived version of that URL if there isn't a snapshot for the
+  // exact timestamp provided.
+  // Hopefully no one decides to archive the new redirect to the downloads page, because then we would
+  // likely need to use archive.orgs API to determine which snapshot to use.
+
+  // Stockfish offers their own (mostly complete) archive, but it's hosted on Dropbox which makes
+  // it more difficult to use.
+  // TODO: retrieve versions 16+ through github release artifacts
+  // TODO: fix cpu feature detection & downloads on macos arm64 (rosetta) (for versions macos builds exist)
+  private static final String BASE_URL = "https://web.archive.org/web/20230311015912id_/https://stockfishchess.org/files/";
 
   private final Path dir;
   private final ChessCraft plugin;
@@ -56,13 +69,16 @@ public final class StockfishProvider {
     if (!configValue.contains(":")) {
       return this.dir.resolve("custom/" + configValue);
     }
-    if (true) {
-      throw new IllegalArgumentException("Automatic downloads of Stockfish engine are currently broken. " +
-        "Download the appropriate executable for your platform from https://stockfishchess.org/download/ and place it in ChessCraft/engines/custom. " +
-        "Then set 'stockfish-engine' in config.yml to the name of the executable file.");
-    }
     final String[] split = configValue.split(":");
     final String version = split[0];
+
+    final String[] ver = version.split("\\.");
+    final int major = Integer.parseInt(ver[0]);
+    if (major > 15) {
+      throw new IllegalArgumentException("Support for automatically downloading Stockfish 16+ is not yet available." +
+        "\nEither manually download it from https://stockfishchess.org/download/, or use an older version such as 15.1.");
+    }
+
     Variant variant;
     if (split[1].equalsIgnoreCase("auto")) {
       variant = ProcessorUtil.bestVariant(this.plugin.getSLF4JLogger());
@@ -105,6 +121,18 @@ public final class StockfishProvider {
       Files.delete(temp);
       this.plugin.getLogger().info("Done!");
       return file;
+    } catch (final FileNotFoundException ex) {
+      if (url.contains("archive.org")) {
+        throw new RuntimeException(
+          String.format("""
+              archive.org did not have the requested Stockfish build (version=%s, variant=%s).
+              See 'https://web.archive.org/web/*/https://stockfishchess.org/files/*' for the list of archived builds.
+              archive.org is used to resolve builds for Stockfish 15.1 and older as Stockfish has removed these downloads from their site.""",
+            version, variant),
+          ex
+        );
+      }
+      throw new RuntimeException(ex);
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
