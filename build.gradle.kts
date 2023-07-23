@@ -1,14 +1,14 @@
 import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
-  id("com.github.johnrengelman.shadow") version "7.1.2"
-  id("xyz.jpenilla.run-paper") version "2.0.1"
-  val indraVer = "3.0.1"
+  id("com.github.johnrengelman.shadow") version "8.1.1"
+  id("xyz.jpenilla.run-paper") version "2.1.0"
+  val indraVer = "3.1.2"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
   id("net.kyori.indra.license-header") version indraVer
-  id("io.papermc.hangar-publish-plugin") version "0.0.3"
-  id("com.modrinth.minotaur") version "2.7.2"
+  id("io.papermc.hangar-publish-plugin") version "0.0.5"
+  id("com.modrinth.minotaur") version "2.7.5"
 }
 
 decorateVersion()
@@ -27,7 +27,7 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.2"))
+  implementation(platform("cloud.commandframework:cloud-bom:1.8.3"))
   implementation("cloud.commandframework:cloud-paper")
   compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("cloud.commandframework:cloud-minecraft-extras") {
@@ -35,7 +35,7 @@ dependencies {
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
   runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
-  implementation("org.bstats", "bstats-bukkit", "3.0.1")
+  implementation("org.bstats", "bstats-bukkit", "3.0.2")
 
   val cpuFeaturesJniVersion = "1.0.1"
   implementation("io.github.aecsocket:cpu-features-jni:$cpuFeaturesJniVersion")
@@ -64,7 +64,7 @@ tasks {
     dependsOn(shadowJar)
   }
   runServer {
-    minecraftVersion("1.19.4")
+    minecraftVersion("1.20.1")
   }
   processResources {
     val props = mapOf(
@@ -93,7 +93,7 @@ tasks {
 }
 
 val releaseNotes = providers.environmentVariable("RELEASE_NOTES")
-val versions = listOf("1.19.4")
+val versions = listOf("1.19.4", "1.20.1")
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
 hangarPublish.publications.register("plugin") {
