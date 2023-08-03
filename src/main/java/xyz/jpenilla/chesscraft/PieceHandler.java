@@ -104,8 +104,10 @@ public interface PieceHandler {
       );
     }
 
+    private static final boolean v1_19_X = Bukkit.getServer().getMinecraftVersion().startsWith("1.19");
+
     private static void transformForVersion(final Quaternionf left) {
-      if (Bukkit.getServer().getMinecraftVersion().startsWith("1.19")) {
+      if (v1_19_X) {
         // 1.19.x - nothing to do
         return;
       }
