@@ -40,6 +40,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
@@ -70,16 +71,7 @@ public interface PieceHandler {
           return;
         }
         world.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
-          itemDisplay.setTransformation(new Transformation(
-            // center
-            new Vector3f(0.5f * board.scale(), 0, 0.5f * board.scale()),
-            // flip upwards
-            new AxisAngle4f((float) Math.toRadians(90.0D), 1, 0, 0),
-            // scale
-            new Vector3f(0.5f * board.scale()),
-            // rotate
-            new AxisAngle4f((float) Math.toRadians(rotation(board.facing(), piece)), 0, 0, 1)
-          ));
+          itemDisplay.setTransformation(transformationFor(board, piece));
           itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
           itemDisplay.setItemStack(this.options.item(piece));
           itemDisplay.setInvulnerable(true);
@@ -93,6 +85,46 @@ public interface PieceHandler {
           interaction.setInteractionWidth(0.5f * board.scale());
         });
       });
+    }
+
+    private static Transformation transformationFor(final ChessBoard board, final Piece piece) {
+      // flip upwards
+      final Quaternionf left = new Quaternionf(new AxisAngle4f((float) Math.toRadians(90.0D), 1, 0, 0));
+      transformForVersion(left);
+      // rotate
+      final Quaternionf right = new Quaternionf(new AxisAngle4f((float) Math.toRadians(rotation(board.facing(), piece)), 0, 0, 1));
+
+      return new Transformation(
+        // center
+        new Vector3f(0.5f * board.scale(), 0, 0.5f * board.scale()),
+        left,
+        // scale
+        new Vector3f(0.5f * board.scale()),
+        right
+      );
+    }
+
+    private static void transformForVersion(final Quaternionf left) {
+      if (Bukkit.getServer().getMinecraftVersion().startsWith("1.19")) {
+        // 1.19.x - nothing to do
+        return;
+      }
+      // 1.20+ - account for 180 flip on y-axis
+      rotateYFlip(left);
+    }
+
+    /**
+     * Transforms the given quaternion in-place to account for the
+     * changes Mojang made to item displays in 1.20.
+     *
+     * @param q quaternion
+     */
+    private static void rotateYFlip(final Quaternionf q) {
+      final float x = q.x, y = q.y, z = q.z, w = q.w;
+      q.x = z;
+      q.y = w;
+      q.z = x;
+      q.w = -y;
     }
 
     private static float rotation(final CardinalDirection facing, final Piece piece) {
