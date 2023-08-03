@@ -8,3 +8,5 @@ build
 *.zip
 *.jar
 !/resources/*.zip
+
+.DS_Store
