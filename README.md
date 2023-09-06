@@ -34,6 +34,13 @@ The configuration can be adjusted at `plugins/ChessCraft/config.yml`.
 By default, ChessCraft will be configured for use with a resource pack containing custom models for chess pieces.
 It can be downloaded [here](https://github.com/jpenilla/chesscraft/raw/master/resources/ChessCraft_Resource_Pack.zip). You can either have your players manually install it, or set it as your server resource pack/merge its contents into your existing server resource pack.
 
+To use playerheads, change the config.yml to
+```
+pieces:
+    mode: PLAYER_HEAD
+```
+and remove all other options under `pieces` before reloading the config
+
 ## Usage
 
 First, you must create a chessboard by standing at the desired location for the southwest corner of the board and using the `/chess create_board <board_name> <facing>` command.
