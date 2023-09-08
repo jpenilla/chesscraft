@@ -67,7 +67,13 @@ public final class StockfishProvider {
 
   public Path engine(final String configValue) {
     if (!configValue.contains(":")) {
-      return this.dir.resolve("custom/" + configValue);
+      final Path customPath = this.dir.resolve("custom/" + configValue);
+      if (!customPath.toFile().canExecute()) {
+        if (!customPath.toFile().setExecutable(true, true)) {
+          this.plugin.getLogger().warning("Custom engine '{}' was not executable and ChessCraft failed to set it to executable, this may cause issues.");
+        }
+      }
+      return customPath;
     }
     final String[] split = configValue.split(":");
     final String version = split[0];
