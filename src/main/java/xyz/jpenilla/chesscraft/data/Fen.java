@@ -83,7 +83,7 @@ public record Fen(String fenString, Piece[][] pieces, PieceColor nextMove) imple
     for (final Piece[] slice : this.pieces) {
       for (final Piece piece : slice) {
         if (piece != null) {
-          map.computeInt(piece.type(), (k, v) -> v + 1);
+          map.mergeInt(piece.type(), 1, (i, $) -> i + 1);
         }
       }
     }
