@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.kyori.adventure.audience.Audience;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
@@ -269,10 +270,10 @@ public final class ChessGame implements BoardStateHolder {
       // Append promotion if needed
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
-      this.moves.add(new Move(finalMove, color));
-
-      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString()).build()).thenCompose(newFen -> {
+      final Move movePair = new Move(finalMove, color);
+      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
         this.loadFen(Fen.read(newFen));
+        this.moves.add(movePair);
         this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
         this.players().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
@@ -282,10 +283,6 @@ public final class ChessGame implements BoardStateHolder {
         ));
 
         return this.checkForWinAfterMove();
-      }).whenComplete(($, thr) -> {
-        if (thr != null) {
-          this.moves.remove(this.moves.size() - 1);
-        }
       });
     }).thenCompose($ -> {
       if (this.player(this.nextMove).isCpu()) {
@@ -293,6 +290,10 @@ public final class ChessGame implements BoardStateHolder {
       }
       return CompletableFuture.completedFuture(null);
     });
+  }
+
+  private String moveSequenceString(final Move... extraMoves) {
+    return Stream.concat(this.moves.stream(), Arrays.stream(extraMoves)).map(Move::notation).collect(Collectors.joining(" "));
   }
 
   private String moveSequenceString() {
