@@ -2,12 +2,12 @@ import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
   id("com.github.johnrengelman.shadow") version "8.1.1"
-  id("xyz.jpenilla.run-paper") version "2.1.0"
-  val indraVer = "3.1.2"
+  id("xyz.jpenilla.run-paper") version "2.2.0"
+  val indraVer = "3.1.3"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
-  id("net.kyori.indra.license-header") version indraVer
-  id("io.papermc.hangar-publish-plugin") version "0.0.5"
+  id("net.kyori.indra.licenser.spotless") version indraVer
+  id("io.papermc.hangar-publish-plugin") version "0.1.0"
   id("com.modrinth.minotaur") version "2.7.5"
 }
 
@@ -27,7 +27,7 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.3"))
+  implementation(platform("cloud.commandframework:cloud-bom:1.8.4"))
   implementation("cloud.commandframework:cloud-paper")
   compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("cloud.commandframework:cloud-minecraft-extras") {
@@ -45,8 +45,8 @@ dependencies {
   runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-macos-arm64:$cpuFeaturesJniVersion")
 }
 
-license {
-  header.set(resources.text.fromFile(rootProject.file("LICENSE_HEADER")))
+indraSpotlessLicenser {
+  licenseHeaderFile(rootProject.file("LICENSE_HEADER"))
 }
 
 tasks {
@@ -64,7 +64,7 @@ tasks {
     dependsOn(shadowJar)
   }
   runServer {
-    minecraftVersion("1.20.1")
+    minecraftVersion("1.20.2")
   }
   processResources {
     val props = mapOf(
@@ -93,13 +93,12 @@ tasks {
 }
 
 val releaseNotes = providers.environmentVariable("RELEASE_NOTES")
-val versions = listOf("1.19.4", "1.20.1")
+val versions = listOf("1.19.4", "1.20.2")
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
 hangarPublish.publications.register("plugin") {
   version.set(project.version as String)
-  owner.set("jmp")
-  slug.set("ChessCraft")
+  id.set("ChessCraft")
   channel.set("Release")
   changelog.set(releaseNotes)
   apiKey.set(providers.environmentVariable("HANGAR_UPLOAD_KEY"))
