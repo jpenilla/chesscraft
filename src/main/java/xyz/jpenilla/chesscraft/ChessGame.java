@@ -21,8 +21,10 @@ import com.destroystokyo.paper.ParticleBuilder;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import net.kyori.adventure.audience.Audience;
@@ -61,11 +63,14 @@ public final class ChessGame implements BoardStateHolder {
   private final @Nullable TimeControl whiteTime;
   private final @Nullable TimeControl blackTime;
   private final @Nullable BukkitTask timeControlTask;
+  private final List<Move> moves;
   private String currentFen;
   private PieceColor nextMove;
   private String selectedPiece;
   private Set<String> validDestinations;
   private CompletableFuture<?> activeQuery;
+
+  record Move(String notation, PieceColor color) {}
 
   ChessGame(
     final ChessCraft plugin,
@@ -80,6 +85,7 @@ public final class ChessGame implements BoardStateHolder {
     this.white = white;
     this.black = black;
     this.pieces = ChessBoard.initBoard();
+    this.moves = new CopyOnWriteArrayList<>();
     this.loadFen(Fen.STARTING_FEN);
     try {
       this.stockfish = this.createStockfishClient(cpuElo);
@@ -253,7 +259,7 @@ public final class ChessGame implements BoardStateHolder {
     if (color != this.nextMove) {
       throw new IllegalArgumentException("Wrong move");
     }
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(response -> {
+    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString()).build()).thenCompose(response -> {
       final Set<String> validMoves = new HashSet<>(Arrays.asList(response.split(" ")));
       // engine will not make invalid moves, player moves are checked earlier
       if (validMoves.stream().noneMatch(valid -> valid.equals(move) || valid.startsWith(move))) {
@@ -263,7 +269,9 @@ public final class ChessGame implements BoardStateHolder {
       // Append promotion if needed
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
-      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, this.currentFen).setMove(finalMove).build()).thenCompose(newFen -> {
+      this.moves.add(new Move(finalMove, color));
+
+      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString()).build()).thenCompose(newFen -> {
         this.loadFen(Fen.read(newFen));
         this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
         this.players().sendMessage(this.plugin.config().messages().madeMove(
@@ -274,6 +282,10 @@ public final class ChessGame implements BoardStateHolder {
         ));
 
         return this.checkForWinAfterMove();
+      }).whenComplete(($, thr) -> {
+        if (thr != null) {
+          this.moves.remove(this.moves.size() - 1);
+        }
       });
     }).thenCompose($ -> {
       if (this.player(this.nextMove).isCpu()) {
@@ -281,6 +293,10 @@ public final class ChessGame implements BoardStateHolder {
       }
       return CompletableFuture.completedFuture(null);
     });
+  }
+
+  private String moveSequenceString() {
+    return this.moves.stream().map(Move::notation).collect(Collectors.joining(" "));
   }
 
   private CompletableFuture<Void> checkForWinAfterMove() {
@@ -315,7 +331,8 @@ public final class ChessGame implements BoardStateHolder {
 
   private CompletableFuture<Void> cpuMoveFuture() {
     this.players().sendMessage(this.plugin.config().messages().cpuThinking());
-    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen)
+    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, Fen.STARTING_FEN.fenString())
+        .setMove(this.moveSequenceString())
         //.setDepth(10)
         .setMovetime(1000L)
         .build())
