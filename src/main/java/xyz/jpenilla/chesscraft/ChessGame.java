@@ -18,10 +18,13 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
+import it.unimi.dsi.fastutil.ints.IntIntPair;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -311,6 +314,35 @@ public final class ChessGame implements BoardStateHolder {
       return CompletableFuture.completedFuture(null);
     }
 
+    // fifty move rule
+    if (this.moves.size() > 100) {
+      final List<Move> last50 = this.moves.subList(this.moves.size() - 50, this.moves.size());
+      boolean draw = true;
+      Reference2IntMap<PieceType> lastCounts = null;
+      Map<IntIntPair, Piece> lastPawns = null;
+      for (final Move move : last50) {
+        final Reference2IntMap<PieceType> newCounts = move.boardAfter().pieceTotals();
+        if (lastCounts != null && !newCounts.equals(lastCounts)) {
+          draw = false;
+          break;
+        }
+        lastCounts = newCounts;
+
+        final Map<IntIntPair, Piece> newPawns = move.boardAfter().pawnPositions();
+        if (lastPawns != null && !newPawns.equals(lastPawns)) {
+          draw = false;
+          break;
+        }
+        lastPawns = newPawns;
+      }
+
+      if (draw) {
+        this.announceDrawByFifty();
+        this.board.endGame();
+        return CompletableFuture.completedFuture(null);
+      }
+    }
+
     return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
       if (!legal.isEmpty()) {
         final @Nullable TimeControl time = this.nextMove == PieceColor.WHITE ? this.blackTime : this.whiteTime;
@@ -364,6 +396,10 @@ public final class ChessGame implements BoardStateHolder {
 
   private void announceDrawByRepetition() {
     this.players().sendMessage(this.plugin.config().messages().drawByRepetition(this.black, this.white));
+  }
+
+  private void announceDrawByFifty() {
+    this.players().sendMessage(this.plugin.config().messages().drawByFiftyMoveRule(this.black, this.white));
   }
 
   public void forfeit(final PieceColor color) {
