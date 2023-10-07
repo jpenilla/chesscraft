@@ -22,7 +22,6 @@ import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,10 +46,9 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.jpenilla.chesscraft.util.TimeUtil;
+import xyz.niflheim.stockfish.engine.QueryTypes;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Option;
-import xyz.niflheim.stockfish.engine.enums.Query;
-import xyz.niflheim.stockfish.engine.enums.QueryType;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
 public final class ChessGame implements BoardStateHolder {
@@ -246,9 +244,9 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private CompletableFuture<Void> selectPiece(final String sel) {
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenAccept(valid -> {
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenAccept(legal -> {
       this.selectedPiece = sel;
-      this.validDestinations = Arrays.stream(valid.split(" "))
+      this.validDestinations = legal.stream()
         .filter(move -> move.startsWith(sel))
         .map(move -> move.substring(2, 4))
         .collect(Collectors.toSet());
@@ -262,8 +260,7 @@ public final class ChessGame implements BoardStateHolder {
     if (color != this.nextMove) {
       throw new IllegalArgumentException("Wrong move");
     }
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString()).build()).thenCompose(response -> {
-      final Set<String> validMoves = new HashSet<>(Arrays.asList(response.split(" ")));
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenCompose(validMoves -> {
       // engine will not make invalid moves, player moves are checked earlier
       if (validMoves.stream().noneMatch(valid -> valid.equals(move) || valid.startsWith(move))) {
         throw new IllegalArgumentException("Invalid move");
@@ -273,7 +270,7 @@ public final class ChessGame implements BoardStateHolder {
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
       final Move movePair = new Move(finalMove, color, null);
-      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
+      return this.stockfish.submit(QueryTypes.MAKE_MOVES.builder(Fen.STARTING_FEN.fenString()).setMoves(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
         final Fen fen = Fen.read(newFen);
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
@@ -343,7 +340,7 @@ public final class ChessGame implements BoardStateHolder {
       }
     }
 
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenCompose(legal -> {
       if (!legal.isEmpty()) {
         final @Nullable TimeControl time = this.nextMove == PieceColor.WHITE ? this.blackTime : this.whiteTime;
         if (time != null) {
@@ -351,7 +348,7 @@ public final class ChessGame implements BoardStateHolder {
         }
         return CompletableFuture.completedFuture(null);
       }
-      return this.stockfish.submit(new Query.Builder(QueryType.Checkers, this.currentFen).build()).thenAccept(checkers -> {
+      return this.stockfish.submit(QueryTypes.CHECKERS.builder(this.currentFen).build()).thenAccept(checkers -> {
         if (checkers.isEmpty()) {
           this.announceStalemate();
         } else {
@@ -374,8 +371,8 @@ public final class ChessGame implements BoardStateHolder {
 
   private CompletableFuture<Void> cpuMoveFuture() {
     this.players().sendMessage(this.plugin.config().messages().cpuThinking());
-    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, Fen.STARTING_FEN.fenString())
-        .setMove(this.moveSequenceString())
+    return this.stockfish.submit(QueryTypes.BEST_MOVE.builder(Fen.STARTING_FEN.fenString())
+        .setMoves(this.moveSequenceString())
         //.setDepth(10)
         .setMovetime(1000L)
         .build())
