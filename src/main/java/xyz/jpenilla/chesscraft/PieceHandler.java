@@ -47,6 +47,7 @@ import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.util.Reflection;
 
 public interface PieceHandler {
   void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
@@ -70,14 +71,14 @@ public interface PieceHandler {
         if (piece == null) {
           return;
         }
-        world.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
+        Reflection.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
           itemDisplay.setTransformation(transformationFor(board, piece));
           itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
           itemDisplay.setItemStack(this.options.item(piece));
           itemDisplay.setInvulnerable(true);
           itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
         });
-        world.spawn(new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()), Interaction.class, interaction -> {
+        Reflection.spawn(new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()), Interaction.class, interaction -> {
           interaction.setInvulnerable(true);
           interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
           interaction.setResponsive(true);
@@ -123,7 +124,7 @@ public interface PieceHandler {
      */
     private static void rotateYFlip(final Quaternionf q) {
       final float x = q.x, y = q.y, z = q.z, w = q.w;
-      q.x = z;
+      q.x = -z;
       q.y = w;
       q.z = x;
       q.w = -y;
@@ -132,9 +133,9 @@ public interface PieceHandler {
     private static float rotation(final CardinalDirection facing, final Piece piece) {
       final double deg = facing.radians() * 180 / Math.PI;
       if (piece.color() == PieceColor.WHITE) {
-        return (float) deg;
+        return (float) deg + (v1_19_X ? 0f : 180f);
       }
-      return (float) deg + 180f;
+      return (float) deg + (v1_19_X ? 180f : 0f);
     }
 
     @Override
@@ -183,7 +184,7 @@ public interface PieceHandler {
         if (piece == null) {
           return;
         }
-        world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
+        Reflection.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
           itemFrame.setRotation(rotation(board.facing(), piece));
           itemFrame.setItem(this.options.item(piece));
           itemFrame.setFacingDirection(BlockFace.UP);
@@ -191,7 +192,7 @@ public interface PieceHandler {
           itemFrame.setVisible(false);
           itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
         });
-        world.spawn(new Location(world, pos.x() + 0.5, pos.y() + this.options.heightOffset(piece.type()), pos.z() + 0.5), ArmorStand.class, stand -> {
+        Reflection.spawn(new Location(world, pos.x() + 0.5, pos.y() + this.options.heightOffset(piece.type()), pos.z() + 0.5), ArmorStand.class, stand -> {
           stand.setInvulnerable(true);
           stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
           stand.setGravity(false);

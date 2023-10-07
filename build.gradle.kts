@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-  compileOnly("io.papermc.paper", "paper-api", "1.19.4-R0.1-SNAPSHOT") {
+  compileOnly("io.papermc.paper", "paper-api", "1.20.2-R0.1-SNAPSHOT") {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
