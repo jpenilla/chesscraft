@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -39,6 +40,7 @@ import org.bukkit.entity.ItemDisplay;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
 import org.bukkit.util.Transformation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joml.AxisAngle4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -64,27 +66,44 @@ public interface PieceHandler {
     @Override
     public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
-        final Vec3 pos = board.toWorld(boardPosition);
-        removePieceAt(world, board, pos);
         final Piece piece = game.piece(boardPosition);
-
+        final Vec3 pos = board.toWorld(boardPosition);
         if (piece == null) {
+          removePieceAt(world, board, pos);
           return;
         }
-        Reflection.spawn(pos.toLocation(world), ItemDisplay.class, itemDisplay -> {
+
+        final List<Entity> existing = pieceAt(world, board, pos);
+        final Consumer<ItemDisplay> displayConfigure = itemDisplay -> {
           itemDisplay.setTransformation(transformationFor(board, piece));
           itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
           itemDisplay.setItemStack(this.options.item(piece));
           itemDisplay.setInvulnerable(true);
           itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
-        });
-        Reflection.spawn(new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()), Interaction.class, interaction -> {
+        };
+        final @Nullable ItemDisplay existingItemDisplay = (ItemDisplay) existing.stream().filter(it -> it instanceof ItemDisplay).findFirst().orElse(null);
+        if (existingItemDisplay != null) {
+          displayConfigure.accept(existingItemDisplay);
+          existingItemDisplay.teleport(pos.toLocation(world));
+        } else {
+          Reflection.spawn(pos.toLocation(world), ItemDisplay.class, displayConfigure);
+        }
+
+        final Consumer<Interaction> interactionConfigure = interaction -> {
           interaction.setInvulnerable(true);
           interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
           interaction.setResponsive(true);
           interaction.setInteractionHeight((float) this.options.height(piece.type()) * board.scale());
           interaction.setInteractionWidth(0.5f * board.scale());
-        });
+        };
+        final @Nullable Interaction existingInteraction = (Interaction) existing.stream().filter(it -> it instanceof Interaction).findFirst().orElse(null);
+        final Location interactionLoc = new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale());
+        if (existingInteraction != null) {
+          interactionConfigure.accept(existingInteraction);
+          existingInteraction.teleport(interactionLoc);
+        } else {
+          Reflection.spawn(interactionLoc, Interaction.class, interactionConfigure);
+        }
       });
     }
 
@@ -144,27 +163,32 @@ public interface PieceHandler {
     }
 
     private static void removePieceAt(final World world, final ChessBoard board, final Vec3 pos) {
-      final List<Entity> entities = new ArrayList<>();
-      entities.addAll(world.getNearbyEntities(
-        pos.toLocation(world),
-        0.25,
-        0.5,
-        0.25,
-        e -> e instanceof Display
-      ));
-      entities.addAll(world.getNearbyEntities(
-        new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()),
-        0.25,
-        0.5,
-        0.25,
-        e -> e instanceof Interaction
-      ));
-      for (final Entity entity : entities) {
+      for (final Entity entity : pieceAt(world, board, pos)) {
         if (entity.getPersistentDataContainer().has(BoardManager.PIECE_KEY)) {
           entity.remove();
         }
       }
     }
+  }
+
+  private static List<Entity> pieceAt(final World world, final ChessBoard board, final Vec3 pos) {
+    final List<Entity> entities = new ArrayList<>();
+    entities.addAll(world.getNearbyEntities(
+      pos.toLocation(world),
+      0.25,
+      0.5,
+      0.25,
+      e -> e instanceof Display
+    ));
+    entities.addAll(world.getNearbyEntities(
+      new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()),
+      0.25,
+      0.5,
+      0.25,
+      e -> e instanceof Interaction
+    ));
+    entities.removeIf(entity -> !entity.getPersistentDataContainer().has(BoardManager.PIECE_KEY));
+    return entities;
   }
 
   final class ItemFrame implements PieceHandler {
