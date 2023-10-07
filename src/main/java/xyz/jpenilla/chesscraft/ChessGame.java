@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -70,8 +71,6 @@ public final class ChessGame implements BoardStateHolder {
   private String selectedPiece;
   private Set<String> validDestinations;
   private CompletableFuture<?> activeQuery;
-
-  record Move(String notation, PieceColor color) {}
 
   ChessGame(
     final ChessCraft plugin,
@@ -270,10 +269,12 @@ public final class ChessGame implements BoardStateHolder {
       // Append promotion if needed
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
-      final Move movePair = new Move(finalMove, color);
+      final Move movePair = new Move(finalMove, color, null);
       return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, Fen.STARTING_FEN.fenString()).setMove(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
-        this.loadFen(Fen.read(newFen));
-        this.moves.add(movePair);
+        final Fen fen = Fen.read(newFen);
+        this.loadFen(fen);
+        this.moves.add(movePair.boardAfter(fen));
+
         this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
         this.players().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
@@ -301,6 +302,15 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private CompletableFuture<Void> checkForWinAfterMove() {
+    // threefold repetition rule
+    final Move lastMove = this.moves.get(this.moves.size() - 1);
+    final long timesPositionSeen = this.moves.stream().filter(e -> Objects.deepEquals(e.boardAfter().pieces(), lastMove.boardAfter().pieces())).count();
+    if (timesPositionSeen == 3) {
+      this.announceDrawByRepetition();
+      this.board.endGame();
+      return CompletableFuture.completedFuture(null);
+    }
+
     return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
       if (!legal.isEmpty()) {
         final @Nullable TimeControl time = this.nextMove == PieceColor.WHITE ? this.blackTime : this.whiteTime;
@@ -350,6 +360,10 @@ public final class ChessGame implements BoardStateHolder {
 
   private void announceStalemate() {
     this.players().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
+  }
+
+  private void announceDrawByRepetition() {
+    this.players().sendMessage(this.plugin.config().messages().drawByRepetition(this.black, this.white));
   }
 
   public void forfeit(final PieceColor color) {
@@ -442,6 +456,16 @@ public final class ChessGame implements BoardStateHolder {
       return this.blackTime;
     }
     throw new IllegalArgumentException();
+  }
+
+  private record Move(String notation, PieceColor color, @Nullable Fen boardAfter) {
+    public Move boardAfter(final Fen fen) {
+      return new Move(this.notation, this.color, fen);
+    }
+
+    public Fen boardAfter() {
+      return Objects.requireNonNull(this.boardAfter);
+    }
   }
 
   public static final class TimeControl {
