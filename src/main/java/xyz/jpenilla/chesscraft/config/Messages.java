@@ -171,8 +171,8 @@ public final class Messages {
 
   private String madeMove = "<player_color>♚</player_color><player_displayname><gray>:</gray> <move>";
 
-  public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String move) {
-    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), Placeholder.unparsed("move", move));
+  public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String moveFrom, final String moveTo) {
+    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), Placeholder.unparsed("move", moveFrom + moveTo), Placeholder.unparsed("move_from", moveFrom), Placeholder.unparsed("move_to", moveTo));
   }
 
   private String notInThisGame = "<red>You are not a player in this match.";

@@ -270,7 +270,8 @@ public final class ChessGame implements BoardStateHolder {
           this.player(color),
           this.player(color.other()),
           color,
-          finalMove
+          finalMove.substring(0, 2),
+          finalMove.substring(2, 4)
         ));
 
         return this.checkForWinAfterMove();
