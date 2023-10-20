@@ -49,6 +49,18 @@ public final class Messages {
     return parse(this.stalemate, blackWhitePlayerTags(black, white));
   }
 
+  private String drawByRepetition = "<black>♚</black><black_displayname> <green>ended in a draw by repetition with <white>♚</white><white_displayname>!";
+
+  public Component drawByRepetition(final ChessPlayer black, final ChessPlayer white) {
+    return parse(this.drawByRepetition, blackWhitePlayerTags(black, white));
+  }
+
+  private String drawByFiftyMoveRule = "<black>♚</black><black_displayname> <green>ended in a draw by the fifty move rule with <white>♚</white><white_displayname>!";
+
+  public Component drawByFiftyMoveRule(final ChessPlayer black, final ChessPlayer white) {
+    return parse(this.drawByFiftyMoveRule, blackWhitePlayerTags(black, white));
+  }
+
   private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color><winner_displayname>!";
 
   public Component forfeit(final ChessPlayer black, final ChessPlayer white, final PieceColor forfeited) {
