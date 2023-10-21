@@ -25,8 +25,6 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 
 public interface ChessPlayer extends Audience {
-  ChessPlayer CPU = new Cpu();
-
   default Component displayName() {
     return this.name();
   }
@@ -34,7 +32,15 @@ public interface ChessPlayer extends Audience {
   Component name();
 
   default boolean isCpu() {
-    return this == CPU;
+    return this instanceof Cpu;
+  }
+
+  static ChessPlayer player(final org.bukkit.entity.Player player) {
+    return new Player(player.getUniqueId());
+  }
+
+  static ChessPlayer cpu(final int elo) {
+    return new Cpu(elo, UUID.randomUUID());
   }
 
   record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
@@ -58,15 +64,9 @@ public interface ChessPlayer extends Audience {
     }
   }
 
-  static ChessPlayer player(final org.bukkit.entity.Player player) {
-    return new Player(player.getUniqueId());
-  }
-
-  final class Cpu implements ChessPlayer, ForwardingAudience.Single {
+  // UUID so two CPUs with same elo aren't equal
+  record Cpu(int elo, UUID id) implements ChessPlayer, ForwardingAudience.Single {
     private static final Component NAME = Component.text("CPU");
-
-    private Cpu() {
-    }
 
     @Override
     public Audience audience() {

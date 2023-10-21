@@ -18,6 +18,8 @@
 package xyz.jpenilla.chesscraft;
 
 import java.nio.file.Path;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -27,6 +29,7 @@ import xyz.jpenilla.chesscraft.config.MainConfig;
 import xyz.jpenilla.chesscraft.util.StockfishProvider;
 
 public final class ChessCraft extends JavaPlugin {
+  private final Deque<Runnable> shutdownTasks = new ConcurrentLinkedDeque<>();
   private BoardManager boardManager;
   private @MonotonicNonNull MainConfig config;
 
@@ -46,6 +49,9 @@ public final class ChessCraft extends JavaPlugin {
   public void onDisable() {
     if (this.boardManager != null) {
       this.boardManager.close();
+    }
+    while (!this.shutdownTasks.isEmpty()) {
+      this.shutdownTasks.poll().run();
     }
   }
 
@@ -72,5 +78,9 @@ public final class ChessCraft extends JavaPlugin {
 
   private Path configFile() {
     return this.getDataFolder().toPath().resolve("config.yml");
+  }
+
+  public Deque<Runnable> shutdownTasks() {
+    return this.shutdownTasks;
   }
 }

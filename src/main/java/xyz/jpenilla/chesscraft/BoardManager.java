@@ -58,14 +58,19 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
+import xyz.jpenilla.chesscraft.display.BoardDisplay;
+import xyz.jpenilla.chesscraft.display.settings.BoardStatus;
+import xyz.jpenilla.chesscraft.display.settings.MessageLog;
 
 public final class BoardManager implements Listener {
   static final NamespacedKey PIECE_KEY = new NamespacedKey("chesscraft", "chess_piece");
   private final ChessCraft plugin;
   private final Path stockfishPath;
-  private final Path file;
+  private final Path boardsFile;
+  private final Path displaysFile;
   private final Map<String, ChessBoard> boards;
+  private final Map<String, BoardDisplay<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
 
   private BukkitTask particleTask;
@@ -73,11 +78,13 @@ public final class BoardManager implements Listener {
   public BoardManager(final ChessCraft plugin, final Path stockfishPath) {
     this.plugin = plugin;
     this.stockfishPath = stockfishPath;
-    this.file = plugin.getDataFolder().toPath().resolve("boards.yml");
+    this.boardsFile = plugin.getDataFolder().toPath().resolve("boards.yml");
     this.boards = new HashMap<>();
+    this.displaysFile = plugin.getDataFolder().toPath().resolve("displays.yml");
+    this.displays = new HashMap<>();
     this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
-      Files.createDirectories(this.file.getParent());
+      Files.createDirectories(this.boardsFile.getParent());
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
@@ -95,8 +102,8 @@ public final class BoardManager implements Listener {
     return this.boards().stream().filter(ChessBoard::hasGame).toList();
   }
 
-  public void createBoard(final String name, final World world, final Vec3 pos, final CardinalDirection facing, final int scale) {
-    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, scale, world.getKey(), this.stockfishPath);
+  public void createBoard(final String name, final World world, final Vec3i pos, final CardinalDirection facing, final int scale) {
+    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, scale, world.getKey(), List.of(), this.stockfishPath);
     this.boards.put(name, board);
     this.saveBoards();
   }
@@ -112,10 +119,11 @@ public final class BoardManager implements Listener {
       throw new IllegalArgumentException(board);
     }
     if (remove.hasGame()) {
-      remove.endGame(true);
+      remove.endGame(true, true);
     } else {
       remove.pieceHandler().removeFromWorld(remove, remove.world());
     }
+    this.saveBoards();
   }
 
   public ChessBoard board(final String name) {
@@ -123,7 +131,10 @@ public final class BoardManager implements Listener {
   }
 
   public void load() {
+    this.loadDisplays();
+    this.saveDisplays();
     this.loadBoards();
+    this.saveBoards();
     this.plugin.getServer().getPluginManager().registerEvents(this, this.plugin);
     this.particleTask = this.plugin.getServer().getScheduler().runTaskTimer(
       this.plugin,
@@ -133,8 +144,9 @@ public final class BoardManager implements Listener {
     );
   }
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private void loadBoards() {
-    final Map<String, BoardData> read = ConfigHelper.loadConfig(new TypeToken<Map<String, BoardData>>() {}, this.file, HashMap::new);
+    final Map<String, BoardData> read = ConfigHelper.loadConfig(new TypeToken<Map<String, BoardData>>() {}, this.boardsFile, HashMap::new);
     read.forEach((key, data) -> this.boards.put(key, new ChessBoard(
       this.plugin,
       key,
@@ -142,6 +154,7 @@ public final class BoardManager implements Listener {
       data.facing,
       data.scale,
       data.dimension,
+      (List) data.displays.stream().map(this.displays::get).filter(Objects::nonNull).toList(),
       this.stockfishPath
     )));
   }
@@ -152,18 +165,49 @@ public final class BoardManager implements Listener {
     HandlerList.unregisterAll(this);
     this.boards.forEach((name, board) -> {
       if (board.hasGame()) {
-        board.endGame();
+        final ChessGame game = board.game();
+        board.endGameAndWait();
+        game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
       }
     });
-    this.saveBoards();
     this.boards.clear();
+    this.displays.clear();
   }
 
   private void saveBoards() {
     final Map<String, BoardData> collect = this.boards.values().stream()
-      .map(b -> Map.entry(b.name(), new BoardData(b.worldKey(), b.loc(), b.facing(), b.scale())))
+      .map(b -> Map.entry(b.name(), new BoardData(
+        b.worldKey(),
+        b.loc(),
+        b.facing(),
+        b.scale(),
+        b.displays().stream()
+          .map(this::nameOf)
+          .filter(Objects::nonNull)
+          .toList()
+      )))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    ConfigHelper.saveConfig(this.file, new TypeToken<>() {}, collect);
+    ConfigHelper.saveConfig(this.boardsFile, new TypeToken<>() {}, collect);
+  }
+
+  private @Nullable String nameOf(final BoardDisplay<?> display) {
+    return this.displays.entrySet().stream().filter(it -> it.getValue() == display).findFirst().map(Map.Entry::getKey).orElse(null);
+  }
+
+  private void loadDisplays() {
+    final Map<String, BoardDisplay<?>> read = ConfigHelper.loadConfig(
+      new TypeToken<>() {},
+      this.displaysFile,
+      () -> Map.of(
+        "log", new MessageLog(),
+        "status", new BoardStatus()
+      )
+    );
+    this.displays.putAll(read);
+  }
+
+  private void saveDisplays() {
+    ConfigHelper.saveConfig(this.displaysFile, new TypeToken<>() {}, this.displays);
   }
 
   public boolean inGame(final Player player) {
@@ -209,8 +253,10 @@ public final class BoardManager implements Listener {
   @EventHandler
   public void quit(final PlayerQuitEvent event) {
     for (final ChessBoard board : this.activeBoards()) {
-      if (board.game().hasPlayer(event.getPlayer())) {
-        board.endGame();
+      final ChessGame game = board.game();
+      if (game.hasPlayer(event.getPlayer())) {
+        board.endGameAndWait();
+        game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
       }
     }
     for (final PVPChallenge challenge : List.copyOf(this.challenges.asMap().values())) {
@@ -253,19 +299,21 @@ public final class BoardManager implements Listener {
   @ConfigSerializable
   public static final class BoardData {
     private NamespacedKey dimension = NamespacedKey.minecraft("overworld");
-    private Vec3 position = new Vec3(0, 0, 0);
+    private Vec3i position = new Vec3i(0, 0, 0);
     private CardinalDirection facing = CardinalDirection.NORTH;
     private int scale = 1;
+    private List<String> displays = List.of("log", "status");
 
     @SuppressWarnings("unused")
     BoardData() {
     }
 
-    BoardData(final NamespacedKey dimension, final Vec3 position, final CardinalDirection facing, final int scale) {
+    BoardData(final NamespacedKey dimension, final Vec3i position, final CardinalDirection facing, final int scale, final List<String> displays) {
       this.dimension = dimension;
       this.position = position;
       this.facing = facing;
       this.scale = scale;
+      this.displays = displays;
     }
   }
 }

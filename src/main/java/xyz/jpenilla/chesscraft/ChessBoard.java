@@ -19,6 +19,7 @@ package xyz.jpenilla.chesscraft;
 
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import org.bukkit.Location;
@@ -31,12 +32,13 @@ import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
+import xyz.jpenilla.chesscraft.display.BoardDisplay;
 
 public final class ChessBoard {
   // southwest corner pos
-  private final Vec3 loc;
+  private final Vec3i loc;
   private final CardinalDirection facing;
   private final int scale;
   private final String name;
@@ -44,15 +46,17 @@ public final class ChessBoard {
   private final NamespacedKey worldKey;
   private final Path stockfishPath;
   private final PieceHandler pieceHandler;
+  private final List<BoardDisplay<?>> displays;
   private @Nullable ChessGame game;
 
   public ChessBoard(
     final ChessCraft plugin,
     final String name,
-    final Vec3 loc,
+    final Vec3i loc,
     final CardinalDirection facing,
     final int scale,
     final NamespacedKey world,
+    final List<BoardDisplay<?>> displays,
     final Path stockfishPath
   ) {
     this.plugin = plugin;
@@ -64,8 +68,13 @@ public final class ChessBoard {
     }
     this.scale = scale;
     this.worldKey = world;
+    this.displays = displays;
     this.stockfishPath = stockfishPath;
     this.pieceHandler = plugin.config().pieces().createHandler();
+  }
+
+  public List<BoardDisplay<?>> displays() {
+    return this.displays;
   }
 
   PieceHandler pieceHandler() {
@@ -80,7 +89,7 @@ public final class ChessBoard {
     return this.name;
   }
 
-  public Vec3 loc() {
+  public Vec3i loc() {
     return this.loc;
   }
 
@@ -92,12 +101,12 @@ public final class ChessBoard {
     return this.scale;
   }
 
-  public Vec3 toWorld(final BoardPosition boardPosition) {
+  public Vec3i toWorld(final BoardPosition boardPosition) {
     return this.toWorld0(rotate(boardPosition, this.facing.radians()));
   }
 
-  private Vec3 toWorld0(final BoardPosition boardPosition) {
-    return new Vec3(
+  private Vec3i toWorld0(final BoardPosition boardPosition) {
+    return new Vec3i(
       this.loc.x() + boardPosition.file() * this.scale,
       this.loc.y(),
       this.loc.z() + (boardPosition.rank() - 7) * this.scale
@@ -135,7 +144,7 @@ public final class ChessBoard {
     return IntIntPair.of(nX, nZ);
   }
 
-  public Vec3 toWorld(final String notation) {
+  public Vec3i toWorld(final String notation) {
     return this.toWorld(BoardPosition.fromString(notation));
   }
 
@@ -173,6 +182,20 @@ public final class ChessBoard {
     return Objects.requireNonNull(this.game, "No game active");
   }
 
+  public void startCpuGame(
+    final int moveDelay,
+    final int whiteElo,
+    final int blackElo,
+    final @Nullable TimeControlSettings timeControl
+  ) {
+    this.startGame(
+      ChessPlayer.cpu(whiteElo),
+      ChessPlayer.cpu(blackElo),
+      timeControl,
+      moveDelay
+    );
+  }
+
   public void startGame(
     final ChessPlayer white,
     final ChessPlayer black,
@@ -185,27 +208,31 @@ public final class ChessBoard {
     final ChessPlayer white,
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl,
-    final int cpuElo
+    final int moveDelay
   ) {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
-    this.game = new ChessGame(this.plugin, this, white, black, timeControl, cpuElo);
-    this.game.players().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
+    this.game = new ChessGame(this.plugin, this, white, black, timeControl, moveDelay);
+    this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
       this.game.cpuMove();
     }
   }
 
   public void endGame() {
-    this.endGame(false);
+    this.endGame(false, false);
   }
 
-  public void endGame(boolean removePieces) {
+  public void endGameAndWait() {
+    this.endGame(false, true);
+  }
+
+  public void endGame(final boolean removePieces, final boolean wait) {
     if (this.game == null) {
       throw new IllegalStateException("No game to end");
     }
-    this.game.close(removePieces);
+    this.game.close(removePieces, wait);
     this.game = null;
   }
 
@@ -216,7 +243,7 @@ public final class ChessBoard {
   ) {
     final World world = this.world();
     this.forEachPosition(pos -> {
-      final Vec3 loc = this.toWorld(pos);
+      final Vec3i loc = this.toWorld(pos);
       final Material material = (pos.rank() * 7 + pos.file()) % 2 == 0 ? white : black;
       for (int i = 0; i < this.scale; i++) {
         for (int h = 0; h < this.scale; h++) {
@@ -247,7 +274,7 @@ public final class ChessBoard {
     }
   }
 
-  World world() {
+  public World world() {
     return Objects.requireNonNull(this.plugin.getServer().getWorld(this.worldKey), "World '" + this.worldKey + "' is not loaded");
   }
 

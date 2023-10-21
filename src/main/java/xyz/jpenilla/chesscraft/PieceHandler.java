@@ -46,7 +46,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.util.Reflection;
@@ -67,7 +67,7 @@ public interface PieceHandler {
     public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
         final Piece piece = game.piece(boardPosition);
-        final Vec3 pos = board.toWorld(boardPosition);
+        final Vec3i pos = board.toWorld(boardPosition);
         if (piece == null) {
           removePieceAt(world, board, pos);
           return;
@@ -162,7 +162,7 @@ public interface PieceHandler {
       board.forEachPosition(pos -> removePieceAt(world, board, board.toWorld(pos)));
     }
 
-    private static void removePieceAt(final World world, final ChessBoard board, final Vec3 pos) {
+    private static void removePieceAt(final World world, final ChessBoard board, final Vec3i pos) {
       for (final Entity entity : pieceAt(world, board, pos)) {
         if (entity.getPersistentDataContainer().has(BoardManager.PIECE_KEY)) {
           entity.remove();
@@ -171,7 +171,7 @@ public interface PieceHandler {
     }
   }
 
-  private static List<Entity> pieceAt(final World world, final ChessBoard board, final Vec3 pos) {
+  private static List<Entity> pieceAt(final World world, final ChessBoard board, final Vec3i pos) {
     final List<Entity> entities = new ArrayList<>();
     entities.addAll(world.getNearbyEntities(
       pos.toLocation(world),
@@ -201,7 +201,7 @@ public interface PieceHandler {
     @Override
     public void applyToWorld(final ChessBoard board, final BoardStateHolder game, final World world) {
       board.forEachPosition(boardPosition -> {
-        final Vec3 pos = board.toWorld(boardPosition);
+        final Vec3i pos = board.toWorld(boardPosition);
         removePieceAt(world, pos);
         final Piece piece = game.piece(boardPosition);
 
@@ -248,7 +248,7 @@ public interface PieceHandler {
       board.forEachPosition(pos -> removePieceAt(world, board.toWorld(pos)));
     }
 
-    private static void removePieceAt(final World world, final Vec3 pos) {
+    private static void removePieceAt(final World world, final Vec3i pos) {
       final Collection<Entity> entities = world.getNearbyEntities(
         new Location(world, pos.x() + 0.5, pos.y(), pos.z() + 0.5),
         0.25,

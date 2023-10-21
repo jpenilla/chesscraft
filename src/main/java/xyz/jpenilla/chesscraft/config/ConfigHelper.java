@@ -26,16 +26,23 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Rotation;
+import xyz.jpenilla.chesscraft.data.Vec3d;
+import xyz.jpenilla.chesscraft.data.Vec3i;
+import xyz.jpenilla.chesscraft.display.BoardDisplay;
 
 public final class ConfigHelper {
   public static YamlConfigurationLoader createLoader(final Path file) {
     return YamlConfigurationLoader.builder()
       .nodeStyle(NodeStyle.BLOCK)
       .defaultOptions(options -> options.serializers(serializers -> {
-        serializers.register(Vec3.SERIALIZER);
+        serializers.register(Vec3i.SERIALIZER);
+        serializers.register(Vec3d.SERIALIZER);
+        serializers.register(Rotation.SERIALIZER);
         serializers.register(NamespacedKeySerializer.INSTANCE);
+        serializers.register(new RGBAHexBukkitColorSerializer());
         serializers.registerExact(PieceOptions.class, PieceOptions.SERIALIZER);
+        serializers.registerExact(new TypeToken<>() {}, new BoardDisplay.Serializer());
       }))
       .path(file)
       .build();
@@ -95,4 +102,5 @@ public final class ConfigHelper {
       throw new RuntimeException("Failed to save config of type '" + (configType != null ? configType.getType().getTypeName() : config.getClass().getName()) + "' to file at '" + path + "'.", ex);
     }
   }
+
 }
