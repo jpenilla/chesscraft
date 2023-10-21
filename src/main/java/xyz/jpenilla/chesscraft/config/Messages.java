@@ -35,7 +35,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceType;
 @ConfigSerializable
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class Messages {
-  private String checkmate = "<winner_color>♚</winner_color><winner_displayname> <green>beat <loser_color>♚</loser_color><loser_displayname> by checkmate!";
+  private String checkmate = "<winner_color>♚</winner_color><winner_displayname> <green>beat <loser_color>♚</loser_color></green><loser_displayname><green> by checkmate!";
 
   public Component checkmate(final ChessPlayer black, final ChessPlayer white, final PieceColor winner) {
     final ChessPlayer win = winner == PieceColor.BLACK ? black : white;
@@ -43,25 +43,25 @@ public final class Messages {
     return parse(this.checkmate, winLoseTags(win, loss, winner));
   }
 
-  private String stalemate = "<black>♚</black><black_displayname> <green>ended in a stalemate with <white>♚</white><white_displayname>!";
+  private String stalemate = "<black>♚</black><black_displayname> <green>ended in a stalemate with <white>♚</white></green><white_displayname><green>!";
 
   public Component stalemate(final ChessPlayer black, final ChessPlayer white) {
     return parse(this.stalemate, blackWhitePlayerTags(black, white));
   }
 
-  private String drawByRepetition = "<black>♚</black><black_displayname> <green>ended in a draw by repetition with <white>♚</white><white_displayname>!";
+  private String drawByRepetition = "<black>♚</black><black_displayname> <green>ended in a draw by repetition with <white>♚</white></green><white_displayname><green>!";
 
   public Component drawByRepetition(final ChessPlayer black, final ChessPlayer white) {
     return parse(this.drawByRepetition, blackWhitePlayerTags(black, white));
   }
 
-  private String drawByFiftyMoveRule = "<black>♚</black><black_displayname> <green>ended in a draw by the fifty move rule with <white>♚</white><white_displayname>!";
+  private String drawByFiftyMoveRule = "<black>♚</black><black_displayname> <green>ended in a draw by the fifty move rule with <white>♚</white></green><white_displayname><green>!";
 
   public Component drawByFiftyMoveRule(final ChessPlayer black, final ChessPlayer white) {
     return parse(this.drawByFiftyMoveRule, blackWhitePlayerTags(black, white));
   }
 
-  private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color><winner_displayname>!";
+  private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color></green><winner_displayname><green>!";
 
   public Component forfeit(final ChessPlayer black, final ChessPlayer white, final PieceColor forfeited) {
     final ChessPlayer win = forfeited == PieceColor.WHITE ? black : white;
@@ -103,7 +103,7 @@ public final class Messages {
     return parse(this.boardOccupied, name(name));
   }
 
-  private String challengeSent = "<green>Challenge has been sent! <opponent_displayname> has 30 seconds to accept.";
+  private String challengeSent = "<green>Challenge has been sent! </green><opponent_displayname><green> has 30 seconds to accept.";
 
   public Component challengeSent(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
     return parse(this.challengeSent, playerOpponentTags(player, opponent, playerColor));
@@ -147,7 +147,7 @@ public final class Messages {
     return parse(this.alreadyInGame);
   }
 
-  private String opponentAlreadyInGame = "<red><opponent_displayname> is already in an active match.";
+  private String opponentAlreadyInGame = "<opponent_displayname><red> is already in an active match.";
 
   public Component opponentAlreadyInGame(final Player opponent) {
     return parse(
@@ -175,10 +175,10 @@ public final class Messages {
     return parse(this.nextPromotionSet, Placeholder.unparsed("type", type.toString()));
   }
 
-  private String cpuThinking = "<italic><gray>CPU is thinking...";
+  private String cpuThinking = "<italic><cpu_color>♚</cpu_color><gray>CPU is thinking...";
 
-  public Component cpuThinking() {
-    return parse(this.cpuThinking);
+  public Component cpuThinking(final PieceColor color) {
+    return parse(this.cpuThinking, TagResolver.resolver("cpu_color", Tag.styling(color.textColor())));
   }
 
   private String madeMove = "<player_color>♚</player_color><player_displayname><gray>:</gray> <move>";
@@ -250,6 +250,12 @@ public final class Messages {
     return parse(this.resetBoard, name(board.name()));
   }
 
+  private String matchCancelled = "<red>Match cancelled.";
+
+  public Component matchCancelled() {
+    return parse(this.matchCancelled);
+  }
+
   private String on = "<green>On";
 
   public Component on() {
@@ -285,7 +291,7 @@ public final class Messages {
     return playerTags(win, "winner", lose, "loser", winColor);
   }
 
-  private static TagResolver playerTags(
+  public static TagResolver playerTags(
     final ChessPlayer p1,
     final String p1prefix,
     final ChessPlayer p2,
@@ -293,14 +299,21 @@ public final class Messages {
     final PieceColor p1Color
   ) {
     return TagResolver.resolver(
-      TagResolver.resolver(p1prefix + "_color", Tag.styling(p1Color.textColor())),
-      TagResolver.resolver(p2prefix + "_color", Tag.styling(p1Color.other().textColor())),
-      Placeholder.unparsed(p1prefix + "_color_name", p1Color.toString()),
-      Placeholder.unparsed(p2prefix + "_color_name", p1Color.other().toString()),
-      Placeholder.component(p1prefix + "_name", p1.name()),
-      Placeholder.component(p2prefix + "_name", p2.name()),
-      Placeholder.component(p1prefix + "_displayname", p1.displayName()),
-      Placeholder.component(p2prefix + "_displayname", p2.displayName())
+      playerTags(p1, p1prefix, p1Color),
+      playerTags(p2, p2prefix, p1Color.other())
+    );
+  }
+
+  public static TagResolver playerTags(
+    final ChessPlayer player,
+    final String prefix,
+    final PieceColor color
+  ) {
+    return TagResolver.resolver(
+      TagResolver.resolver(prefix + "_color", Tag.styling(color.textColor())),
+      Placeholder.unparsed(prefix + "_color_name", color.toString()),
+      Placeholder.component(prefix + "_name", player.name()),
+      Placeholder.component(prefix + "_displayname", player.displayName())
     );
   }
 

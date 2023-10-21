@@ -9,6 +9,7 @@ plugins {
   id("net.kyori.indra.licenser.spotless") version indraVer
   id("io.papermc.hangar-publish-plugin") version "0.1.0"
   id("com.modrinth.minotaur") version "2.7.5"
+  id("net.kyori.blossom") version "2.1.0"
 }
 
 decorateVersion()
@@ -88,6 +89,25 @@ tasks {
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
+    }
+  }
+}
+
+sourceSets {
+  main {
+    blossom {
+      javaSources {
+        variants("int", "double")
+        variants.all {
+          properties {
+            put("abv", this@all.name.take(1))
+            put("parse", if (this@all.name == "int") "Integer.parseInt" else {
+              val cap = this@all.name.capitalize()
+              "$cap.parse$cap"
+            })
+          }
+        }
+      }
     }
   }
 }

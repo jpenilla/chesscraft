@@ -60,7 +60,7 @@ import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
@@ -168,6 +168,15 @@ public final class Commands {
       .flag(this.mgr.flagBuilder("clear"))
       .permission("chesscraft.command.reset_board")
       .handler(this::resetBoard));
+
+    this.mgr.command(chess.literal("cpu_game")
+      .argument(ChessBoardArgument.create("board"))
+      .argument(IntegerArgument.optional("white_elo"))
+      .argument(IntegerArgument.optional("black_elo"))
+      .argument(IntegerArgument.optional("cpu_move_delay"))
+      .argument(TimeControlArgument.builder("time_control").asOptional())
+      .permission("chesscraft.command.cpu_game")
+      .handler(this::cpuGame));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
@@ -191,8 +200,8 @@ public final class Commands {
   }
 
   private void reload(final CommandContext<CommandSender> ctx) {
-    this.plugin.reloadMainConfig();
     ctx.getSender().sendRichMessage("<gray><italic>Reloading configs... This will end any active matches.");
+    this.plugin.reloadMainConfig();
     this.boardManager.reload();
     ctx.getSender().sendRichMessage("<green>Reloaded configs.");
   }
@@ -207,7 +216,7 @@ public final class Commands {
     this.boardManager.createBoard(
       name,
       sender.getWorld(),
-      Vec3.fromLocation(sender.getLocation()),
+      Vec3i.fromBlockLocation(sender.getLocation()),
       ctx.get("facing"),
       ctx.get("scale")
     );
@@ -238,11 +247,11 @@ public final class Commands {
     }
     final PieceColor userColor = ctx.get("color");
     final ChessPlayer user = ChessPlayer.player(sender);
+    final ChessPlayer cpu = ChessPlayer.cpu(ctx.getOrDefault("cpu_elo", 800));
     board.startGame(
-      userColor == PieceColor.WHITE ? user : ChessPlayer.CPU,
-      userColor == PieceColor.BLACK ? user : ChessPlayer.CPU,
-      ctx.<TimeControlSettings>getOptional("time_control").orElse(null),
-      ctx.getOrDefault("cpu_elo", 800)
+      userColor == PieceColor.WHITE ? user : cpu,
+      userColor == PieceColor.BLACK ? user : cpu,
+      ctx.<TimeControlSettings>getOptional("time_control").orElse(null)
     );
   }
 
@@ -369,6 +378,20 @@ public final class Commands {
     }
     board.reset(ctx.flags().hasFlag("clear"));
     ctx.getSender().sendMessage(this.messages().resetBoard(board));
+  }
+
+  private void cpuGame(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (board.hasGame()) {
+      ctx.getSender().sendMessage(this.messages().boardOccupied(board.name()));
+      return;
+    }
+    board.startCpuGame(
+      ctx.getOrDefault("cpu_move_delay", 4),
+      ctx.getOrDefault("white_elo", 1800),
+      ctx.getOrDefault("black_elo", 2400),
+      ctx.getOrDefault("time_control", null)
+    );
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {

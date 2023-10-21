@@ -18,9 +18,12 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
+import com.destroystokyo.paper.util.SneakyThrow;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,11 +46,14 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.display.AbstractTextDisplayHolder;
+import xyz.jpenilla.chesscraft.display.BoardDisplay;
 import xyz.jpenilla.chesscraft.util.TimeUtil;
+import xyz.jpenilla.chesscraft.util.Util;
 import xyz.niflheim.stockfish.engine.QueryTypes;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Option;
@@ -61,17 +69,21 @@ public final class ChessGame implements BoardStateHolder {
   private final ChessCraft plugin;
   private final ChessPlayer white;
   private final ChessPlayer black;
+  private final int moveDelay;
+  private final CountDownLatch delayLatch = new CountDownLatch(1);
   private PieceType whiteNextPromotion = PieceType.QUEEN;
   private PieceType blackNextPromotion = PieceType.QUEEN;
   private final @Nullable TimeControl whiteTime;
   private final @Nullable TimeControl blackTime;
   private final @Nullable BukkitTask timeControlTask;
   private final List<Move> moves;
+  private final List<Pair<BoardDisplay<?>, ?>> displays = new ArrayList<>();
   private String currentFen;
   private PieceColor nextMove;
   private String selectedPiece;
   private Set<String> validDestinations;
   private CompletableFuture<?> activeQuery;
+  private volatile boolean active = true;
 
   ChessGame(
     final ChessCraft plugin,
@@ -79,7 +91,7 @@ public final class ChessGame implements BoardStateHolder {
     final ChessPlayer white,
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl,
-    final int cpuElo
+    final int moveDelay
   ) {
     this.plugin = plugin;
     this.board = board;
@@ -87,9 +99,10 @@ public final class ChessGame implements BoardStateHolder {
     this.black = black;
     this.pieces = ChessBoard.initBoard();
     this.moves = new CopyOnWriteArrayList<>();
+    this.moveDelay = moveDelay;
     this.loadFen(Fen.STARTING_FEN);
     try {
-      this.stockfish = this.createStockfishClient(cpuElo);
+      this.stockfish = this.createStockfishClient();
     } catch (final Exception ex) {
       throw new RuntimeException("Failed to initialize and/or connect to chess engine process", ex);
     }
@@ -102,6 +115,9 @@ public final class ChessGame implements BoardStateHolder {
       this.blackTime = null;
       this.timeControlTask = null;
     }
+    for (final BoardDisplay<?> display : this.board.displays()) {
+      this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
+    }
     this.applyToWorld();
   }
 
@@ -111,6 +127,10 @@ public final class ChessGame implements BoardStateHolder {
 
   public ChessPlayer black() {
     return this.black;
+  }
+
+  public PieceColor nextMove() {
+    return this.nextMove;
   }
 
   public void handleInteract(final Player player, final BoardPosition rightClicked) {
@@ -154,7 +174,7 @@ public final class ChessGame implements BoardStateHolder {
       return;
     }
 
-    final Vec3 selectedPos = this.board.toWorld(this.selectedPiece);
+    final Vec3i selectedPos = this.board.toWorld(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
     if (!(c instanceof ChessPlayer.Player chessPlayer)) {
@@ -170,7 +190,7 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  private void blockParticles(final Player player, final Vec3 block, final Color particleColor) {
+  private void blockParticles(final Player player, final Vec3i block, final Color particleColor) {
     // 0.02 buffer around pieces
     final double min = 0.18D * this.board.scale();
     final double max = 0.82D * this.board.scale();
@@ -241,6 +261,12 @@ public final class ChessGame implements BoardStateHolder {
 
   public void applyToWorld() {
     this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
+      if (pair.second() instanceof AbstractTextDisplayHolder t) {
+        t.ensureSpawned();
+        t.updateNow();
+      }
+    }
   }
 
   private CompletableFuture<Void> selectPiece(final String sel) {
@@ -270,13 +296,17 @@ public final class ChessGame implements BoardStateHolder {
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
       final Move movePair = new Move(finalMove, color, null);
+      if (!this.active) {
+        // handle CPU running out of time control time
+        return CompletableFuture.completedFuture(null);
+      }
       return this.stockfish.submit(QueryTypes.MAKE_MOVES.builder(Fen.STARTING_FEN.fenString()).setMoves(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
         final Fen fen = Fen.read(newFen);
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
 
-        this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
-        this.players().sendMessage(this.plugin.config().messages().madeMove(
+        Util.schedule(this.plugin, this::applyToWorld);
+        this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),
           color,
@@ -286,7 +316,7 @@ public final class ChessGame implements BoardStateHolder {
         return this.checkForWinAfterMove();
       });
     }).thenCompose($ -> {
-      if (this.player(this.nextMove).isCpu()) {
+      if (this.player(this.nextMove).isCpu() && this.active) {
         return this.cpuMoveFuture();
       }
       return CompletableFuture.completedFuture(null);
@@ -370,38 +400,72 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private CompletableFuture<Void> cpuMoveFuture() {
-    this.players().sendMessage(this.plugin.config().messages().cpuThinking());
-    return this.stockfish.submit(QueryTypes.BEST_MOVE.builder(Fen.STARTING_FEN.fenString())
-        .setMoves(this.moveSequenceString())
-        //.setDepth(10)
-        .setMovetime(1000L)
-        .build())
-      .thenCompose(bestMove -> this.move(bestMove, this.nextMove));
+    this.audience().sendMessage(this.plugin.config().messages().cpuThinking(this.nextMove));
+    return this.moveDelayFuture().thenCompose($ -> {
+      if (!this.active) {
+        // handle CPU running out of time control time
+        return CompletableFuture.completedFuture(null);
+      }
+      return this.stockfish.submit(QueryTypes.BEST_MOVE.builder(Fen.STARTING_FEN.fenString())
+          .setMoves(this.moveSequenceString())
+          //.setDepth(10)
+          .setMovetime(500L)
+          .setUciElo(((ChessPlayer.Cpu) this.player(this.nextMove)).elo())
+          .build())
+        .thenCompose(bestMove -> {
+          if (!this.active) {
+            // handle CPU running out of time control time
+            return CompletableFuture.completedFuture(null);
+          }
+          return this.move(bestMove, this.nextMove);
+        });
+    });
   }
 
-  public Audience players() {
-    return Audience.audience(this.white, this.black);
+  private CompletableFuture<Void> moveDelayFuture() {
+    if (this.moveDelay == -1) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return CompletableFuture.runAsync(() -> {
+      try {
+        this.delayLatch.await(this.moveDelay, TimeUnit.SECONDS);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    });
+  }
+
+  public Audience audience() {
+    final List<Audience> audiences = new ArrayList<>();
+    audiences.add(this.white);
+    audiences.add(this.black);
+    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
+      if (pair.second() instanceof Audience audience) {
+        audiences.add(audience);
+      }
+    }
+    return Audience.audience(audiences);
   }
 
   private void announceWin(final PieceColor winner) {
-    this.players().sendMessage(this.plugin.config().messages().checkmate(this.black, this.white, winner));
+    this.audience().sendMessage(this.plugin.config().messages().checkmate(this.black, this.white, winner));
   }
 
   private void announceStalemate() {
-    this.players().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
+    this.audience().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
   }
 
   private void announceDrawByRepetition() {
-    this.players().sendMessage(this.plugin.config().messages().drawByRepetition(this.black, this.white));
+    this.audience().sendMessage(this.plugin.config().messages().drawByRepetition(this.black, this.white));
   }
 
   private void announceDrawByFifty() {
-    this.players().sendMessage(this.plugin.config().messages().drawByFiftyMoveRule(this.black, this.white));
+    this.audience().sendMessage(this.plugin.config().messages().drawByFiftyMoveRule(this.black, this.white));
   }
 
   public void forfeit(final PieceColor color) {
-    this.players().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
-    this.board.endGame();
+    this.board.endGameAndWait();
+    this.audience().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
   }
 
   private String nextPromotionAndReset(final PieceColor color) {
@@ -420,12 +484,28 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  public void close(final boolean removePieces) {
+  @SuppressWarnings("unchecked")
+  public void close(final boolean removePieces, final boolean wait) {
+    this.active = false;
+    this.delayLatch.countDown();
+    if (wait) {
+      final @Nullable CompletableFuture<?> query = this.activeQuery;
+      if (query != null) {
+        try {
+          query.get(5L, TimeUnit.SECONDS);
+        } catch (final Throwable e) {
+          SneakyThrow.sneaky(e);
+        }
+      }
+    }
     if (removePieces) {
       this.board.pieceHandler().removeFromWorld(this.board, this.board.world());
     }
     if (this.timeControlTask != null) {
       this.timeControlTask.cancel();
+    }
+    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
+      ((BoardDisplay<Object>) pair.first()).gameEnded(pair.second());
     }
     this.stockfish.close();
   }
@@ -457,23 +537,21 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  private StockfishClient createStockfishClient(final int cpuElo) throws StockfishInitException {
+  private StockfishClient createStockfishClient() throws StockfishInitException {
     final StockfishClient.Builder builder = new StockfishClient.Builder()
       .setPath(this.board.stockfishPath())
       .setOption(Option.Threads, 2);
-    if (cpuElo != -1) {
-      builder.setOption(Option.UCI_LIMITSTRENGTH, true)
-        .setOption(Option.UCI_ELO, cpuElo);
-    }
     return builder.build();
   }
 
   private void tickTime() {
+    Objects.requireNonNull(this.whiteTime, "whiteTime");
+    Objects.requireNonNull(this.blackTime, "blackTime");
     if (this.nextMove == PieceColor.WHITE && this.whiteTime.tick()) {
-      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
+      this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
       this.board.endGame();
     } else if (this.nextMove == PieceColor.BLACK && this.blackTime.tick()) {
-      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
+      this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
       this.board.endGame();
     }
     if (this.plugin.getServer().getCurrentTick() % 4 == 0) {
