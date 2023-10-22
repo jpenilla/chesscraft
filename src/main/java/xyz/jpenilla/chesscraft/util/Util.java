@@ -17,10 +17,7 @@
  */
 package xyz.jpenilla.chesscraft.util;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import net.kyori.adventure.text.Component;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
@@ -52,18 +49,17 @@ public final class Util {
   /**
    * Peek at the last {@code x} or fewer elements.
    *
-   * <p>Does not support concurrent collections.</p>
-   *
    * @param list list
    * @param x    amount
    * @return peek
    */
-  public static List<Component> peekLast(final List<Component> list, final int x) {
-    final List<Component> trimmed = new ArrayList<>(Math.max(list.size(), x));
-    for (int i = list.size() - 1; i >= 0 && trimmed.size() < x; i--) {
-      trimmed.add(list.get(i));
+  public static <E> List<E> peekLast(List<E> list, final int x) {
+    list = List.copyOf(list);
+    if (list.size() == x) {
+      return list;
+    } else if (list.size() > x) {
+      return list.subList(list.size() - x, list.size());
     }
-    Collections.reverse(trimmed);
-    return trimmed;
+    return list;
   }
 }
