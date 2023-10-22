@@ -43,4 +43,12 @@ public record BoardPosition(int rank, int file) {
     final char file = FILE_TO_INDEX.inverse().get(this.file);
     return String.valueOf(file) + (8 - this.rank);
   }
+
+  public Vec3d vec() {
+    return new Vec3d(this.file, 0, this.rank);
+  }
+
+  public static BoardPosition pos(final Vec3d vec) {
+    return new BoardPosition((int) vec.z(), (int) vec.x());
+  }
 }

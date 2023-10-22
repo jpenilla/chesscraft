@@ -22,8 +22,16 @@ import xyz.jpenilla.chesscraft.data.Rotation;
 import xyz.jpenilla.chesscraft.data.Vec3d;
 
 @ConfigSerializable
-public final class TransformationSettings {
-  public Vec3d translation = Vec3d.ZERO;
-  public Rotation leftRotation = Rotation.DEFAULT;
-  public Rotation rightRotation = Rotation.DEFAULT;
+public record TransformationSettings(
+  Vec3d translation,
+  Rotation leftRotation,
+  Rotation rightRotation
+) {
+  public TransformationSettings() {
+    this(Vec3d.ZERO, Rotation.DEFAULT, Rotation.DEFAULT);
+  }
+
+  public TransformationSettings withTranslation(final Vec3d translation) {
+    return new TransformationSettings(translation, this.leftRotation, this.rightRotation);
+  }
 }

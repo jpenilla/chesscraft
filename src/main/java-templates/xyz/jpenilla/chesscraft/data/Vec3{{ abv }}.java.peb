@@ -44,8 +44,20 @@ public record Vec3{{ abv }}({{ variant }} x, {{ variant }} y, {{ variant }} z) {
     return new Vec3{{ abv }}(this.x + x * scale, this.y + y * scale, this.z + z * scale);
   }
 
+  public Vec3{{ abv }} add(final {{ variant }} x, final {{ variant }} y, final {{ variant }} z) {
+    return new Vec3{{ abv }}(this.x + x, this.y + y, this.z + z);
+  }
+
+  public Vec3{{ abv }} add(final Vec3{{ abv }} vec, final {{ variant }} scale) {
+    return new Vec3{{ abv }}(this.x + vec.x * scale, this.y + vec.y * scale, this.z + vec.z * scale);
+  }
+
   public Vec3{{ abv }} add(final Vec3{{ abv }} vec) {
     return new Vec3{{ abv }}(this.x + vec.x, this.y + vec.y, this.z + vec.z);
+  }
+
+  public Vec3{{ abv }} mult(final {{ variant }} xFactor, final {{ variant }} yFactor, final {{ variant }} zFactor) {
+    return new Vec3{{ abv }}(this.x * xFactor, this.y * yFactor, this.z * zFactor);
   }
 
   public Vec3d asVec3d() {

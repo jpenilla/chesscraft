@@ -22,6 +22,7 @@ import java.lang.reflect.Type;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
+import org.joml.Quaternionf;
 import org.spongepowered.configurate.serialize.ScalarSerializer;
 import org.spongepowered.configurate.serialize.SerializationException;
 
@@ -29,6 +30,10 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public record Rotation(double x, double y, double z, double w) {
   public static final ScalarSerializer<Rotation> SERIALIZER = new Serializer();
   public static final Rotation DEFAULT = new Rotation(0, 0, 0, 1);
+
+  public Quaternionf asQuaternionf() {
+    return new Quaternionf(this.x, this.y, this.z, this.w);
+  }
 
   private static final class Serializer extends ScalarSerializer<Rotation> {
     private Serializer() {
