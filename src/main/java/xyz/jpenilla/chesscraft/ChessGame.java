@@ -343,11 +343,11 @@ public final class ChessGame implements BoardStateHolder {
 
     // fifty move rule
     if (this.moves.size() > 100) {
-      final List<Move> last50 = this.moves.subList(this.moves.size() - 50, this.moves.size());
+      final List<Move> last100 = Util.peekLast(this.moves, 100);
       boolean draw = true;
       Reference2IntMap<PieceType> lastCounts = null;
       Map<IntIntPair, Piece> lastPawns = null;
-      for (final Move move : last50) {
+      for (final Move move : last100) {
         final Reference2IntMap<PieceType> newCounts = move.boardAfter().pieceTotals();
         if (lastCounts != null && !newCounts.equals(lastCounts)) {
           draw = false;

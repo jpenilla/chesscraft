@@ -64,7 +64,7 @@ public final class MessageLogDisplayAudience extends AbstractTextDisplayHolder i
     putMarker(display);
     this.settings.apply(display);
 
-    display.text(Component.join(JoinConfiguration.newlines(), Util.peekLast(List.copyOf(this.messages), this.lines)));
+    display.text(Component.join(JoinConfiguration.newlines(), Util.peekLast(this.messages, this.lines)));
   }
 
   @Override
