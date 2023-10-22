@@ -97,6 +97,12 @@ public final class Messages {
     return parse(this.noSuchBoard, name(name));
   }
 
+  private String noMatchToCancel = "<red>No match to cancel at board '<name>'.";
+
+  public Component noMatchToCancel(final String name) {
+    return parse(this.noMatchToCancel, name(name));
+  }
+
   private String boardOccupied = "<red>The <name> board is currently occupied!";
 
   public Component boardOccupied(final String name) {

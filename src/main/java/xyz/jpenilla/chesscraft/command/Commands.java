@@ -119,7 +119,7 @@ public final class Commands {
 
     this.mgr.command(chess.literal("challenge")
       .literal("cpu")
-      .argument(ChessBoardArgument.create("board"))
+      .argument(ChessBoardArgument.builder("board").onlySuggestPlayable())
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000))
       .argument(TimeControlArgument.builder("time_control").asOptional())
@@ -129,7 +129,7 @@ public final class Commands {
 
     this.mgr.command(chess.literal("challenge")
       .literal("player")
-      .argument(ChessBoardArgument.create("board"))
+      .argument(ChessBoardArgument.builder("board").onlySuggestPlayable())
       .argument(SinglePlayerSelectorArgument.of("player"))
       .argument(EnumArgument.of(PieceColor.class, "color"))
       .argument(TimeControlArgument.builder("time_control").asOptional())
@@ -169,14 +169,20 @@ public final class Commands {
       .permission("chesscraft.command.reset_board")
       .handler(this::resetBoard));
 
-    this.mgr.command(chess.literal("cpu_game")
+    this.mgr.command(chess.literal("cpu_match")
       .argument(ChessBoardArgument.create("board"))
-      .argument(IntegerArgument.optional("white_elo"))
-      .argument(IntegerArgument.optional("black_elo"))
-      .argument(IntegerArgument.optional("cpu_move_delay"))
-      .argument(TimeControlArgument.builder("time_control").asOptional())
-      .permission("chesscraft.command.cpu_game")
-      .handler(this::cpuGame));
+      .flag(this.mgr.flagBuilder("white_elo").withAliases("w").withArgument(IntegerArgument.<CommandSender>builder("elo").withMin(100).withMax(4000)))
+      .flag(this.mgr.flagBuilder("black_elo").withAliases("b").withArgument(IntegerArgument.<CommandSender>builder("elo").withMin(100).withMax(4000)))
+      .flag(this.mgr.flagBuilder("move_delay").withAliases("d").withArgument(IntegerArgument.builder("seconds").withMin(0)))
+      .flag(this.mgr.flagBuilder("time_control").withAliases("t").withArgument(TimeControlArgument.create("time_control")))
+      .flag(this.mgr.flagBuilder("replace").withAliases("r"))
+      .permission("chesscraft.command.cpu_match")
+      .handler(this::cpuMatch));
+
+    this.mgr.command(chess.literal("cancel_match")
+      .argument(ChessBoardArgument.builder("board").onlySuggestOccupied())
+      .permission("chesscraft.command.cancel_game")
+      .handler(this::cancelMatch));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
@@ -241,7 +247,10 @@ public final class Commands {
       sender.sendMessage(this.messages().alreadyInGame());
       return;
     }
-    if (board.hasGame()) {
+    if (canCancelCpuMatch(board)) {
+      this.cancelCpuMatch(board);
+    }
+    if (board.hasGame() || board.autoCpuGame().cpuGamesOnly()) {
       sender.sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
@@ -268,7 +277,9 @@ public final class Commands {
     } else if (this.boardManager.inGame(opponent)) {
       sender.sendMessage(this.messages().opponentAlreadyInGame(opponent));
       return;
-    } else if (board.hasGame() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
+    } else if (canCancelCpuMatch(board)) {
+      this.cancelCpuMatch(board);
+    } else if (board.hasGame() || board.autoCpuGame().cpuGamesOnly() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
       sender.sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
@@ -282,6 +293,17 @@ public final class Commands {
     );
     sender.sendMessage(this.messages().challengeSent(user, opp, userColor));
     opponent.sendMessage(this.messages().challengeReceived(user, opp, userColor, timeControl));
+  }
+
+  private void cancelCpuMatch(final ChessBoard board) {
+    this.boardManager.delayAutoCpu(board);
+    final ChessGame game = board.game();
+    board.endGameAndWait();
+    game.audience().sendMessage(this.messages().matchCancelled());
+  }
+
+  private static boolean canCancelCpuMatch(final ChessBoard board) {
+    return board.hasGame() && board.game().cpuVsCpu() && board.autoCpuGame().enabled && board.autoCpuGame().allowPlayerUse;
   }
 
   private void accept(final CommandContext<CommandSender> ctx) {
@@ -380,18 +402,35 @@ public final class Commands {
     ctx.getSender().sendMessage(this.messages().resetBoard(board));
   }
 
-  private void cpuGame(final CommandContext<CommandSender> ctx) {
+  private void cpuMatch(final CommandContext<CommandSender> ctx) {
     final ChessBoard board = ctx.get("board");
+    if (ctx.flags().hasFlag("replace") && board.hasGame() && board.game().cpuVsCpu()) {
+      this.cancelCpuMatch(board);
+    }
     if (board.hasGame()) {
       ctx.getSender().sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
     board.startCpuGame(
-      ctx.getOrDefault("cpu_move_delay", 4),
-      ctx.getOrDefault("white_elo", 1800),
-      ctx.getOrDefault("black_elo", 2400),
-      ctx.getOrDefault("time_control", null)
+      ctx.flags().<Integer>getValue("move_delay").orElse(4),
+      ctx.flags().<Integer>getValue("white_elo").orElse(1800),
+      ctx.flags().<Integer>getValue("black_elo").orElse(2400),
+      ctx.flags().getValue("time_control", null)
     );
+    final ChessGame game = board.game();
+    ctx.getSender().sendMessage(this.messages().matchStarted(board, game.white(), game.black()));
+  }
+
+  private void cancelMatch(final CommandContext<CommandSender> ctx) {
+    final ChessBoard board = ctx.get("board");
+    if (!board.hasGame()) {
+      ctx.getSender().sendMessage(this.messages().noMatchToCancel(board.name()));
+      return;
+    }
+    final ChessGame game = board.game();
+    board.endGameAndWait();
+    game.audience().sendMessage(this.messages().matchCancelled());
+    ctx.getSender().sendMessage(this.messages().matchCancelled());
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {
