@@ -32,9 +32,10 @@ import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
+import xyz.jpenilla.chesscraft.data.Vec3d;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
-import xyz.jpenilla.chesscraft.display.BoardDisplay;
+import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
 
 public final class ChessBoard {
   // southwest corner pos
@@ -46,7 +47,7 @@ public final class ChessBoard {
   private final NamespacedKey worldKey;
   private final Path stockfishPath;
   private final PieceHandler pieceHandler;
-  private final List<BoardDisplay<?>> displays;
+  private final List<? extends BoardDisplaySettings<?>> displays;
   private @Nullable ChessGame game;
 
   public ChessBoard(
@@ -56,7 +57,7 @@ public final class ChessBoard {
     final CardinalDirection facing,
     final int scale,
     final NamespacedKey world,
-    final List<BoardDisplay<?>> displays,
+    final List<? extends BoardDisplaySettings<?>> displays,
     final Path stockfishPath
   ) {
     this.plugin = plugin;
@@ -73,7 +74,7 @@ public final class ChessBoard {
     this.pieceHandler = plugin.config().pieces().createHandler();
   }
 
-  public List<BoardDisplay<?>> displays() {
+  public List<? extends BoardDisplaySettings<?>> displays() {
     return this.displays;
   }
 
@@ -105,11 +106,23 @@ public final class ChessBoard {
     return this.toWorld0(rotate(boardPosition, this.facing.radians()));
   }
 
+  public Vec3d toWorld(final Vec3d boardPosition) {
+    return this.toWorld0(rotate(boardPosition, this.facing.radians()));
+  }
+
   private Vec3i toWorld0(final BoardPosition boardPosition) {
     return new Vec3i(
       this.loc.x() + boardPosition.file() * this.scale,
       this.loc.y(),
       this.loc.z() + (boardPosition.rank() - 7) * this.scale
+    );
+  }
+
+  private Vec3d toWorld0(final Vec3d boardPosition) {
+    return new Vec3d(
+      this.loc.x() + boardPosition.x() * this.scale,
+      this.loc.y(),
+      this.loc.z() + (boardPosition.z() - 7) * this.scale
     );
   }
 
@@ -136,12 +149,30 @@ public final class ChessBoard {
     return new BoardPosition(rotated.secondInt(), rotated.firstInt());
   }
 
+  private static Vec3d rotate(final Vec3d pos, final double angleRadians) {
+    return rotatePoint(
+      pos.x(),
+      pos.z(),
+      3.5,
+      3.5,
+      angleRadians
+    );
+  }
+
   private static IntIntPair rotatePoint(final int x, final int z, final double centerX, final double centerZ, final double angleRadians) {
     final double cos = Math.cos(angleRadians);
     final double sin = Math.sin(angleRadians);
     final int nX = (int) Math.round((x - centerX) * cos - (z - centerZ) * sin + centerX);
     final int nZ = (int) Math.round((x - centerX) * sin + (z - centerZ) * cos + centerZ);
     return IntIntPair.of(nX, nZ);
+  }
+
+  private static Vec3d rotatePoint(final double x, final double z, final double centerX, final double centerZ, final double angleRadians) {
+    final double cos = Math.cos(angleRadians);
+    final double sin = Math.sin(angleRadians);
+    final double nX = (x - centerX) * cos - (z - centerZ) * sin + centerX;
+    final double nZ = (x - centerX) * sin + (z - centerZ) * cos + centerZ;
+    return new Vec3d(nX, 0, nZ);
   }
 
   public Vec3i toWorld(final String notation) {

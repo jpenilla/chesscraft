@@ -1,4 +1,5 @@
 import io.papermc.hangarpublishplugin.model.Platforms
+import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
   id("com.github.johnrengelman.shadow") version "8.1.1"
@@ -50,6 +51,12 @@ indraSpotlessLicenser {
   licenseHeaderFile(rootProject.file("LICENSE_HEADER"))
 }
 
+val runVersions = listOf(
+  "19.4",
+  "20.1",
+  "20.2"
+)
+
 tasks {
   withType<Jar> {
     from(layout.projectDirectory.file("LICENSE")) {
@@ -65,7 +72,15 @@ tasks {
     dependsOn(shadowJar)
   }
   runServer {
-    minecraftVersion("1.20.2")
+    minecraftVersion("1.${runVersions.last()}")
+  }
+  runVersions.take(runVersions.size - 1).forEach { ver ->
+    val n = ver.replace(".", "_")
+    register("run$n", RunServer::class) {
+      minecraftVersion("1.$ver")
+      runDirectory.set(layout.projectDirectory.dir("run$n"))
+      pluginJars.from(shadowJar.flatMap { it.archiveFile })
+    }
   }
   processResources {
     val props = mapOf(

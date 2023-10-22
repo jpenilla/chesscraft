@@ -29,7 +29,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.jpenilla.chesscraft.data.Rotation;
 import xyz.jpenilla.chesscraft.data.Vec3d;
 import xyz.jpenilla.chesscraft.data.Vec3i;
-import xyz.jpenilla.chesscraft.display.BoardDisplay;
+import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
 
 public final class ConfigHelper {
   public static YamlConfigurationLoader createLoader(final Path file) {
@@ -42,7 +42,7 @@ public final class ConfigHelper {
         serializers.register(NamespacedKeySerializer.INSTANCE);
         serializers.register(new RGBAHexBukkitColorSerializer());
         serializers.registerExact(PieceOptions.class, PieceOptions.SERIALIZER);
-        serializers.registerExact(new TypeToken<>() {}, new BoardDisplay.Serializer());
+        serializers.registerExact(new TypeToken<>() {}, new BoardDisplaySettings.Serializer());
       }))
       .path(file)
       .build();

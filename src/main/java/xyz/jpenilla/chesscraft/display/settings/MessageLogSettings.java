@@ -25,8 +25,8 @@ import xyz.jpenilla.chesscraft.data.Vec3d;
 import xyz.jpenilla.chesscraft.display.MessageLogDisplayAudience;
 
 @ConfigSerializable
-public final class MessageLog extends AbstractDisplaySettings<MessageLogDisplayAudience> {
-  public MessageLog() {
+public final class MessageLogSettings extends AbstractDisplaySettings.WithTransformation<MessageLogDisplayAudience> {
+  public MessageLogSettings() {
     this.alignment = TextDisplay.TextAlignment.LEFT;
     this.offset = new Vec3d(4, 3, -4);
   }
@@ -42,7 +42,7 @@ public final class MessageLog extends AbstractDisplaySettings<MessageLogDisplayA
   public MessageLogDisplayAudience getOrCreateState(final ChessCraft plugin, final ChessBoard board) {
     return new MessageLogDisplayAudience(
       plugin,
-      board.loc().asVec3d().add(this.offset(board)).toLocation(board.world()),
+      this.offsetNudged(board).toLocation(board.world()),
       this.lines,
       this
     );

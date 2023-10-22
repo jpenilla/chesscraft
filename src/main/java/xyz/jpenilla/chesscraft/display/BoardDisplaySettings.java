@@ -25,10 +25,11 @@ import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
-import xyz.jpenilla.chesscraft.display.settings.BoardStatus;
-import xyz.jpenilla.chesscraft.display.settings.MessageLog;
+import xyz.jpenilla.chesscraft.display.settings.BoardStatusSettings;
+import xyz.jpenilla.chesscraft.display.settings.MessageLogSettings;
+import xyz.jpenilla.chesscraft.display.settings.PositionLabelSettings;
 
-public interface BoardDisplay<S> {
+public interface BoardDisplaySettings<S> {
   DisplayType type();
 
   boolean removeAfterGame();
@@ -38,24 +39,25 @@ public interface BoardDisplay<S> {
   void gameEnded(S state);
 
   enum DisplayType {
-    MESSAGE_LOG(MessageLog.class),
-    BOARD_STATUS(BoardStatus.class);
+    MESSAGE_LOG(MessageLogSettings.class),
+    BOARD_STATUS(BoardStatusSettings.class),
+    POSITION_LABELS(PositionLabelSettings.class);
 
-    private final Class<? extends BoardDisplay<?>> type;
+    private final Class<? extends BoardDisplaySettings<?>> type;
 
-    DisplayType(final Class<? extends BoardDisplay<?>> type) {
+    DisplayType(final Class<? extends BoardDisplaySettings<?>> type) {
       this.type = type;
     }
   }
 
-  final class Serializer implements TypeSerializer<BoardDisplay<?>> {
+  final class Serializer implements TypeSerializer<BoardDisplaySettings<?>> {
     private static final String TYPE_FIELD_NAME = "type";
 
     public Serializer() {
     }
 
     @Override
-    public BoardDisplay<?> deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
+    public BoardDisplaySettings<?> deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
       final DisplayType mode = node.node(TYPE_FIELD_NAME).get(DisplayType.class);
       if (mode == null) {
         throw new SerializationException("Missing mode, should be one of: " + Arrays.toString(DisplayType.values()));
@@ -64,7 +66,7 @@ public interface BoardDisplay<S> {
     }
 
     @Override
-    public void serialize(final Type type, final @Nullable BoardDisplay<?> obj, final ConfigurationNode node) throws SerializationException {
+    public void serialize(final Type type, final @Nullable BoardDisplaySettings<?> obj, final ConfigurationNode node) throws SerializationException {
       if (obj == null) {
         throw new SerializationException("null");
       }

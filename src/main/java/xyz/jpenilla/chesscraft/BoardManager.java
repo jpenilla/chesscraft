@@ -59,9 +59,10 @@ import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3i;
-import xyz.jpenilla.chesscraft.display.BoardDisplay;
-import xyz.jpenilla.chesscraft.display.settings.BoardStatus;
-import xyz.jpenilla.chesscraft.display.settings.MessageLog;
+import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
+import xyz.jpenilla.chesscraft.display.settings.BoardStatusSettings;
+import xyz.jpenilla.chesscraft.display.settings.MessageLogSettings;
+import xyz.jpenilla.chesscraft.display.settings.PositionLabelSettings;
 
 public final class BoardManager implements Listener {
   static final NamespacedKey PIECE_KEY = new NamespacedKey("chesscraft", "chess_piece");
@@ -70,7 +71,7 @@ public final class BoardManager implements Listener {
   private final Path boardsFile;
   private final Path displaysFile;
   private final Map<String, ChessBoard> boards;
-  private final Map<String, BoardDisplay<?>> displays;
+  private final Map<String, BoardDisplaySettings<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
 
   private BukkitTask particleTask;
@@ -102,8 +103,23 @@ public final class BoardManager implements Listener {
     return this.boards().stream().filter(ChessBoard::hasGame).toList();
   }
 
-  public void createBoard(final String name, final World world, final Vec3i pos, final CardinalDirection facing, final int scale) {
-    final ChessBoard board = new ChessBoard(this.plugin, name, pos, facing, scale, world.getKey(), List.of(), this.stockfishPath);
+  public void createBoard(
+    final String name,
+    final World world,
+    final Vec3i pos,
+    final CardinalDirection facing,
+    final int scale
+  ) {
+    final ChessBoard board = new ChessBoard(
+      this.plugin,
+      name,
+      pos,
+      facing,
+      scale,
+      world.getKey(),
+      this.displays(this.plugin.config().defaultDisplays()),
+      this.stockfishPath
+    );
     this.boards.put(name, board);
     this.saveBoards();
   }
@@ -144,7 +160,6 @@ public final class BoardManager implements Listener {
     );
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   private void loadBoards() {
     final Map<String, BoardData> read = ConfigHelper.loadConfig(new TypeToken<Map<String, BoardData>>() {}, this.boardsFile, HashMap::new);
     read.forEach((key, data) -> this.boards.put(key, new ChessBoard(
@@ -154,9 +169,13 @@ public final class BoardManager implements Listener {
       data.facing,
       data.scale,
       data.dimension,
-      (List) data.displays.stream().map(this.displays::get).filter(Objects::nonNull).toList(),
+      this.displays(data.displays),
       this.stockfishPath
     )));
+  }
+
+  private List<? extends BoardDisplaySettings<?>> displays(final Collection<String> names) {
+    return names.stream().map(this.displays::get).filter(Objects::nonNull).toList();
   }
 
   public void close() {
@@ -190,17 +209,18 @@ public final class BoardManager implements Listener {
     ConfigHelper.saveConfig(this.boardsFile, new TypeToken<>() {}, collect);
   }
 
-  private @Nullable String nameOf(final BoardDisplay<?> display) {
+  private @Nullable String nameOf(final BoardDisplaySettings<?> display) {
     return this.displays.entrySet().stream().filter(it -> it.getValue() == display).findFirst().map(Map.Entry::getKey).orElse(null);
   }
 
   private void loadDisplays() {
-    final Map<String, BoardDisplay<?>> read = ConfigHelper.loadConfig(
+    final Map<String, BoardDisplaySettings<?>> read = ConfigHelper.loadConfig(
       new TypeToken<>() {},
       this.displaysFile,
       () -> Map.of(
-        "log", new MessageLog(),
-        "status", new BoardStatus()
+        "log", new MessageLogSettings(),
+        "status", new BoardStatusSettings(),
+        "position-labels", new PositionLabelSettings()
       )
     );
     this.displays.putAll(read);
@@ -302,7 +322,7 @@ public final class BoardManager implements Listener {
     private Vec3i position = new Vec3i(0, 0, 0);
     private CardinalDirection facing = CardinalDirection.NORTH;
     private int scale = 1;
-    private List<String> displays = List.of("log", "status");
+    private List<String> displays = List.of();
 
     @SuppressWarnings("unused")
     BoardData() {

@@ -51,7 +51,7 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.jpenilla.chesscraft.display.AbstractTextDisplayHolder;
-import xyz.jpenilla.chesscraft.display.BoardDisplay;
+import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
 import xyz.jpenilla.chesscraft.util.TimeUtil;
 import xyz.jpenilla.chesscraft.util.Util;
 import xyz.niflheim.stockfish.engine.QueryTypes;
@@ -77,7 +77,7 @@ public final class ChessGame implements BoardStateHolder {
   private final @Nullable TimeControl blackTime;
   private final @Nullable BukkitTask timeControlTask;
   private final List<Move> moves;
-  private final List<Pair<BoardDisplay<?>, ?>> displays = new ArrayList<>();
+  private final List<Pair<BoardDisplaySettings<?>, ?>> displays = new ArrayList<>();
   private String currentFen;
   private PieceColor nextMove;
   private String selectedPiece;
@@ -115,7 +115,7 @@ public final class ChessGame implements BoardStateHolder {
       this.blackTime = null;
       this.timeControlTask = null;
     }
-    for (final BoardDisplay<?> display : this.board.displays()) {
+    for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
     this.applyToWorld();
@@ -261,7 +261,7 @@ public final class ChessGame implements BoardStateHolder {
 
   public void applyToWorld() {
     this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
-    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
       if (pair.second() instanceof AbstractTextDisplayHolder t) {
         t.ensureSpawned();
         t.updateNow();
@@ -439,7 +439,7 @@ public final class ChessGame implements BoardStateHolder {
     final List<Audience> audiences = new ArrayList<>();
     audiences.add(this.white);
     audiences.add(this.black);
-    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
       if (pair.second() instanceof Audience audience) {
         audiences.add(audience);
       }
@@ -504,8 +504,8 @@ public final class ChessGame implements BoardStateHolder {
     if (this.timeControlTask != null) {
       this.timeControlTask.cancel();
     }
-    for (final Pair<BoardDisplay<?>, ?> pair : this.displays) {
-      ((BoardDisplay<Object>) pair.first()).gameEnded(pair.second());
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
+      ((BoardDisplaySettings<Object>) pair.first()).gameEnded(pair.second());
     }
     this.stockfish.close();
   }

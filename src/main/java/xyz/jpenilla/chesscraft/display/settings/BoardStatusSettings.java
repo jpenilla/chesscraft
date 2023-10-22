@@ -34,7 +34,7 @@ import xyz.jpenilla.chesscraft.util.OptionTagResolver;
 import xyz.jpenilla.chesscraft.util.Util;
 
 @ConfigSerializable
-public final class BoardStatus extends AbstractDisplaySettings<BoardBoundUpdatingText> {
+public final class BoardStatusSettings extends AbstractDisplaySettings.WithTransformation<BoardBoundUpdatingText> {
   private List<String> gameText = List.of(
     "<b>Chess Board <board_name>",
     "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname>",
@@ -47,7 +47,7 @@ public final class BoardStatus extends AbstractDisplaySettings<BoardBoundUpdatin
   );
   private long updateRate = 10;
 
-  public BoardStatus() {
+  public BoardStatusSettings() {
     this.offset = new Vec3d(4, 4.5, -4);
   }
 
@@ -61,7 +61,7 @@ public final class BoardStatus extends AbstractDisplaySettings<BoardBoundUpdatin
     return new BoardBoundUpdatingText(
       plugin,
       board,
-      board.loc().asVec3d().add(this.offset(board)).toLocation(board.world()),
+      this.offsetNudged(board).toLocation(board.world()),
       () -> this.text(board, board.hasGame()),
       this.updateRate,
       this
