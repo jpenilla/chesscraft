@@ -41,6 +41,7 @@ public final class ChessBoard {
   // southwest corner pos
   private final Vec3i loc;
   private final CardinalDirection facing;
+  private final BoardManager.BoardData.AutoCpuGameSettings autoCpuGame;
   private final int scale;
   private final String name;
   private final ChessCraft plugin;
@@ -58,7 +59,8 @@ public final class ChessBoard {
     final int scale,
     final NamespacedKey world,
     final List<? extends BoardDisplaySettings<?>> displays,
-    final Path stockfishPath
+    final Path stockfishPath,
+    final BoardManager.BoardData.AutoCpuGameSettings autoCpuGame
   ) {
     this.plugin = plugin;
     this.name = name;
@@ -71,6 +73,7 @@ public final class ChessBoard {
     this.worldKey = world;
     this.displays = displays;
     this.stockfishPath = stockfishPath;
+    this.autoCpuGame = autoCpuGame;
     this.pieceHandler = plugin.config().pieces().createHandler();
   }
 
@@ -100,6 +103,10 @@ public final class ChessBoard {
 
   public int scale() {
     return this.scale;
+  }
+
+  public BoardManager.BoardData.AutoCpuGameSettings autoCpuGame() {
+    return this.autoCpuGame;
   }
 
   public Vec3i toWorld(final BoardPosition boardPosition) {
@@ -241,6 +248,10 @@ public final class ChessBoard {
     final @Nullable TimeControlSettings timeControl,
     final int moveDelay
   ) {
+    if (this.autoCpuGame.enabled && !this.autoCpuGame.allowPlayerUse && (!white.isCpu() || !black.isCpu())) {
+      throw new IllegalStateException("This board is only for CPU games!");
+    }
+
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }

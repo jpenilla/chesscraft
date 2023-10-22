@@ -41,9 +41,10 @@ public final class ChessBoardArgument extends CommandArgument<CommandSender, Che
     final String name,
     final String defaultValue,
     final @Nullable BiFunction<CommandContext<CommandSender>, String, List<String>> suggestionsProvider,
-    final ArgumentDescription defaultDescription
+    final ArgumentDescription defaultDescription,
+    final SuggestionsMode suggestions
   ) {
-    super(required, name, new Parser(), defaultValue, ChessBoard.class, suggestionsProvider, defaultDescription);
+    super(required, name, new Parser(suggestions), defaultValue, ChessBoard.class, suggestionsProvider, defaultDescription);
   }
 
   public static Builder builder(final String name) {
@@ -55,8 +56,23 @@ public final class ChessBoardArgument extends CommandArgument<CommandSender, Che
   }
 
   public static final class Builder extends CommandArgument.TypedBuilder<CommandSender, ChessBoard, Builder> {
+    private SuggestionsMode suggestions = SuggestionsMode.ALL;
+
     private Builder(final String name) {
       super(ChessBoard.class, name);
+    }
+
+    public Builder suggestions(final SuggestionsMode mode) {
+      this.suggestions = mode;
+      return this;
+    }
+
+    public Builder onlySuggestPlayable() {
+      return this.suggestions(SuggestionsMode.PLAYABLE_ONLY);
+    }
+
+    public Builder onlySuggestOccupied() {
+      return this.suggestions(SuggestionsMode.OCCUPIED_ONLY);
     }
 
     @Override
@@ -66,12 +82,19 @@ public final class ChessBoardArgument extends CommandArgument<CommandSender, Che
         this.getName(),
         this.getDefaultValue(),
         this.getSuggestionsProvider(),
-        this.getDefaultDescription()
+        this.getDefaultDescription(),
+        this.suggestions
       );
     }
   }
 
   public static final class Parser implements ArgumentParser<CommandSender, ChessBoard> {
+    private final SuggestionsMode suggestions;
+
+    public Parser(final SuggestionsMode suggestions) {
+      this.suggestions = suggestions;
+    }
+
     @Override
     public ArgumentParseResult<ChessBoard> parse(
       final CommandContext<CommandSender> commandContext,
@@ -93,7 +116,25 @@ public final class ChessBoardArgument extends CommandArgument<CommandSender, Che
       final String input
     ) {
       final ChessCraft plugin = commandContext.get(Commands.PLUGIN);
-      return plugin.boardManager().boards().stream().map(ChessBoard::name).toList();
+      return plugin.boardManager().boards().stream()
+        .filter(board -> switch (this.suggestions) {
+          case ALL -> true;
+          case PLAYABLE_ONLY -> {
+            if (board.autoCpuGame().cpuGamesOnly()) {
+              yield false;
+            }
+            yield !board.hasGame() || board.game().cpuVsCpu() && board.autoCpuGame().enabled;
+          }
+          case OCCUPIED_ONLY -> board.hasGame();
+        })
+        .map(ChessBoard::name)
+        .toList();
     }
+  }
+
+  public enum SuggestionsMode {
+    PLAYABLE_ONLY,
+    OCCUPIED_ONLY,
+    ALL
   }
 }

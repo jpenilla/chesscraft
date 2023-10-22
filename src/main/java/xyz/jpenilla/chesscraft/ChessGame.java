@@ -118,7 +118,7 @@ public final class ChessGame implements BoardStateHolder {
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
-    this.applyToWorld();
+    Util.scheduleOrRun(plugin, this::applyToWorld);
   }
 
   public ChessPlayer white() {
@@ -127,6 +127,10 @@ public final class ChessGame implements BoardStateHolder {
 
   public ChessPlayer black() {
     return this.black;
+  }
+
+  public boolean cpuVsCpu() {
+    return this.white.isCpu() && this.black.isCpu();
   }
 
   public PieceColor nextMove() {

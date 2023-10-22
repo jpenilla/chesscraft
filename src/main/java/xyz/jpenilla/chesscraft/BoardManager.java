@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -56,6 +58,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
+import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.Vec3i;
@@ -73,6 +76,7 @@ public final class BoardManager implements Listener {
   private final Map<String, ChessBoard> boards;
   private final Map<String, BoardDisplaySettings<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
+  private final AutoCpuGames autoCpuGames;
 
   private BukkitTask particleTask;
 
@@ -80,15 +84,16 @@ public final class BoardManager implements Listener {
     this.plugin = plugin;
     this.stockfishPath = stockfishPath;
     this.boardsFile = plugin.getDataFolder().toPath().resolve("boards.yml");
-    this.boards = new HashMap<>();
+    this.boards = new ConcurrentHashMap<>();
     this.displaysFile = plugin.getDataFolder().toPath().resolve("displays.yml");
-    this.displays = new HashMap<>();
+    this.displays = new ConcurrentHashMap<>();
     this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
       Files.createDirectories(this.boardsFile.getParent());
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
+    this.autoCpuGames = new AutoCpuGames(plugin, this);
   }
 
   public Cache<UUID, PVPChallenge> challenges() {
@@ -118,7 +123,8 @@ public final class BoardManager implements Listener {
       scale,
       world.getKey(),
       this.displays(this.plugin.config().defaultDisplays()),
-      this.stockfishPath
+      this.stockfishPath,
+      new BoardData.AutoCpuGameSettings() // users will have to enable auto cpu games in the config file
     );
     this.boards.put(name, board);
     this.saveBoards();
@@ -170,7 +176,8 @@ public final class BoardManager implements Listener {
       data.scale,
       data.dimension,
       this.displays(data.displays),
-      this.stockfishPath
+      this.stockfishPath,
+      data.autoCpuGame
     )));
   }
 
@@ -179,6 +186,7 @@ public final class BoardManager implements Listener {
   }
 
   public void close() {
+    this.autoCpuGames.close();
     this.particleTask.cancel();
     this.particleTask = null;
     HandlerList.unregisterAll(this);
@@ -203,7 +211,8 @@ public final class BoardManager implements Listener {
         b.displays().stream()
           .map(this::nameOf)
           .filter(Objects::nonNull)
-          .toList()
+          .toList(),
+        b.autoCpuGame()
       )))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     ConfigHelper.saveConfig(this.boardsFile, new TypeToken<>() {}, collect);
@@ -316,6 +325,10 @@ public final class BoardManager implements Listener {
     event.setCancelled(true);
   }
 
+  public void delayAutoCpu(final ChessBoard board) {
+    this.autoCpuGames.delay(board);
+  }
+
   @ConfigSerializable
   public static final class BoardData {
     private NamespacedKey dimension = NamespacedKey.minecraft("overworld");
@@ -323,17 +336,112 @@ public final class BoardManager implements Listener {
     private CardinalDirection facing = CardinalDirection.NORTH;
     private int scale = 1;
     private List<String> displays = List.of();
+    private AutoCpuGameSettings autoCpuGame = new AutoCpuGameSettings();
 
     @SuppressWarnings("unused")
     BoardData() {
     }
 
-    BoardData(final NamespacedKey dimension, final Vec3i position, final CardinalDirection facing, final int scale, final List<String> displays) {
+    BoardData(
+      final NamespacedKey dimension,
+      final Vec3i position,
+      final CardinalDirection facing,
+      final int scale,
+      final List<String> displays,
+      final AutoCpuGameSettings autoCpuGame
+    ) {
       this.dimension = dimension;
       this.position = position;
       this.facing = facing;
       this.scale = scale;
       this.displays = displays;
+      this.autoCpuGame = autoCpuGame;
+    }
+
+    @ConfigSerializable
+    public static final class AutoCpuGameSettings {
+      public boolean enabled = false;
+      public double range = 25.00;
+      public boolean allowPlayerUse = false;
+      public int moveDelay = 4;
+      public int whiteElo = 1800;
+      public int blackElo = 2200;
+
+      public boolean cpuGamesOnly() {
+        return this.enabled && !this.allowPlayerUse;
+      }
+    }
+  }
+
+  private static final class AutoCpuGames {
+    private final Cache<String, Object> delay = CacheBuilder.newBuilder()
+      .expireAfterWrite(Duration.ofSeconds(10))
+      .build();
+    private final ConcurrentHashMap<String, Runnable> taskMap = new ConcurrentHashMap<>();
+    private final BukkitTask mainTask;
+    private final BukkitTask asyncTask;
+
+    AutoCpuGames(final ChessCraft plugin, final BoardManager boardManager) {
+      this.mainTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+        for (final Map.Entry<String, ChessBoard> e : boardManager.boards.entrySet()) {
+          final ChessBoard board = e.getValue();
+          if (!board.autoCpuGame().enabled) {
+            continue;
+          }
+          final String name = e.getKey();
+          final Collection<Player> nearby = board.toWorld(new BoardPosition(3, 3)).toLocation(board.world())
+            .getNearbyPlayers(board.autoCpuGame().range);
+          this.taskMap.put(name, () -> {
+            if (!nearby.isEmpty() && board.hasGame()) {
+              // delay between automatic matches for effect
+              this.delay.put(board.name(), new Object());
+            } else if (nearby.isEmpty() && board.hasGame()) {
+              final ChessGame game = board.game();
+              if (game.cpuVsCpu()) {
+                board.endGameAndWait();
+                game.audience().sendMessage(plugin.config().messages().matchCancelled());
+                // don't delay after match is cancelled due to no nearby players
+                this.delay.invalidate(board.name());
+              }
+            } else if (!nearby.isEmpty()) {
+              if (this.delay.getIfPresent(board.name()) == null) {
+                // TODO - time control support?
+                board.startCpuGame(board.autoCpuGame().moveDelay, board.autoCpuGame().whiteElo, board.autoCpuGame().blackElo, null);
+              }
+            }
+          });
+        }
+      }, 20L, 20L);
+
+      // don't let the task run multiple times at once even if an execution takes longer than the period
+      final Semaphore permit = new Semaphore(1);
+
+      // don't block main with endGameAndWait
+      this.asyncTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        if (!permit.tryAcquire()) {
+          return;
+        }
+        try {
+          for (final String name : boardManager.boards.keySet()) {
+            final @Nullable Runnable task = this.taskMap.remove(name);
+            if (task != null) {
+              task.run();
+            }
+          }
+        } finally {
+          permit.release();
+        }
+      }, 20L, 5L);
+    }
+
+
+    public void close() {
+      this.mainTask.cancel();
+      this.asyncTask.cancel();
+    }
+
+    public void delay(final ChessBoard board) {
+      this.delay.put(board.name(), new Object());
     }
   }
 }
