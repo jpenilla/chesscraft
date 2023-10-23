@@ -112,7 +112,7 @@ public interface PieceHandler {
       final Quaternionf left = new Quaternionf(new AxisAngle4f((float) Math.toRadians(90.0D), 1, 0, 0));
       transformForVersion(left);
       // rotate
-      final Quaternionf right = new Quaternionf(new AxisAngle4f((float) Math.toRadians(rotation(board.facing(), piece)), 0, 0, 1));
+      final Quaternionf right = new Quaternionf(new AxisAngle4f((float) Math.toRadians(rotation(board, piece)), 0, 0, 1));
 
       return new Transformation(
         // center
@@ -149,12 +149,13 @@ public interface PieceHandler {
       q.w = -y;
     }
 
-    private static float rotation(final CardinalDirection facing, final Piece piece) {
-      final double deg = facing.radians() * 180 / Math.PI;
+    private static float rotation(final ChessBoard board, final Piece piece) {
+      final boolean eastWest = !v1_19_X && (board.facing() == CardinalDirection.EAST || board.facing() == CardinalDirection.WEST);
+
       if (piece.color() == PieceColor.WHITE) {
-        return (float) deg + (v1_19_X ? 0f : 180f);
+        return (float) board.facing().degrees() + (eastWest ? 180 : 0);
       }
-      return (float) deg + (v1_19_X ? 180f : 0f);
+      return (float) board.facing().degrees() + (eastWest ? 0 : 180);
     }
 
     @Override

@@ -71,11 +71,12 @@ public final class PositionLabelsDisplay extends AbstractTextDisplayHolder {
       } else if (pos.rank() == 7) {
         cLabelPos = new BoardPosition(8, pos.file());
       }
+      final boolean southWest = this.board.facing() == CardinalDirection.SOUTH || this.board.facing() == CardinalDirection.WEST;
       if (rLabelPos != null) {
-        list.add(this.label(rLabelPos, RANK_LABELS[pos.rank()], pos.file() == 7, this.board));
+        list.add(this.label(rLabelPos, RANK_LABELS[pos.rank()], southWest ? pos.file() == 0 : pos.file() == 7, this.board));
       }
       if (cLabelPos != null) {
-        list.add(this.label(cLabelPos, FILE_LABELS[pos.file()], pos.rank() == 0, this.board));
+        list.add(this.label(cLabelPos, FILE_LABELS[pos.file()], southWest ? pos.rank() == 7 : pos.rank() == 0, this.board));
       }
     });
     return list;

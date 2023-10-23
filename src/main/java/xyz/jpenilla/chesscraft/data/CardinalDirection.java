@@ -24,9 +24,11 @@ public enum CardinalDirection {
   WEST(270);
 
   private final double radians;
+  private final int degrees;
 
   CardinalDirection(final int degrees) {
     this.radians = toRadians(degrees);
+    this.degrees = degrees;
   }
 
   public double radians() {
@@ -39,5 +41,9 @@ public enum CardinalDirection {
 
   private static double toRadians(final int degrees) {
     return degrees * Math.PI / 180;
+  }
+
+  public int degrees() {
+    return this.degrees;
   }
 }
