@@ -93,7 +93,6 @@ tasks {
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")
     reloc("org.yaml.snakeyaml")
-    reloc("io.github.aecsocket.jniglue")
     reloc("io.papermc.papertrail")
     reloc("org.bstats")
     exclude("log4j.properties", "logback.xml")
