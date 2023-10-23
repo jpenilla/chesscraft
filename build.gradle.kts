@@ -39,12 +39,7 @@ dependencies {
   runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
   implementation("org.bstats", "bstats-bukkit", "3.0.2")
 
-  val cpuFeaturesJniVersion = "1.0.1"
-  implementation("io.github.aecsocket:cpu-features-jni:$cpuFeaturesJniVersion")
-  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-linux:$cpuFeaturesJniVersion")
-  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-windows:$cpuFeaturesJniVersion")
-  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-macos:$cpuFeaturesJniVersion")
-  runtimeOnly("io.github.aecsocket:cpu-features-jni-natives-macos-arm64:$cpuFeaturesJniVersion")
+  implementation("org.bytedeco:cpu_features-platform:0.7.0-1.5.8")
 }
 
 indraSpotlessLicenser {
