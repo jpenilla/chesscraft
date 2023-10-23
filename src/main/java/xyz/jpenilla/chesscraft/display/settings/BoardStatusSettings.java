@@ -39,11 +39,11 @@ public final class BoardStatusSettings extends AbstractDisplaySettings.WithTrans
     "<b>Chess Board <board_name>",
     "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname>",
     "Current move: <current_move_color>♚</current_move_color><current_move_displayname>",
-    "<time_control:'<white>♚</white><white_time> <gray>|</gray> <black>♚</black><black_time>':'<red>No time controls.'>"
+    "<time_control:'<white>♚</white><white_time> <gray>|</gray> <black>♚</black><black_time>':'<green>No time controls.'>"
   );
   private List<String> noGameText = List.of(
     "<b>Chess Board <board_name>",
-    "<red>No active game."
+    "<green>No active game."
   );
   private long updateRate = 10;
 
