@@ -196,7 +196,8 @@ public final class StockfishProvider {
       return false;
     }
 
-    this.plugin.getLogger().info("Downloading Stockfish " + version + " (" + variant + ") from '" + url + "'...");
+    final String variantString = macOS() && variant == Variant.POPCNT ? "MODERN" : variant.toString();
+    this.plugin.getLogger().info("Downloading Stockfish " + version + " (" + variantString + ") from '" + url + "'...");
 
     final Path temp = Files.createTempFile("stockfish-" + version + "-" + variant + "-download", null);
     try (final InputStream stream = url.openStream();
