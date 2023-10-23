@@ -23,7 +23,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 @ConfigSerializable
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class MainConfig {
-  private String stockfishEngine = "15.1:AUTO";
+  private String stockfishEngine = "16:AUTO";
   private PieceOptions pieces = new PieceOptions.DisplayEntity();
   private List<String> defaultDisplays = List.of("log", "status", "position-labels");
   private Messages messages = new Messages();
