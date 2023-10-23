@@ -199,6 +199,12 @@ public final class Messages {
     return parse(this.notYourMove);
   }
 
+  private String chessEngineProcessing = "<red>Chess engine is currently processing, please try again shortly.";
+
+  public Component chessEngineProcessing() {
+    return parse(this.chessEngineProcessing);
+  }
+
   private String notYourPiece = "<red>Not your piece.";
 
   public Component notYourPiece() {

@@ -142,7 +142,7 @@ public final class ChessGame implements BoardStateHolder {
       player.sendMessage(this.plugin.config().messages().notYourMove());
       return;
     } else if (this.activeQuery != null && !this.activeQuery.isDone()) {
-      player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly.");
+      player.sendMessage(this.plugin.config().messages().chessEngineProcessing());
       return;
     }
 
