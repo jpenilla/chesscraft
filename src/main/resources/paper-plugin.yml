@@ -1,6 +1,7 @@
 name: ChessCraft
 version: $version
 main: xyz.jpenilla.chesscraft.ChessCraft
+loader: xyz.jpenilla.chesscraft.ChessCraftLoader
 author: jmp
 permissions:
   chesscraft.command.accept:
@@ -19,4 +20,4 @@ permissions:
     default: "true"
   chesscraft.command.show_legal_moves:
     default: "true"
-api-version: 1.19
+api-version: "1.19"

@@ -24,7 +24,22 @@ repositories {
   maven("https://repo.papermc.io/repository/maven-public/")
 }
 
+val runtime: Configuration by configurations.creating {
+  isTransitive = false
+}
+val dependencyList: SourceSet by sourceSets.creating {
+  blossom {
+    javaSources {
+      properties.put("deps", provider {
+        runtime.incoming.resolutionResult.root.dependencies
+          .map { (it as ResolvedDependencyResult).resolvedVariant.owner.displayName }
+      })
+    }
+  }
+}
+
 dependencies {
+  implementation(dependencyList.output)
   compileOnly("io.papermc.paper", "paper-api", "1.20.2-R0.1-SNAPSHOT") {
     exclude("org.yaml", "snakeyaml")
   }
@@ -39,7 +54,9 @@ dependencies {
   runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
   implementation("org.bstats", "bstats-bukkit", "3.0.2")
 
-  implementation("org.bytedeco:cpu_features-platform:0.7.0-1.5.8")
+  val cpuFeatures = "org.bytedeco:cpu_features-platform:0.7.0-1.5.8"
+  runtime(cpuFeatures)
+  compileOnly(cpuFeatures)
 }
 
 indraSpotlessLicenser {
