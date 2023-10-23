@@ -27,15 +27,16 @@ public final class ProcessorUtil {
   private ProcessorUtil() {
   }
 
-  public static Variant bestVariant(final Logger logger) {
+  public static Variant bestVariant(final Logger logger, final boolean bmi2Available) {
     final CpuArchitecture arch = CpuArchitecture.get();
     switch (arch) {
       case AARCH64 -> {
-        return Variant.BMI2; // macOS rosetta 2 (stockfish doesn't provide arm builds yet)
+        // POPCNT builds are called 'modern' with >=SF16, and we want macOS modern build as well
+        return Variant.POPCNT;
       }
       case X86 -> {
         final X86Features features = cpu_features.GetX86Info().features();
-        if (features.bmi2() != 0) {
+        if (bmi2Available && features.bmi2() != 0) {
           return Variant.BMI2;
         } else if (features.avx2() != 0) {
           return Variant.AVX2;

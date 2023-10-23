@@ -53,6 +53,7 @@ dependencies {
   implementation("org.spongepowered:configurate-yaml:4.1.2")
   runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
   implementation("org.bstats", "bstats-bukkit", "3.0.2")
+  implementation("org.apache.commons:commons-compress:1.24.0")
 
   val cpuFeatures = "org.bytedeco:cpu_features-platform:0.7.0-1.5.8"
   runtime(cpuFeatures)
@@ -112,6 +113,7 @@ tasks {
     reloc("org.yaml.snakeyaml")
     reloc("io.papermc.papertrail")
     reloc("org.bstats")
+    reloc("org.apache.commons.compress")
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
