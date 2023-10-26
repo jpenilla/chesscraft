@@ -55,6 +55,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
@@ -76,7 +77,7 @@ public final class BoardManager implements Listener {
   private final Map<String, ChessBoard> boards;
   private final Map<String, BoardDisplaySettings<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
-  private final AutoCpuGames autoCpuGames;
+  private @MonotonicNonNull AutoCpuGames autoCpuGames;
 
   private BukkitTask particleTask;
 
@@ -93,7 +94,6 @@ public final class BoardManager implements Listener {
     } catch (final IOException ex) {
       throw new RuntimeException(ex);
     }
-    this.autoCpuGames = new AutoCpuGames(plugin, this);
   }
 
   public Cache<UUID, PVPChallenge> challenges() {
@@ -164,6 +164,7 @@ public final class BoardManager implements Listener {
       0L,
       5L
     );
+    this.autoCpuGames = AutoCpuGames.start(this.plugin, this);
   }
 
   private void loadBoards() {
@@ -187,6 +188,7 @@ public final class BoardManager implements Listener {
 
   public void close() {
     this.autoCpuGames.close();
+    this.autoCpuGames = null;
     this.particleTask.cancel();
     this.particleTask = null;
     HandlerList.unregisterAll(this);
@@ -381,7 +383,11 @@ public final class BoardManager implements Listener {
     private final BukkitTask mainTask;
     private final BukkitTask asyncTask;
 
-    AutoCpuGames(final ChessCraft plugin, final BoardManager boardManager) {
+    static AutoCpuGames start(final ChessCraft plugin, final BoardManager boardManager) {
+      return new AutoCpuGames(plugin, boardManager);
+    }
+
+    private AutoCpuGames(final ChessCraft plugin, final BoardManager boardManager) {
       this.mainTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
         for (final Map.Entry<String, ChessBoard> e : boardManager.boards.entrySet()) {
           final ChessBoard board = e.getValue();
@@ -434,13 +440,12 @@ public final class BoardManager implements Listener {
       }, 20L, 5L);
     }
 
-
-    public void close() {
+    void close() {
       this.mainTask.cancel();
       this.asyncTask.cancel();
     }
 
-    public void delay(final ChessBoard board) {
+    void delay(final ChessBoard board) {
       this.delay.put(board.name(), new Object());
     }
   }
