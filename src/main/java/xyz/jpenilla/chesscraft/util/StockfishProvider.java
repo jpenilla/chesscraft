@@ -71,7 +71,7 @@ public final class StockfishProvider {
 
   public Path engine(final String configValue) {
     if (!configValue.contains(":")) {
-      final Path customPath = this.dir.resolve("custom/" + configValue);
+      final Path customPath = this.dir.resolve("custom").resolve(configValue);
       if (!customPath.toFile().canExecute()) {
         if (!customPath.toFile().setExecutable(true, true)) {
           this.plugin.getLogger().warning("Custom engine '{}' was not executable and ChessCraft failed to set it to executable, this may cause issues.");
@@ -144,7 +144,7 @@ public final class StockfishProvider {
     }
 
     if (found == null) {
-      throw new IllegalArgumentException("Could not find Stockfish release sf_" + version + " on  GitHub.");
+      throw new IllegalArgumentException("Could not find Stockfish release sf_" + version + " on GitHub.");
     }
 
     @Nullable JsonObject foundAsset = null;
