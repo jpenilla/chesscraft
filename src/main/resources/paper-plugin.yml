@@ -1,7 +1,7 @@
 name: ChessCraft
 version: $version
 main: xyz.jpenilla.chesscraft.ChessCraft
-loader: xyz.jpenilla.chesscraft.ChessCraftLoader
+loader: xyz.jpenilla.chesscraft.dependency.xyz.jpenilla.gremlin.runtime.platformsupport.DefaultsPaperPluginLoader
 author: jmp
 permissions:
   chesscraft.command.accept:
