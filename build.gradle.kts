@@ -1,4 +1,5 @@
 import io.papermc.hangarpublishplugin.model.Platforms
+import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
@@ -11,6 +12,7 @@ plugins {
   id("io.papermc.hangar-publish-plugin") version "0.1.0"
   id("com.modrinth.minotaur") version "2.7.5"
   id("net.kyori.blossom") version "2.1.0"
+  id("xyz.jpenilla.gremlin-gradle") version "0.0.1-SNAPSHOT"
 }
 
 decorateVersion()
@@ -22,24 +24,10 @@ indra {
 repositories {
   mavenCentral()
   maven("https://repo.papermc.io/repository/maven-public/")
-}
-
-val runtime: Configuration by configurations.creating {
-  isTransitive = false
-}
-val dependencyList: SourceSet by sourceSets.creating {
-  blossom {
-    javaSources {
-      properties.put("deps", provider {
-        runtime.incoming.resolutionResult.root.dependencies
-          .map { (it as ResolvedDependencyResult).resolvedVariant.owner.displayName }
-      })
-    }
-  }
+  sonatype.s01Snapshots()
 }
 
 dependencies {
-  implementation(dependencyList.output)
   compileOnly("io.papermc.paper", "paper-api", "1.20.2-R0.1-SNAPSHOT") {
     exclude("org.yaml", "snakeyaml")
   }
@@ -55,12 +43,24 @@ dependencies {
   implementation("org.bstats", "bstats-bukkit", "3.0.2")
 
   val commonsCompress = "org.apache.commons:commons-compress:1.24.0"
-  runtime(commonsCompress)
+  runtimeDownload(commonsCompress)
   compileOnly(commonsCompress)
 
-  val cpuFeatures = "org.bytedeco:cpu_features-platform:0.7.0-1.5.8"
-  runtime(cpuFeatures)
+  val cpuFeatures = "org.bytedeco:cpu_features:0.7.0-1.5.8"
+  runtimeDownload(cpuFeatures)
   compileOnly(cpuFeatures)
+
+  fun cpuFeaturesNatives(platform: String, onlyJavaCpp: Boolean = false) {
+    if (!onlyJavaCpp) {
+      runtimeDownload("org.bytedeco", "cpu_features", "0.7.0-1.5.8", classifier = platform)
+    }
+    runtimeDownload("org.bytedeco", "javacpp", "1.5.8", classifier = platform)
+  }
+
+  cpuFeaturesNatives("linux-x86_64")
+  cpuFeaturesNatives("macosx-arm64", true)
+  cpuFeaturesNatives("macosx-x86_64")
+  cpuFeaturesNatives("windows-x86_64")
 }
 
 indraSpotlessLicenser {
@@ -107,8 +107,8 @@ tasks {
       expand(props)
     }
   }
+  fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
   shadowJar {
-    fun reloc(pkg: String) = relocate(pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
     reloc("cloud.commandframework")
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
@@ -116,10 +116,17 @@ tasks {
     reloc("org.yaml.snakeyaml")
     reloc("io.papermc.papertrail")
     reloc("org.bstats")
+    reloc("xyz.jpenilla.gremlin")
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
     }
+  }
+  writeDependencies {
+    repos.set(listOf(
+      "https://repo.papermc.io/repository/maven-public/",
+      "https://repo.maven.apache.org/maven2/",
+    ))
   }
 }
 
