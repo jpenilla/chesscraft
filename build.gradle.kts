@@ -1,4 +1,5 @@
 import io.papermc.hangarpublishplugin.model.Platforms
+import me.modmuss50.mpp.ReleaseType
 import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
@@ -10,9 +11,9 @@ plugins {
   id("net.kyori.indra.git") version indraVer
   id("net.kyori.indra.licenser.spotless") version indraVer
   id("io.papermc.hangar-publish-plugin") version "0.1.0"
-  id("com.modrinth.minotaur") version "2.7.5"
+  id("me.modmuss50.mod-publish-plugin") version "0.4.5"
   id("net.kyori.blossom") version "2.1.0"
-  id("xyz.jpenilla.gremlin-gradle") version "0.0.2"
+  id("xyz.jpenilla.gremlin-gradle") version "0.0.3"
 }
 
 decorateVersion()
@@ -139,7 +140,7 @@ sourceSets {
           properties {
             put("abv", this@all.name.take(1))
             put("parse", if (this@all.name == "int") "Integer.parseInt" else {
-              val cap = this@all.name.capitalize()
+              val cap = this@all.name.replaceFirstChar(Char::uppercase)
               "$cap.parse$cap"
             })
           }
@@ -165,14 +166,14 @@ hangarPublish.publications.register("plugin") {
   }
 }
 
-modrinth {
-  projectId.set("PYmT3jyX")
-  versionType.set("release")
-  file.set(shadowJar)
-  gameVersions.set(versions)
-  loaders.set(listOf("paper"))
-  changelog.set(releaseNotes)
-  token.set(providers.environmentVariable("MODRINTH_TOKEN"))
+publishMods.modrinth {
+  projectId = "PYmT3jyX"
+  type = ReleaseType.STABLE
+  file = shadowJar
+  minecraftVersions = versions
+  modLoaders.add("paper")
+  changelog = releaseNotes
+  accessToken = providers.environmentVariable("MODRINTH_TOKEN")
 }
 
 fun lastCommitHash(): String = indraGit.commit()?.name?.substring(0, 7)
