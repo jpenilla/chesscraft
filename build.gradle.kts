@@ -42,7 +42,7 @@ dependencies {
   runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
   implementation("org.bstats", "bstats-bukkit", "3.0.2")
 
-  val commonsCompress = "org.apache.commons:commons-compress:1.24.0"
+  val commonsCompress = "org.apache.commons:commons-compress:1.25.0"
   runtimeDownload(commonsCompress)
   compileOnly(commonsCompress)
 

@@ -245,7 +245,7 @@ public final class StockfishProvider {
       )
     ) {
       TarArchiveEntry entry;
-      while ((entry = tar.getNextTarEntry()) != null) {
+      while ((entry = tar.getNextEntry()) != null) {
         final String fileName = entry.getName().substring(entry.getName().lastIndexOf("/") + 1);
         if (!entry.isDirectory()
           && (fileName.startsWith("stockfish-") || fileName.startsWith("stockfish_"))) {
