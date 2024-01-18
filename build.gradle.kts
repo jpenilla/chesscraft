@@ -23,8 +23,9 @@ indra {
 
 repositories {
   mavenCentral()
-  maven("https://repo.papermc.io/repository/maven-public/")
+  sonatype.ossSnapshots()
   sonatype.s01Snapshots()
+  maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
@@ -32,10 +33,10 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.4"))
-  implementation("cloud.commandframework:cloud-paper")
+  implementation(platform("cloud.commandframework:cloud-bom:2.0.0-SNAPSHOT"))
+  implementation("cloud.commandframework:cloud-paper:2.0.0-SNAPSHOT")
   compileOnly("com.mojang", "brigadier", "1.0.18")
-  implementation("cloud.commandframework:cloud-minecraft-extras") {
+  implementation("cloud.commandframework:cloud-minecraft-extras:2.0.0-SNAPSHOT") {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
@@ -110,6 +111,7 @@ tasks {
   fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
   shadowJar {
     reloc("cloud.commandframework")
+    reloc("org.incendo")
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")

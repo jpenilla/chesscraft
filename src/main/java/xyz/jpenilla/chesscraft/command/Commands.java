@@ -18,27 +18,20 @@
 package xyz.jpenilla.chesscraft.command;
 
 import cloud.commandframework.Command;
+import cloud.commandframework.arguments.DefaultValue;
+import cloud.commandframework.arguments.flags.CommandFlag;
 import cloud.commandframework.arguments.flags.FlagContext;
-import cloud.commandframework.arguments.standard.EnumArgument;
-import cloud.commandframework.arguments.standard.IntegerArgument;
-import cloud.commandframework.arguments.standard.StringArgument;
-import cloud.commandframework.brigadier.CloudBrigadierManager;
-import cloud.commandframework.bukkit.arguments.selector.SinglePlayerSelector;
+import cloud.commandframework.bukkit.data.SinglePlayerSelector;
 import cloud.commandframework.bukkit.internal.MinecraftArgumentTypes;
-import cloud.commandframework.bukkit.parsers.MaterialArgument;
-import cloud.commandframework.bukkit.parsers.selector.SinglePlayerSelectorArgument;
 import cloud.commandframework.context.CommandContext;
 import cloud.commandframework.exceptions.CommandExecutionException;
-import cloud.commandframework.execution.CommandExecutionCoordinator;
+import cloud.commandframework.execution.ExecutionCoordinator;
 import cloud.commandframework.keys.CloudKey;
-import cloud.commandframework.keys.SimpleCloudKey;
-import cloud.commandframework.minecraft.extras.AudienceProvider;
 import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.paper.PaperCommandManager;
 import com.mojang.brigadier.arguments.ArgumentType;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -53,9 +46,8 @@ import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
-import xyz.jpenilla.chesscraft.command.argument.ChessBoardArgument;
-import xyz.jpenilla.chesscraft.command.argument.PromotionArgument;
-import xyz.jpenilla.chesscraft.command.argument.TimeControlArgument;
+import xyz.jpenilla.chesscraft.command.parser.ChessBoardParser;
+import xyz.jpenilla.chesscraft.command.parser.TimeControlParser;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
@@ -64,8 +56,18 @@ import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
+import static cloud.commandframework.arguments.standard.EnumParser.enumParser;
+import static cloud.commandframework.arguments.standard.IntegerParser.integerParser;
+import static cloud.commandframework.arguments.standard.StringParser.stringParser;
+import static cloud.commandframework.bukkit.parser.MaterialParser.materialParser;
+import static cloud.commandframework.bukkit.parser.selector.SinglePlayerSelectorParser.singlePlayerSelectorParser;
+import static cloud.commandframework.keys.CloudKey.cloudKey;
+import static xyz.jpenilla.chesscraft.command.parser.ChessBoardParser.chessBoardParser;
+import static xyz.jpenilla.chesscraft.command.parser.PromotionParser.promotionParser;
+import static xyz.jpenilla.chesscraft.command.parser.TimeControlParser.timeControlParser;
+
 public final class Commands {
-  public static final CloudKey<ChessCraft> PLUGIN = SimpleCloudKey.of("chesscraft", TypeToken.get(ChessCraft.class));
+  public static final CloudKey<ChessCraft> PLUGIN = cloudKey("chesscraft", TypeToken.get(ChessCraft.class));
 
   private final ChessCraft plugin;
   private final PaperCommandManager<CommandSender> mgr;
@@ -97,42 +99,42 @@ public final class Commands {
       .handler(this::reload));
 
     this.mgr.command(chess.literal("create_board")
-      .argument(StringArgument.single("name"))
-      .argument(EnumArgument.of(CardinalDirection.class, "facing"))
-      .argument(IntegerArgument.<CommandSender>builder("scale").asOptionalWithDefault(1).withMin(1))
+      .required("name", stringParser())
+      .required("facing", enumParser(CardinalDirection.class))
+      .optional("scale", integerParser(1), DefaultValue.constant(1))
       .senderType(Player.class)
       .permission("chesscraft.command.create_board")
       .handler(this::createBoard));
 
     this.mgr.command(chess.literal("set_checkerboard")
-      .argument(ChessBoardArgument.create("board"))
-      .flag(this.mgr.flagBuilder("black").withArgument(MaterialArgument.of("material")))
-      .flag(this.mgr.flagBuilder("white").withArgument(MaterialArgument.of("material")))
-      .flag(this.mgr.flagBuilder("border").withArgument(MaterialArgument.of("material")))
+      .required("board", chessBoardParser())
+      .flag(CommandFlag.builder("black").withComponent(materialParser()))
+      .flag(CommandFlag.builder("white").withComponent(materialParser()))
+      .flag(CommandFlag.builder("border").withComponent(materialParser()))
       .permission("chesscraft.command.set_checkerboard")
       .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
-      .argument(ChessBoardArgument.create("board"))
+      .required("board", chessBoardParser())
       .permission("chesscraft.command.delete_board")
       .handler(this::deleteBoard));
 
     this.mgr.command(chess.literal("challenge")
       .literal("cpu")
-      .argument(ChessBoardArgument.builder("board").onlySuggestPlayable())
-      .argument(EnumArgument.of(PieceColor.class, "color"))
-      .argument(IntegerArgument.<CommandSender>builder("cpu_elo").withMin(100).withMax(4000))
-      .argument(TimeControlArgument.builder("time_control").asOptional())
+      .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
+      .required("color", enumParser(PieceColor.class))
+      .required("cpu_elo", integerParser(100, 4000))
+      .optional("time_control", timeControlParser())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.cpu")
       .handler(this::challengeCpu));
 
     this.mgr.command(chess.literal("challenge")
       .literal("player")
-      .argument(ChessBoardArgument.builder("board").onlySuggestPlayable())
-      .argument(SinglePlayerSelectorArgument.of("player"))
-      .argument(EnumArgument.of(PieceColor.class, "color"))
-      .argument(TimeControlArgument.builder("time_control").asOptional())
+      .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
+      .required("player", singlePlayerSelectorParser())
+      .required("color", enumParser(PieceColor.class))
+      .optional("time_control", timeControlParser())
       .senderType(Player.class)
       .permission("chesscraft.command.challenge.player")
       .handler(this::challengePlayer));
@@ -148,7 +150,7 @@ public final class Commands {
       .handler(this::deny));
 
     this.mgr.command(chess.literal("next_promotion")
-      .argument(PromotionArgument.create("type"))
+      .required("type", promotionParser())
       .senderType(Player.class)
       .permission("chesscraft.command.next_promotion")
       .handler(this::nextPromotion));
@@ -164,37 +166,37 @@ public final class Commands {
       .handler(this::forfeit));
 
     this.mgr.command(chess.literal("reset_board")
-      .argument(ChessBoardArgument.create("board"))
-      .flag(this.mgr.flagBuilder("clear"))
+      .required("board", chessBoardParser())
+      .flag(CommandFlag.builder("clear"))
       .permission("chesscraft.command.reset_board")
       .handler(this::resetBoard));
 
     this.mgr.command(chess.literal("cpu_match")
-      .argument(ChessBoardArgument.create("board"))
-      .flag(this.mgr.flagBuilder("white_elo").withAliases("w").withArgument(IntegerArgument.<CommandSender>builder("elo").withMin(100).withMax(4000)))
-      .flag(this.mgr.flagBuilder("black_elo").withAliases("b").withArgument(IntegerArgument.<CommandSender>builder("elo").withMin(100).withMax(4000)))
-      .flag(this.mgr.flagBuilder("move_delay").withAliases("d").withArgument(IntegerArgument.builder("seconds").withMin(0)))
-      .flag(this.mgr.flagBuilder("time_control").withAliases("t").withArgument(TimeControlArgument.create("time_control")))
-      .flag(this.mgr.flagBuilder("replace").withAliases("r"))
+      .required("board", chessBoardParser())
+      .flag(CommandFlag.builder("white_elo").withAliases("w").withComponent(integerParser(100, 4000)))
+      .flag(CommandFlag.builder("black_elo").withAliases("b").withComponent(integerParser(100, 4000)))
+      .flag(CommandFlag.builder("move_delay").withAliases("d").withComponent(integerParser(0)))
+      .flag(CommandFlag.builder("time_control").withAliases("t").withComponent(timeControlParser()))
+      .flag(CommandFlag.builder("replace").withAliases("r"))
       .permission("chesscraft.command.cpu_match")
       .handler(this::cpuMatch));
 
     this.mgr.command(chess.literal("cancel_match")
-      .argument(ChessBoardArgument.builder("board").onlySuggestOccupied())
+      .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.OCCUPIED_ONLY))
       .permission("chesscraft.command.cancel_game")
       .handler(this::cancelMatch));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
-    ctx.getSender().sendRichMessage("<bold><black>Chess<white>Craft");
-    ctx.getSender().sendRichMessage("<gray><italic>  v" + this.plugin.getDescription().getVersion());
+    ctx.sender().sendRichMessage("<bold><black>Chess<white>Craft");
+    ctx.sender().sendRichMessage("<gray><italic>  v" + this.plugin.getDescription().getVersion());
   }
 
   private void boards(final CommandContext<CommandSender> ctx) {
-    final CommandSender sender = ctx.getSender();
+    final CommandSender sender = ctx.sender();
     sender.sendMessage("Chess boards:");
     for (final ChessBoard board : this.boardManager.boards()) {
-      ctx.getSender().sendMessage(Component.text().content(board.name()).apply(builder -> {
+      ctx.sender().sendMessage(Component.text().content(board.name()).apply(builder -> {
         if (board.hasGame()) {
           builder.append(Component.text(": ", NamedTextColor.GRAY))
             .append(board.game().white().name().color(NamedTextColor.WHITE))
@@ -206,15 +208,15 @@ public final class Commands {
   }
 
   private void reload(final CommandContext<CommandSender> ctx) {
-    ctx.getSender().sendRichMessage("<gray><italic>Reloading configs... This will end any active matches.");
+    ctx.sender().sendRichMessage("<gray><italic>Reloading configs... This will end any active matches.");
     this.plugin.reloadMainConfig();
     this.boardManager.reload();
-    ctx.getSender().sendRichMessage("<green>Reloaded configs.");
+    ctx.sender().sendRichMessage("<green>Reloaded configs.");
   }
 
-  private void createBoard(final CommandContext<CommandSender> ctx) {
+  private void createBoard(final CommandContext<Player> ctx) {
     final String name = ctx.get("name");
-    final Player sender = (Player) ctx.getSender();
+    final Player sender = ctx.sender();
     if (this.boardManager.board(name) != null) {
       sender.sendMessage(this.messages().boardAlreadyExists(name));
       return;
@@ -237,12 +239,12 @@ public final class Commands {
       flags.<Material>getValue("white").orElse(Material.WHITE_CONCRETE),
       flags.get("border")
     );
-    ctx.getSender().sendRichMessage("<green>Set blocks to world.");
+    ctx.sender().sendRichMessage("<green>Set blocks to world.");
   }
 
-  private void challengeCpu(final CommandContext<CommandSender> ctx) {
+  private void challengeCpu(final CommandContext<Player> ctx) {
     final ChessBoard board = ctx.get("board");
-    final Player sender = (Player) ctx.getSender();
+    final Player sender = ctx.sender();
     if (this.boardManager.inGame(sender)) {
       sender.sendMessage(this.messages().alreadyInGame());
       return;
@@ -260,16 +262,16 @@ public final class Commands {
     board.startGame(
       userColor == PieceColor.WHITE ? user : cpu,
       userColor == PieceColor.BLACK ? user : cpu,
-      ctx.<TimeControlSettings>getOptional("time_control").orElse(null)
+      ctx.<TimeControlSettings>optional("time_control").orElse(null)
     );
   }
 
-  private void challengePlayer(final CommandContext<CommandSender> ctx) {
+  private void challengePlayer(final CommandContext<Player> ctx) {
     final ChessBoard board = ctx.get("board");
-    final Player sender = (Player) ctx.getSender();
-    final Player opponent = Objects.requireNonNull(ctx.<SinglePlayerSelector>get("player").getPlayer());
+    final Player sender = ctx.sender();
+    final Player opponent = Objects.requireNonNull(ctx.<SinglePlayerSelector>get("player").single());
     if (sender.equals(opponent)) {
-      ctx.getSender().sendRichMessage("<red>You cannot challenge yourself.");
+      ctx.sender().sendRichMessage("<red>You cannot challenge yourself.");
       return;
     } else if (this.boardManager.inGame(sender)) {
       sender.sendMessage(this.messages().alreadyInGame());
@@ -286,7 +288,7 @@ public final class Commands {
     final PieceColor userColor = ctx.get("color");
     final ChessPlayer user = ChessPlayer.player(sender);
     final ChessPlayer opp = ChessPlayer.player(opponent);
-    final @Nullable TimeControlSettings timeControl = ctx.<TimeControlSettings>getOptional("time_control").orElse(null);
+    final @Nullable TimeControlSettings timeControl = ctx.<TimeControlSettings>optional("time_control").orElse(null);
     this.boardManager.challenges().put(
       opponent.getUniqueId(),
       new PVPChallenge(board, sender, opponent, userColor, timeControl)
@@ -306,13 +308,13 @@ public final class Commands {
     return board.hasGame() && board.game().cpuVsCpu() && board.autoCpuGame().enabled && board.autoCpuGame().allowPlayerUse;
   }
 
-  private void accept(final CommandContext<CommandSender> ctx) {
+  private void accept(final CommandContext<Player> ctx) {
     final @Nullable PVPChallenge challenge = this.pollChallenge(ctx);
     if (challenge == null) {
       return;
     }
     if (this.boardManager.inGame(challenge.challenger())) {
-      ctx.getSender().sendMessage(this.messages().opponentAlreadyInGame(challenge.challenger()));
+      ctx.sender().sendMessage(this.messages().opponentAlreadyInGame(challenge.challenger()));
       return;
     }
 
@@ -325,7 +327,7 @@ public final class Commands {
     );
   }
 
-  private void deny(final CommandContext<CommandSender> ctx) {
+  private void deny(final CommandContext<Player> ctx) {
     final @Nullable PVPChallenge challenge = this.pollChallenge(ctx);
     if (challenge == null) {
       return;
@@ -335,26 +337,26 @@ public final class Commands {
       ChessPlayer.player(challenge.player()),
       challenge.challengerColor()
     ));
-    ctx.getSender().sendMessage(this.messages().challengeDeniedFeedback(
+    ctx.sender().sendMessage(this.messages().challengeDeniedFeedback(
       ChessPlayer.player(challenge.challenger()),
       ChessPlayer.player(challenge.player()),
       challenge.challengerColor()
     ));
   }
 
-  private @Nullable PVPChallenge pollChallenge(final CommandContext<CommandSender> ctx) {
-    final Player sender = (Player) ctx.getSender();
+  private @Nullable PVPChallenge pollChallenge(final CommandContext<Player> ctx) {
+    final Player sender = ctx.sender();
     final @Nullable PVPChallenge challenge = this.boardManager.challenges().getIfPresent(sender.getUniqueId());
     if (challenge == null) {
-      ctx.getSender().sendMessage(this.messages().noPendingChallenge());
+      ctx.sender().sendMessage(this.messages().noPendingChallenge());
       return null;
     }
     this.boardManager.challenges().invalidate(sender.getUniqueId());
     return challenge;
   }
 
-  private void nextPromotion(final CommandContext<CommandSender> ctx) {
-    final Player sender = (Player) ctx.getSender();
+  private void nextPromotion(final CommandContext<Player> ctx) {
+    final Player sender = ctx.sender();
     final ChessBoard board = this.playerBoard(sender);
     if (board == null) {
       sender.sendMessage(this.messages().mustBeInMatch());
@@ -365,8 +367,8 @@ public final class Commands {
     sender.sendMessage(this.messages().nextPromotionSet(type));
   }
 
-  private void showLegalMoves(final CommandContext<CommandSender> ctx) {
-    final Player player = (Player) ctx.getSender();
+  private void showLegalMoves(final CommandContext<Player> ctx) {
+    final Player player = ctx.sender();
     final boolean hidden = player.getPersistentDataContainer().has(ChessGame.HIDE_LEGAL_MOVES_KEY);
     if (hidden) {
       player.getPersistentDataContainer().remove(ChessGame.HIDE_LEGAL_MOVES_KEY);
@@ -379,11 +381,11 @@ public final class Commands {
   private void deleteBoard(final CommandContext<CommandSender> ctx) {
     final String board = ctx.<ChessBoard>get("board").name();
     this.boardManager.deleteBoard(board);
-    ctx.getSender().sendMessage(this.messages().boardDeleted(board));
+    ctx.sender().sendMessage(this.messages().boardDeleted(board));
   }
 
-  private void forfeit(final CommandContext<CommandSender> ctx) {
-    final Player sender = (Player) ctx.getSender();
+  private void forfeit(final CommandContext<Player> ctx) {
+    final Player sender = ctx.sender();
     final ChessBoard board = this.playerBoard(sender);
     if (board == null) {
       sender.sendMessage(this.messages().mustBeInMatch());
@@ -395,11 +397,11 @@ public final class Commands {
   private void resetBoard(final CommandContext<CommandSender> ctx) {
     final ChessBoard board = ctx.get("board");
     if (board.hasGame()) {
-      ctx.getSender().sendMessage(this.messages().boardOccupied(board.name()));
+      ctx.sender().sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
     board.reset(ctx.flags().hasFlag("clear"));
-    ctx.getSender().sendMessage(this.messages().resetBoard(board));
+    ctx.sender().sendMessage(this.messages().resetBoard(board));
   }
 
   private void cpuMatch(final CommandContext<CommandSender> ctx) {
@@ -408,7 +410,7 @@ public final class Commands {
       this.cancelCpuMatch(board);
     }
     if (board.hasGame()) {
-      ctx.getSender().sendMessage(this.messages().boardOccupied(board.name()));
+      ctx.sender().sendMessage(this.messages().boardOccupied(board.name()));
       return;
     }
     board.startCpuGame(
@@ -418,19 +420,19 @@ public final class Commands {
       ctx.flags().getValue("time_control", null)
     );
     final ChessGame game = board.game();
-    ctx.getSender().sendMessage(this.messages().matchStarted(board, game.white(), game.black()));
+    ctx.sender().sendMessage(this.messages().matchStarted(board, game.white(), game.black()));
   }
 
   private void cancelMatch(final CommandContext<CommandSender> ctx) {
     final ChessBoard board = ctx.get("board");
     if (!board.hasGame()) {
-      ctx.getSender().sendMessage(this.messages().noMatchToCancel(board.name()));
+      ctx.sender().sendMessage(this.messages().noMatchToCancel(board.name()));
       return;
     }
     final ChessGame game = board.game();
     board.endGameAndWait();
     game.audience().sendMessage(this.messages().matchCancelled());
-    ctx.getSender().sendMessage(this.messages().matchCancelled());
+    ctx.sender().sendMessage(this.messages().matchCancelled());
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {
@@ -445,16 +447,10 @@ public final class Commands {
   }
 
   private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
-    final PaperCommandManager<CommandSender> mgr;
-    try {
-      mgr = PaperCommandManager.createNative(plugin, CommandExecutionCoordinator.simpleCoordinator());
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
+    final PaperCommandManager<CommandSender> mgr =
+      PaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
     mgr.registerBrigadier();
-    final CloudBrigadierManager<CommandSender, ?> brigMgr = Objects.requireNonNull(mgr.brigadierManager());
-    brigMgr.setNativeNumberSuggestions(false);
-    brigMgr.registerMapping(TypeToken.get(TimeControlArgument.Parser.class), builder -> {
+    mgr.brigadierManager().registerMapping(TypeToken.get(TimeControlParser.class), builder -> {
       try {
         builder.toConstant((ArgumentType<?>) MinecraftArgumentTypes.getClassByKey(NamespacedKey.minecraft("resource_location")).getConstructors()[0].newInstance());
       } catch (final ReflectiveOperationException ex) {
@@ -462,21 +458,18 @@ public final class Commands {
       }
       builder.cloudSuggestions();
     });
-    new MinecraftExceptionHandler<CommandSender>()
-      .withDefaultHandlers()
-      .apply(mgr, AudienceProvider.nativeAudience());
-    final BiConsumer<CommandSender, CommandExecutionException> handler = Objects.requireNonNull(mgr.getExceptionHandler(CommandExecutionException.class));
-    mgr.registerExceptionHandler(CommandExecutionException.class, (sender, ex) -> {
-      if (ex.getCause() instanceof CommandCompleted completed) {
+    MinecraftExceptionHandler.<CommandSender>createNative().defaultHandlers().registerTo(mgr);
+    mgr.exceptionController().registerHandler(CommandExecutionException.class, ctx -> {
+      if (ctx.exception().getCause() instanceof CommandCompleted completed) {
         final @Nullable Component message = completed.componentMessage();
         if (message != null) {
-          sender.sendMessage(message);
+          ctx.context().sender().sendMessage(message);
         }
-        return;
+      } else {
+        throw ctx.exception();
       }
-      handler.accept(sender, ex);
     });
-    mgr.registerCommandPreProcessor(ctx -> ctx.getCommandContext().set(PLUGIN, plugin));
+    mgr.registerCommandPreProcessor(ctx -> ctx.commandContext().set(PLUGIN, plugin));
     return mgr;
   }
 }
