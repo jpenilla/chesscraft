@@ -1,4 +1,3 @@
-import io.papermc.hangarpublishplugin.model.Platforms
 import me.modmuss50.mpp.ReleaseType
 import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
@@ -10,7 +9,7 @@ plugins {
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
   id("net.kyori.indra.licenser.spotless") version indraVer
-  id("io.papermc.hangar-publish-plugin") version "0.1.0"
+  id("io.papermc.hangar-publish-plugin") version "0.1.1"
   id("me.modmuss50.mod-publish-plugin") version "0.4.5"
   id("net.kyori.blossom") version "2.1.0"
   id("xyz.jpenilla.gremlin-gradle") version "0.0.3"
@@ -160,7 +159,7 @@ hangarPublish.publications.register("plugin") {
   channel.set("Release")
   changelog.set(releaseNotes)
   apiKey.set(providers.environmentVariable("HANGAR_UPLOAD_KEY"))
-  platforms.register(Platforms.PAPER) {
+  platforms.paper {
     jar.set(shadowJar)
     platformVersions.set(versions)
   }
