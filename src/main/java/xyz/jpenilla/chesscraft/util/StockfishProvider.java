@@ -71,7 +71,9 @@ public final class StockfishProvider {
 
   public Path engine(final String configValue) {
     if (!configValue.contains(":")) {
-      final Path customPath = this.dir.resolve("custom").resolve(configValue);
+      final Path customPath = configValue.startsWith("/")
+        ? Path.of(configValue)
+        : this.dir.resolve("custom").resolve(configValue);
       if (!customPath.toFile().canExecute()) {
         if (!customPath.toFile().setExecutable(true, true)) {
           this.plugin.getLogger().warning("Custom engine '{}' was not executable and ChessCraft failed to set it to executable, this may cause issues.");
