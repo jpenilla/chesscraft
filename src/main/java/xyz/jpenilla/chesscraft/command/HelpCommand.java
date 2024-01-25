@@ -17,20 +17,20 @@
  */
 package xyz.jpenilla.chesscraft.command;
 
-import cloud.commandframework.CommandManager;
-import cloud.commandframework.TypedCommandComponent;
-import cloud.commandframework.arguments.suggestion.BlockingSuggestionProvider;
-import cloud.commandframework.context.CommandContext;
-import cloud.commandframework.help.result.CommandEntry;
-import cloud.commandframework.minecraft.extras.ImmutableMinecraftHelp;
-import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.command.CommandSender;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
+import org.incendo.cloud.CommandManager;
+import org.incendo.cloud.component.TypedCommandComponent;
+import org.incendo.cloud.context.CommandContext;
+import org.incendo.cloud.help.result.CommandEntry;
+import org.incendo.cloud.minecraft.extras.ImmutableMinecraftHelp;
+import org.incendo.cloud.minecraft.extras.MinecraftHelp;
+import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
-import static cloud.commandframework.arguments.standard.StringParser.greedyStringParser;
+import static org.incendo.cloud.parser.standard.StringParser.greedyStringParser;
 
 @DefaultQualifier(NonNull.class)
 public final class HelpCommand {
@@ -75,7 +75,7 @@ public final class HelpCommand {
 
   private static MinecraftHelp<CommandSender> createMinecraftHelp(final CommandManager<CommandSender> mgr) {
     final MinecraftHelp<CommandSender> minecraftHelp = MinecraftHelp.createNative("/chess help", mgr);
-    return ImmutableMinecraftHelp.copyOf(minecraftHelp).withColors(MinecraftHelp.HelpColors.of(
+    return ImmutableMinecraftHelp.copyOf(minecraftHelp).withColors(MinecraftHelp.helpColors(
       TextColor.color(0x783201),
       NamedTextColor.WHITE,
       TextColor.color(0xB87341),

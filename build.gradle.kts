@@ -33,10 +33,10 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:2.0.0-SNAPSHOT"))
-  implementation("cloud.commandframework:cloud-paper:2.0.0-SNAPSHOT")
+  implementation(platform("org.incendo:cloud-bom:2.0.0-beta.1"))
+  implementation("org.incendo:cloud-paper:2.0.0-SNAPSHOT")
   compileOnly("com.mojang", "brigadier", "1.0.18")
-  implementation("cloud.commandframework:cloud-minecraft-extras:2.0.0-SNAPSHOT") {
+  implementation("org.incendo:cloud-minecraft-extras:2.0.0-SNAPSHOT") {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
