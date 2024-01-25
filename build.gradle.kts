@@ -110,7 +110,6 @@ tasks {
   }
   fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
   shadowJar {
-    reloc("cloud.commandframework")
     reloc("org.incendo")
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
