@@ -34,9 +34,10 @@ dependencies {
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
   implementation(platform("org.incendo:cloud-bom:2.0.0-beta.1"))
-  implementation("org.incendo:cloud-paper:2.0.0-SNAPSHOT")
+  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.1"))
+  implementation("org.incendo:cloud-paper")
   compileOnly("com.mojang", "brigadier", "1.0.18")
-  implementation("org.incendo:cloud-minecraft-extras:2.0.0-SNAPSHOT") {
+  implementation("org.incendo:cloud-minecraft-extras") {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
