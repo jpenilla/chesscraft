@@ -17,21 +17,19 @@
  */
 package xyz.jpenilla.chesscraft.command;
 
-import com.mojang.brigadier.arguments.ArgumentType;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.bukkit.data.SinglePlayerSelector;
-import org.incendo.cloud.bukkit.internal.MinecraftArgumentTypes;
+import org.incendo.cloud.bukkit.internal.BukkitBrigadierMapper;
 import org.incendo.cloud.component.DefaultValue;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.exception.CommandExecutionException;
@@ -58,6 +56,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 import static org.incendo.cloud.bukkit.parser.MaterialParser.materialParser;
 import static org.incendo.cloud.bukkit.parser.selector.SinglePlayerSelectorParser.singlePlayerSelectorParser;
+import static org.incendo.cloud.exception.handling.ExceptionHandler.unwrappingHandler;
 import static org.incendo.cloud.key.CloudKey.cloudKey;
 import static org.incendo.cloud.parser.standard.EnumParser.enumParser;
 import static org.incendo.cloud.parser.standard.IntegerParser.integerParser;
@@ -67,7 +66,7 @@ import static xyz.jpenilla.chesscraft.command.parser.PromotionParser.promotionPa
 import static xyz.jpenilla.chesscraft.command.parser.TimeControlParser.timeControlParser;
 
 public final class Commands {
-  public static final CloudKey<ChessCraft> PLUGIN = cloudKey("chesscraft", TypeToken.get(ChessCraft.class));
+  public static final CloudKey<ChessCraft> PLUGIN = cloudKey("chesscraft", ChessCraft.class);
 
   private final ChessCraft plugin;
   private final PaperCommandManager<CommandSender> mgr;
@@ -449,27 +448,22 @@ public final class Commands {
   private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
     final PaperCommandManager<CommandSender> mgr =
       PaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
+
     mgr.registerBrigadier();
-    mgr.brigadierManager().registerMapping(TypeToken.get(TimeControlParser.class), builder -> {
-      try {
-        builder.toConstant((ArgumentType<?>) MinecraftArgumentTypes.getClassByKey(NamespacedKey.minecraft("resource_location")).getConstructors()[0].newInstance());
-      } catch (final ReflectiveOperationException ex) {
-        throw new RuntimeException(ex);
-      }
-      builder.cloudSuggestions();
-    });
+    final BukkitBrigadierMapper<CommandSender> brigMapper = new BukkitBrigadierMapper<>(mgr, mgr.brigadierManager());
+    brigMapper.mapSimpleNMS(TypeToken.get(TimeControlParser.class), "resource_location", true);
+
     MinecraftExceptionHandler.<CommandSender>createNative().defaultHandlers().registerTo(mgr);
-    mgr.exceptionController().registerHandler(CommandExecutionException.class, ctx -> {
-      if (ctx.exception().getCause() instanceof CommandCompleted completed) {
-        final @Nullable Component message = completed.componentMessage();
-        if (message != null) {
-          ctx.context().sender().sendMessage(message);
-        }
-      } else {
-        throw ctx.exception();
+    mgr.exceptionController().registerHandler(CommandExecutionException.class, unwrappingHandler(CommandCompleted.class));
+    mgr.exceptionController().registerHandler(CommandCompleted.class, ctx -> {
+      final @Nullable Component message = ctx.exception().componentMessage();
+      if (message != null) {
+        ctx.context().sender().sendMessage(message);
       }
     });
+
     mgr.registerCommandPreProcessor(ctx -> ctx.commandContext().set(PLUGIN, plugin));
+
     return mgr;
   }
 }
