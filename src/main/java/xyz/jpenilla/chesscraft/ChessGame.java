@@ -509,6 +509,9 @@ public final class ChessGame implements BoardStateHolder {
       this.timeControlTask.cancel();
     }
     for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
+      if (pair.first().removeAfterGame()) {
+        ((BoardDisplaySettings<Object>) pair.first()).remove(pair.second());
+      }
       ((BoardDisplaySettings<Object>) pair.first()).gameEnded(pair.second());
     }
     this.stockfish.close();

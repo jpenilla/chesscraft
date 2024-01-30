@@ -135,6 +135,7 @@ public final class BoardManager implements Listener {
     this.load();
   }
 
+  @SuppressWarnings("unchecked")
   public void deleteBoard(final String board) {
     final ChessBoard remove = this.boards.remove(board);
     if (remove == null) {
@@ -144,6 +145,9 @@ public final class BoardManager implements Listener {
       remove.endGame(true, true);
     } else {
       remove.pieceHandler().removeFromWorld(remove, remove.world());
+      for (final BoardDisplaySettings<?> settings : remove.displays()) {
+        ((BoardDisplaySettings<Object>) settings).remove(settings.getOrCreateState(this.plugin, remove));
+      }
     }
     this.saveBoards();
   }

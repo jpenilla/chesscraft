@@ -89,12 +89,13 @@ public final class BoardStatusSettings extends AbstractDisplaySettings.WithTrans
 
   @Override
   public void gameEnded(final BoardBoundUpdatingText state) {
-    if (this.removeAfterGame()) {
-      state.remove();
-    } else {
-      state.stopUpdates();
-      // Schedule to ensure it runs after last update
-      Util.schedule(state.plugin(), () -> state.text(this.text(state.board(), false)));
-    }
+    state.stopUpdates();
+    // Schedule to ensure it runs after last update
+    Util.schedule(state.plugin(), () -> state.text(this.text(state.board(), false)));
+  }
+
+  @Override
+  public void remove(final BoardBoundUpdatingText state) {
+    state.remove();
   }
 }

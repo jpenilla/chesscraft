@@ -49,9 +49,7 @@ public final class MessageLogSettings extends AbstractDisplaySettings.WithTransf
   }
 
   @Override
-  public void gameEnded(final MessageLogDisplayAudience state) {
-    if (this.removeAfterGame()) {
-      state.remove();
-    }
+  public void remove(final MessageLogDisplayAudience state) {
+    state.remove();
   }
 }

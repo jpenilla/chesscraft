@@ -68,10 +68,8 @@ public final class PositionLabelSettings extends AbstractDisplaySettings<Positio
   }
 
   @Override
-  public void gameEnded(final PositionLabelsDisplay state) {
-    if (this.removeAfterGame()) {
-      state.remove();
-    }
+  public void remove(final PositionLabelsDisplay state) {
+    state.remove();
   }
 
   public Transformation eastWestTransformation(final boolean flip, final int boardScale) {

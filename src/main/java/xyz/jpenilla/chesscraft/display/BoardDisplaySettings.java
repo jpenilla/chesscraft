@@ -36,7 +36,10 @@ public interface BoardDisplaySettings<S> {
 
   S getOrCreateState(ChessCraft plugin, ChessBoard board);
 
-  void gameEnded(S state);
+  default void gameEnded(S state) {
+  }
+
+  void remove(S state);
 
   enum DisplayType {
     MESSAGE_LOG(MessageLogSettings.class),
