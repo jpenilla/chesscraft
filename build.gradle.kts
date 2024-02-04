@@ -33,8 +33,8 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("org.incendo:cloud-bom:2.0.0-beta.1"))
-  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.1"))
+  implementation(platform("org.incendo:cloud-bom:2.0.0-beta.2"))
+  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.2"))
   implementation("org.incendo:cloud-paper")
   compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("org.incendo:cloud-minecraft-extras") {
