@@ -23,13 +23,17 @@ import org.bukkit.command.CommandSender;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
 import org.incendo.cloud.CommandManager;
+import org.incendo.cloud.component.DefaultValue;
 import org.incendo.cloud.component.TypedCommandComponent;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.help.result.CommandEntry;
-import org.incendo.cloud.minecraft.extras.ImmutableMinecraftHelp;
+import org.incendo.cloud.minecraft.extras.AudienceProvider;
 import org.incendo.cloud.minecraft.extras.MinecraftHelp;
+import org.incendo.cloud.minecraft.extras.caption.ComponentCaptionFormatter;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
+import static org.incendo.cloud.minecraft.extras.MinecraftHelp.captionMessageProvider;
+import static org.incendo.cloud.minecraft.extras.MinecraftHelp.helpColors;
 import static org.incendo.cloud.parser.standard.StringParser.greedyStringParser;
 
 @DefaultQualifier(NonNull.class)
@@ -53,10 +57,7 @@ public final class HelpCommand {
   }
 
   private void executeHelp(final CommandContext<CommandSender> context) {
-    this.minecraftHelp.queryCommands(
-      context.optional(this.helpQueryArgument).orElse(""),
-      context.sender()
-    );
+    this.minecraftHelp.queryCommands(context.get(this.helpQueryArgument), context.sender());
   }
 
   private static TypedCommandComponent<CommandSender, String> createHelpQueryArgument(final CommandManager<CommandSender> mgr) {
@@ -70,17 +71,23 @@ public final class HelpCommand {
       .parser(greedyStringParser())
       .suggestionProvider(suggestions)
       .optional()
+      .defaultValue(DefaultValue.constant(""))
       .build();
   }
 
   private static MinecraftHelp<CommandSender> createMinecraftHelp(final CommandManager<CommandSender> mgr) {
-    final MinecraftHelp<CommandSender> minecraftHelp = MinecraftHelp.createNative("/chess help", mgr);
-    return ImmutableMinecraftHelp.copyOf(minecraftHelp).withColors(MinecraftHelp.helpColors(
-      TextColor.color(0x783201),
-      NamedTextColor.WHITE,
-      TextColor.color(0xB87341),
-      NamedTextColor.GRAY,
-      NamedTextColor.DARK_GRAY
-    ));
+    return MinecraftHelp.<CommandSender>builder()
+      .commandManager(mgr)
+      .audienceProvider(AudienceProvider.nativeAudience())
+      .commandPrefix("/chess help")
+      .colors(helpColors(
+        TextColor.color(0x783201),
+        NamedTextColor.WHITE,
+        TextColor.color(0xB87341),
+        NamedTextColor.GRAY,
+        NamedTextColor.DARK_GRAY
+      ))
+      .messageProvider(captionMessageProvider(mgr.captionRegistry(), ComponentCaptionFormatter.miniMessage()))
+      .build();
   }
 }

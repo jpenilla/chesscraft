@@ -34,8 +34,11 @@ dependencies {
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
   implementation(platform("org.incendo:cloud-bom:2.0.0-beta.2"))
-  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.2"))
+  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-SNAPSHOT"))
   implementation("org.incendo:cloud-paper")
+  implementation("org.incendo:cloud-translations-core:1.0.0-SNAPSHOT")
+  implementation("org.incendo:cloud-translations-bukkit:1.0.0-SNAPSHOT")
+  implementation("org.incendo:cloud-translations-minecraft-extras:1.0.0-SNAPSHOT")
   compileOnly("com.mojang", "brigadier", "1.0.18")
   implementation("org.incendo:cloud-minecraft-extras") {
     isTransitive = false
@@ -72,7 +75,8 @@ indraSpotlessLicenser {
 val runVersions = listOf(
   "19.4",
   "20.1",
-  "20.2"
+  "20.2",
+  "20.4"
 )
 
 tasks {

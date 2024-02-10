@@ -18,6 +18,7 @@
 package xyz.jpenilla.chesscraft.command;
 
 import io.leangen.geantyref.TypeToken;
+import java.util.Locale;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -36,9 +37,12 @@ import org.incendo.cloud.exception.CommandExecutionException;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.key.CloudKey;
 import org.incendo.cloud.minecraft.extras.MinecraftExceptionHandler;
+import org.incendo.cloud.minecraft.extras.MinecraftHelp;
+import org.incendo.cloud.minecraft.extras.caption.ComponentCaptionFormatter;
 import org.incendo.cloud.paper.PaperCommandManager;
 import org.incendo.cloud.parser.flag.CommandFlag;
 import org.incendo.cloud.parser.flag.FlagContext;
+import org.incendo.cloud.translations.LocaleExtractor;
 import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
@@ -61,6 +65,9 @@ import static org.incendo.cloud.key.CloudKey.cloudKey;
 import static org.incendo.cloud.parser.standard.EnumParser.enumParser;
 import static org.incendo.cloud.parser.standard.IntegerParser.integerParser;
 import static org.incendo.cloud.parser.standard.StringParser.stringParser;
+import static org.incendo.cloud.translations.TranslationBundle.core;
+import static org.incendo.cloud.translations.bukkit.BukkitTranslationBundle.bukkit;
+import static org.incendo.cloud.translations.minecraft.extras.MinecraftExtrasTranslationBundle.minecraftExtras;
 import static xyz.jpenilla.chesscraft.command.parser.ChessBoardParser.chessBoardParser;
 import static xyz.jpenilla.chesscraft.command.parser.PromotionParser.promotionParser;
 import static xyz.jpenilla.chesscraft.command.parser.TimeControlParser.timeControlParser;
@@ -448,21 +455,38 @@ public final class Commands {
   private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
     final PaperCommandManager<CommandSender> mgr =
       PaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
-
+    mgr.registerCommandPreProcessor(ctx -> ctx.commandContext().set(PLUGIN, plugin));
     mgr.registerBrigadier();
+
     final BukkitBrigadierMapper<CommandSender> brigMapper = new BukkitBrigadierMapper<>(mgr, mgr.brigadierManager());
     brigMapper.mapSimpleNMS(TypeToken.get(TimeControlParser.class), "resource_location", true);
 
-    MinecraftExceptionHandler.<CommandSender>createNative().defaultHandlers().registerTo(mgr);
-    mgr.exceptionController().registerHandler(CommandExecutionException.class, unwrappingHandler(CommandCompleted.class));
-    mgr.exceptionController().registerHandler(CommandCompleted.class, ctx -> {
-      final @Nullable Component message = ctx.exception().componentMessage();
-      if (message != null) {
-        ctx.context().sender().sendMessage(message);
-      }
-    });
+    MinecraftExceptionHandler.<CommandSender>createNative()
+      .defaultHandlers()
+      .captionFormatter(ComponentCaptionFormatter.miniMessage())
+      .registerTo(mgr);
 
-    mgr.registerCommandPreProcessor(ctx -> ctx.commandContext().set(PLUGIN, plugin));
+    mgr.exceptionController()
+      .registerHandler(CommandExecutionException.class, unwrappingHandler(CommandCompleted.class))
+      .registerHandler(CommandCompleted.class, ctx -> {
+        final @Nullable Component message = ctx.exception().componentMessage();
+        if (message != null) {
+          ctx.context().sender().sendMessage(message);
+        }
+      });
+
+    final LocaleExtractor<CommandSender> extractor = sender -> {
+      if (sender instanceof Player player) {
+        return player.locale();
+      }
+      return Locale.getDefault();
+    };
+
+    mgr.captionRegistry()
+      .registerProvider(core(extractor))
+      .registerProvider(bukkit(extractor))
+      .registerProvider(MinecraftHelp.defaultCaptionsProvider())
+      .registerProvider(minecraftExtras(extractor));
 
     return mgr;
   }
