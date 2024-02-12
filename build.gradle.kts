@@ -93,6 +93,9 @@ tasks {
   assemble {
     dependsOn(shadowJar)
   }
+  compileJava {
+    options.compilerArgs.add("-Xlint:-classfile")
+  }
   runServer {
     minecraftVersion("1.${runVersions.last()}")
   }
