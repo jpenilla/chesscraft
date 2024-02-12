@@ -37,7 +37,6 @@ import org.incendo.cloud.exception.CommandExecutionException;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.key.CloudKey;
 import org.incendo.cloud.minecraft.extras.MinecraftExceptionHandler;
-import org.incendo.cloud.minecraft.extras.MinecraftHelp;
 import org.incendo.cloud.minecraft.extras.caption.ComponentCaptionFormatter;
 import org.incendo.cloud.paper.PaperCommandManager;
 import org.incendo.cloud.parser.flag.CommandFlag;
@@ -485,7 +484,6 @@ public final class Commands {
     mgr.captionRegistry()
       .registerProvider(core(extractor))
       .registerProvider(bukkit(extractor))
-      .registerProvider(MinecraftHelp.defaultCaptionsProvider())
       .registerProvider(minecraftExtras(extractor));
 
     return mgr;
