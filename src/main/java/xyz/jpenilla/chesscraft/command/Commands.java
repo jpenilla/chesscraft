@@ -18,7 +18,6 @@
 package xyz.jpenilla.chesscraft.command;
 
 import io.leangen.geantyref.TypeToken;
-import java.util.Locale;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -474,12 +473,9 @@ public final class Commands {
         }
       });
 
-    final LocaleExtractor<CommandSender> extractor = sender -> {
-      if (sender instanceof Player player) {
-        return player.locale();
-      }
-      return Locale.getDefault();
-    };
+    final LocaleExtractor<CommandSender> extractor = LocaleExtractor.<CommandSender>builder()
+      .senderType(Player.class, Player::locale)
+      .build();
 
     mgr.captionRegistry()
       .registerProvider(core(extractor))
