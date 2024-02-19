@@ -65,6 +65,7 @@ import static org.incendo.cloud.parser.standard.IntegerParser.integerParser;
 import static org.incendo.cloud.parser.standard.StringParser.stringParser;
 import static org.incendo.cloud.translations.TranslationBundle.core;
 import static org.incendo.cloud.translations.bukkit.BukkitTranslationBundle.bukkit;
+import static org.incendo.cloud.translations.minecraft.extras.AudienceLocaleExtractor.audienceLocaleExtractor;
 import static org.incendo.cloud.translations.minecraft.extras.MinecraftExtrasTranslationBundle.minecraftExtras;
 import static xyz.jpenilla.chesscraft.command.parser.ChessBoardParser.chessBoardParser;
 import static xyz.jpenilla.chesscraft.command.parser.PromotionParser.promotionParser;
@@ -473,9 +474,7 @@ public final class Commands {
         }
       });
 
-    final LocaleExtractor<CommandSender> extractor = LocaleExtractor.<CommandSender>builder()
-      .senderType(Player.class, Player::locale)
-      .build();
+    final LocaleExtractor<CommandSender> extractor = audienceLocaleExtractor();
 
     mgr.captionRegistry()
       .registerProvider(core(extractor))
