@@ -17,6 +17,7 @@
  */
 package xyz.jpenilla.chesscraft.config;
 
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
@@ -266,6 +267,46 @@ public final class Messages {
 
   public Component matchCancelled() {
     return parse(this.matchCancelled);
+  }
+
+  private String pauseProposedSender = "<opponent_color>♚</opponent_color><opponent_displayname> has been notified that you wish to pause the match.";
+
+  public Component pauseProposedSender(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(this.pauseProposedSender, playerOpponentTags(player, opp, playerColor));
+  }
+
+  private String pauseProposedRecipient = "<hover:show_text:'Click to accept'><click:run_command:'/chess accept_pause'><opponent_color>♚</opponent_color><opponent_displayname> has proposed a pause on the match. Use <white>/chess accept_pause</white> to accept.";
+
+  public Component pauseProposedRecipient(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(this.pauseProposedRecipient, playerOpponentTags(player, opp, playerColor));
+  }
+
+  private String pausedMatch = "<green>Match has been paused.";
+
+  public Component pausedMatch() {
+    return parse(this.pausedMatch);
+  }
+
+  private String noPauseProposed = "<red>Your match does not have a pause proposed. Use /chess pause_match to propose one.";
+
+  public Component noPauseProposed() {
+    return parse(this.noPauseProposed);
+  }
+
+  private String opponentOffline = "<red><opponent_username> is not online!";
+
+  public Component opponentOffline(final String opponentUsername) {
+    return parse(this.opponentOffline, Placeholder.parsed("opponent_username", opponentUsername));
+  }
+
+  private String noPausedMatch = "<red>There is no paused match with the id <uuid>";
+
+  public Component noPausedMatch(final UUID uuid) {
+    return parse(this.noPausedMatch, Placeholder.parsed("uuid", uuid.toString()));
   }
 
   private String on = "<green>On";

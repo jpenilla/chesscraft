@@ -20,10 +20,12 @@ package xyz.jpenilla.chesscraft.command;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
 import java.util.UUID;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -204,9 +206,40 @@ public final class Commands {
           sender.sendMessage(this.messages().mustBeInMatch());
           return;
         }
-        final GameState state = board.game().snapshotState(null);
-        board.endGame();
-        this.plugin.database().saveMatchAsync(state, false);
+        final Audience gameAudience = board.game().audience();
+        final ChessPlayer opponent = board.game().player(board.game().color(ChessPlayer.player(sender)).other());
+        if (opponent.isCpu()) {
+          final GameState state = board.game().snapshotState(null);
+          board.endGame();
+          this.plugin.database().saveMatchAsync(state, false);
+          gameAudience.sendMessage(this.messages().pausedMatch());
+        } else {
+          this.boardManager.pauseProposals().put(((ChessPlayer.Player) opponent).uuid(), new Object());
+          sender.sendMessage(this.messages().pauseProposedSender(board.game(), board.game().color(ChessPlayer.player(sender))));
+          opponent.sendMessage(this.messages().pauseProposedRecipient(board.game(), board.game().color(ChessPlayer.player(sender)).other()));
+        }
+      }));
+
+    this.mgr.command(chess.literal("accept_pause")
+      .senderType(Player.class)
+      .handler(ctx -> {
+        final Player sender = ctx.sender();
+        final ChessBoard board = this.playerBoard(sender);
+        if (board == null) {
+          sender.sendMessage(this.messages().mustBeInMatch());
+          return;
+        }
+        final @Nullable Object proposal = this.boardManager.pauseProposals().getIfPresent(sender.getUniqueId());
+        final Audience gameAudience = board.game().audience();
+        if (proposal != null) {
+          this.boardManager.pauseProposals().invalidate(sender.getUniqueId());
+          final GameState state = board.game().snapshotState(null);
+          board.endGame();
+          this.plugin.database().saveMatchAsync(state, false);
+          gameAudience.sendMessage(this.messages().pausedMatch());
+        } else {
+          sender.sendMessage(this.messages().noPauseProposed());
+        }
       }));
 
     this.mgr.command(chess.literal("resume_match")
@@ -216,18 +249,37 @@ public final class Commands {
       .handler(ctx -> {
         final ChessBoard board = ctx.get("board");
         final UUID id = ctx.get("id");
-        this.plugin.database().queryMatch(id).whenCompleteAsync((match, thr) -> {
+        this.plugin.database().queryMatch(id).whenCompleteAsync((matchOptional, thr) -> {
           if (thr != null) {
             this.plugin.getSLF4JLogger().warn("Exception querying match {}", id, thr);
             return;
           }
 
+          if (matchOptional.isEmpty()) {
+            ctx.sender().sendMessage(this.messages().noPausedMatch(id));
+            return;
+          }
+          final GameState match = matchOptional.get();
           if (match.result() != null) {
-            ctx.sender().sendMessage("That match has already concluded!");
+            ctx.sender().sendMessage(this.messages().noPausedMatch(id));
             return;
           }
 
+          final PieceColor color = match.color(ctx.sender().getUniqueId());
+          if (!match.cpu(color.other())) {
+            final UUID opponentId = match.playerId(color.other());
+            final @Nullable Player player = Bukkit.getPlayer(opponentId);
+            if (player == null) {
+              ctx.sender().sendMessage(this.messages().opponentOffline(
+                Bukkit.getOfflinePlayer(opponentId).getName()
+              ));
+              return;
+            }
+          }
+
           board.resumeGame(match);
+          // todo
+          board.game().audience().sendMessage(Component.text("match resumed"));
         }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
       }));
 

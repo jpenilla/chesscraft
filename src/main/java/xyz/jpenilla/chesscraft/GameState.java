@@ -73,6 +73,28 @@ public record GameState(
     }
   }
 
+  public PieceColor color(final UUID playerId) {
+    if (playerId.equals(this.whiteId)) {
+      return PieceColor.WHITE;
+    }
+    return PieceColor.BLACK;
+  }
+
+  public UUID playerId(final PieceColor color) {
+    if (color == PieceColor.WHITE) {
+      return this.whiteId;
+    } else {
+      return this.blackId;
+    }
+  }
+
+  public boolean cpu(final PieceColor color) {
+    if (color == PieceColor.WHITE) {
+      return this.whiteCpu();
+    }
+    return this.blackCpu();
+  }
+
   public Component describe() {
     return text()
       .append(this.white().displayName().color(NamedTextColor.WHITE))

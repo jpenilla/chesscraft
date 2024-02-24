@@ -77,6 +77,7 @@ public final class BoardManager implements Listener {
   private final Map<String, ChessBoard> boards;
   private final Map<String, BoardDisplaySettings<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
+  private final Cache<UUID, Object> pauseProposals;
   private @MonotonicNonNull AutoCpuGames autoCpuGames;
 
   private BukkitTask particleTask;
@@ -89,6 +90,7 @@ public final class BoardManager implements Listener {
     this.displaysFile = plugin.getDataFolder().toPath().resolve("displays.yml");
     this.displays = new ConcurrentHashMap<>();
     this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
+    this.pauseProposals = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
       Files.createDirectories(this.boardsFile.getParent());
     } catch (final IOException ex) {
@@ -98,6 +100,10 @@ public final class BoardManager implements Listener {
 
   public Cache<UUID, PVPChallenge> challenges() {
     return this.challenges;
+  }
+
+  public Cache<UUID, Object> pauseProposals() {
+    return this.pauseProposals;
   }
 
   public Collection<ChessBoard> boards() {

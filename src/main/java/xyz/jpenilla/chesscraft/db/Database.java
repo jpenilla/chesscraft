@@ -89,11 +89,11 @@ public final class Database {
       .collectIntoList());
   }
 
-  public CompletionStage<GameState> queryMatch(final UUID id) {
+  public CompletionStage<Optional<GameState>> queryMatch(final UUID id) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_match"))
       .bind("id", id)
       .mapTo(GameState.class)
-      .one());
+      .findOne());
   }
 
   public void saveMatchAsync(final GameState state, final boolean insertResult) {
