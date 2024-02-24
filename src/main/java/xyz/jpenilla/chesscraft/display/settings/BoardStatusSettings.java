@@ -77,8 +77,8 @@ public final class BoardStatusSettings extends AbstractDisplaySettings.WithTrans
       tags.resolver(new OptionTagResolver("time_control", g.time(g.white()) != null));
       if (g.time(g.white()) != null) {
         tags.resolvers(
-          Placeholder.unparsed("white_time", g.time(g.white()).timeLeft()),
-          Placeholder.unparsed("black_time", g.time(g.black()).timeLeft())
+          Placeholder.unparsed("white_time", g.time(g.white()).timeLeftString()),
+          Placeholder.unparsed("black_time", g.time(g.black()).timeLeftString())
         );
       }
     }

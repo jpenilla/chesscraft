@@ -237,8 +237,8 @@ public final class Messages {
     return parse(
       this.timeDisplay,
       playerOpponentTags(player, opp, playerColor),
-      Placeholder.unparsed("player_time", game.time(player).timeLeft()),
-      Placeholder.unparsed("opponent_time", game.time(opp).timeLeft())
+      Placeholder.unparsed("player_time", game.time(player).timeLeftString()),
+      Placeholder.unparsed("opponent_time", game.time(opp).timeLeftString())
     );
   }
 

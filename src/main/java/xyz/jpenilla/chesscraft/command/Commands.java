@@ -19,7 +19,9 @@ package xyz.jpenilla.chesscraft.command;
 
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
@@ -46,6 +48,7 @@ import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.command.parser.ChessBoardParser;
 import xyz.jpenilla.chesscraft.command.parser.TimeControlParser;
 import xyz.jpenilla.chesscraft.config.Messages;
@@ -63,6 +66,7 @@ import static org.incendo.cloud.key.CloudKey.cloudKey;
 import static org.incendo.cloud.parser.standard.EnumParser.enumParser;
 import static org.incendo.cloud.parser.standard.IntegerParser.integerParser;
 import static org.incendo.cloud.parser.standard.StringParser.stringParser;
+import static org.incendo.cloud.parser.standard.UUIDParser.uuidParser;
 import static org.incendo.cloud.translations.TranslationBundle.core;
 import static org.incendo.cloud.translations.bukkit.BukkitTranslationBundle.bukkit;
 import static org.incendo.cloud.translations.minecraft.extras.AudienceLocaleExtractor.audienceLocaleExtractor;
@@ -190,6 +194,72 @@ public final class Commands {
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.OCCUPIED_ONLY))
       .permission("chesscraft.command.cancel_game")
       .handler(this::cancelMatch));
+
+    this.mgr.command(chess.literal("pause_match")
+      .senderType(Player.class)
+      .handler(ctx -> {
+        final Player sender = ctx.sender();
+        final ChessBoard board = this.playerBoard(sender);
+        if (board == null) {
+          sender.sendMessage(this.messages().mustBeInMatch());
+          return;
+        }
+        final GameState state = board.game().snapshotState(null);
+        board.endGame();
+        this.plugin.database().saveMatchAsync(state, false);
+      }));
+
+    this.mgr.command(chess.literal("resume_match")
+      .required("id", uuidParser())
+      .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
+      .senderType(Player.class)
+      .handler(ctx -> {
+        final ChessBoard board = ctx.get("board");
+        final UUID id = ctx.get("id");
+        this.plugin.database().queryMatch(id).whenCompleteAsync((match, thr) -> {
+          if (thr != null) {
+            this.plugin.getSLF4JLogger().warn("Exception querying match {}", id, thr);
+            return;
+          }
+
+          if (match.result() != null) {
+            ctx.sender().sendMessage("That match has already concluded!");
+            return;
+          }
+
+          board.resumeGame(match);
+        }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
+      }));
+
+    this.mgr.command(chess.literal("resumable_matches")
+      .senderType(Player.class)
+      .handler(ctx -> {
+        this.plugin.database().queryIncompleteMatches(ctx.sender().getUniqueId()).whenComplete((games, thr) -> {
+          if (thr != null) {
+            this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", ctx.sender().getUniqueId(), thr);
+            return;
+          }
+
+          for (final GameState game : games) {
+            ctx.sender().sendMessage(game.describe().clickEvent(ClickEvent.suggestCommand("/chess resume_match " + game.id() + " ")));
+          }
+        });
+      }));
+
+    this.mgr.command(chess.literal("complete_matches")
+      .senderType(Player.class)
+      .handler(ctx -> {
+        this.plugin.database().queryCompleteMatches(ctx.sender().getUniqueId()).whenComplete((games, thr) -> {
+          if (thr != null) {
+            this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", ctx.sender().getUniqueId(), thr);
+            return;
+          }
+
+          for (final GameState game : games) {
+            ctx.sender().sendMessage(game.describe());
+          }
+        });
+      }));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {

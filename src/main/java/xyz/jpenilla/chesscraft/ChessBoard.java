@@ -35,6 +35,7 @@ import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3d;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
 
 public final class ChessBoard {
@@ -258,6 +259,25 @@ public final class ChessBoard {
     this.game = new ChessGame(this.plugin, this, white, black, timeControl, moveDelay);
     this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
+      this.game.cpuMove();
+    }
+  }
+
+  public void resumeGame(final GameState state) {
+    if (!state.playersOnline()) {
+      throw new IllegalStateException();
+    }
+
+    if (this.autoCpuGame.enabled && !this.autoCpuGame.allowPlayerUse && (!state.white().isCpu() || !state.black().isCpu())) {
+      throw new IllegalStateException("This board is only for CPU games!");
+    }
+
+    if (this.game != null) {
+      throw new IllegalStateException("Board is occupied");
+    }
+    this.game = new ChessGame(this.plugin, this, state);
+    this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, state.white(), state.black()));
+    if (state.white().isCpu() && state.currentFen().nextMove() == PieceColor.WHITE) {
       this.game.cpuMove();
     }
   }

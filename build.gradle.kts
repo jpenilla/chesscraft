@@ -67,6 +67,14 @@ dependencies {
   cpuFeaturesNatives("macosx-arm64", true)
   cpuFeaturesNatives("macosx-x86_64")
   cpuFeaturesNatives("windows-x86_64")
+
+  compileOnly(libs.hikariCP)
+  runtimeDownload(libs.hikariCP)
+  compileOnly(libs.flyway)
+  runtimeDownload(libs.flyway)
+  compileOnly(libs.jdbiCore)
+  runtimeDownload(libs.jdbiCore)
+  runtimeDownload(libs.h2)
 }
 
 indraSpotlessLicenser {

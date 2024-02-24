@@ -26,16 +26,19 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import xyz.jpenilla.chesscraft.command.Commands;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.config.MainConfig;
+import xyz.jpenilla.chesscraft.db.Database;
 import xyz.jpenilla.chesscraft.util.StockfishProvider;
 
 public final class ChessCraft extends JavaPlugin {
   private final Deque<Runnable> shutdownTasks = new ConcurrentLinkedDeque<>();
   private BoardManager boardManager;
+  private Database database;
   private @MonotonicNonNull MainConfig config;
 
   @Override
   public void onEnable() {
     this.reloadMainConfig();
+    this.database = Database.init(this);
     final Path stockfishPath = new StockfishProvider(this, this.getDataFolder().toPath().resolve("engines"))
       .engine(this.config.stockfishEngine());
     this.boardManager = new BoardManager(this, stockfishPath);
@@ -53,6 +56,7 @@ public final class ChessCraft extends JavaPlugin {
     while (!this.shutdownTasks.isEmpty()) {
       this.shutdownTasks.poll().run();
     }
+    this.database.close();
   }
 
   public BoardManager boardManager() {
@@ -61,6 +65,10 @@ public final class ChessCraft extends JavaPlugin {
 
   public MainConfig config() {
     return this.config;
+  }
+
+  public Database database() {
+    return this.database;
   }
 
   public void reloadMainConfig() {

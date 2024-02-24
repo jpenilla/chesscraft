@@ -20,6 +20,7 @@ package xyz.jpenilla.chesscraft.util;
 import java.util.List;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.framework.qual.DefaultQualifier;
 import xyz.jpenilla.chesscraft.ChessCraft;
 
@@ -61,5 +62,9 @@ public final class Util {
       return list.subList(list.size() - x, list.size());
     }
     return list;
+  }
+
+  public static @Nullable String trim(final @Nullable String s) {
+    return s == null ? null : s.trim();
   }
 }
