@@ -316,13 +316,13 @@ public final class Messages {
     return parse(this.noPausedMatch, Placeholder.parsed("match_id", uuid.toString()));
   }
 
-  private String noPausedMatches = "<red>You do not have any paused matches.";
+  private String noPausedMatches = "<red>No paused matches found.";
 
   public Component noPausedMatches() {
     return parse(this.noPausedMatches);
   }
 
-  private String noCompleteMatches = "<red>You do not have any completed matches.";
+  private String noCompleteMatches = "<red>No complete matches found.";
 
   public Component noCompleteMatches() {
     return parse(this.noCompleteMatches);
