@@ -13,4 +13,4 @@ SELECT chesscraft_matches.id AS id,
        chesscraft_complete_matches.result AS result
 FROM chesscraft_matches
 LEFT OUTER JOIN chesscraft_complete_matches ON chesscraft_matches.id=chesscraft_complete_matches.id
-WHERE id = :id;
+WHERE chesscraft_matches.id = :id;
