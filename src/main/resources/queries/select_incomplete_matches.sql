@@ -9,7 +9,8 @@ SELECT chesscraft_matches.id AS id,
        chesscraft_matches.black_time_control AS black_time_control,
        chesscraft_matches.moves AS moves,
        chesscraft_matches.current_fen AS current_fen,
-       chesscraft_matches.cpu_move_delay AS cpu_move_delay
+       chesscraft_matches.cpu_move_delay AS cpu_move_delay,
+       chesscraft_matches.last_updated AS last_updated
 FROM chesscraft_matches
 LEFT OUTER JOIN chesscraft_complete_matches ON chesscraft_matches.id=chesscraft_complete_matches.id
 WHERE (white_player_id = :player_id OR black_player_id = :player_id) AND chesscraft_complete_matches.result IS NULL;

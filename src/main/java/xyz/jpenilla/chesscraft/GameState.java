@@ -17,18 +17,14 @@
  */
 package xyz.jpenilla.chesscraft;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
-
-import static net.kyori.adventure.text.Component.space;
-import static net.kyori.adventure.text.Component.text;
 
 public record GameState(
   UUID id,
@@ -41,7 +37,8 @@ public record GameState(
   List<ChessGame.Move> moves,
   Fen currentFen,
   int cpuMoveDelay,
-  @Nullable Result result
+  @Nullable Result result,
+  @Nullable Timestamp lastUpdated
 ) {
   public boolean whiteCpu() {
     return this.whiteId == null;
@@ -63,6 +60,18 @@ public record GameState(
       : ChessPlayer.player(Objects.requireNonNull(Bukkit.getPlayer(this.blackId())));
   }
 
+  public ChessPlayer whiteOffline() {
+    return this.whiteCpu()
+      ? ChessPlayer.cpu(this.whiteElo())
+      : ChessPlayer.offlinePlayer(Bukkit.getOfflinePlayer(this.whiteId()));
+  }
+
+  public ChessPlayer blackOffline() {
+    return this.blackCpu()
+      ? ChessPlayer.cpu(this.blackElo())
+      : ChessPlayer.offlinePlayer(Bukkit.getOfflinePlayer(this.blackId()));
+  }
+
   public boolean playersOnline() {
     try {
       this.black();
@@ -76,8 +85,10 @@ public record GameState(
   public PieceColor color(final UUID playerId) {
     if (playerId.equals(this.whiteId)) {
       return PieceColor.WHITE;
+    } else if (playerId.equals(this.blackId)) {
+      return PieceColor.BLACK;
     }
-    return PieceColor.BLACK;
+    return null;
   }
 
   public UUID playerId(final PieceColor color) {
@@ -95,20 +106,6 @@ public record GameState(
     return this.blackCpu();
   }
 
-  public Component describe() {
-    return text()
-      .append(this.white().displayName().color(NamedTextColor.WHITE))
-      .append(text(" vs "))
-      .append(this.black().displayName().color(NamedTextColor.BLACK))
-      .apply(builder -> {
-        if (this.result != null) {
-          builder.append(space())
-            .append(text(this.result.toString()));
-        }
-      })
-      .build();
-  }
-
   public enum ResultType {
     WIN,
     STALEMATE,
@@ -117,9 +114,9 @@ public record GameState(
     FORFEIT
   }
 
-  public record Result(ResultType type, PieceColor color, long time) {
+  public record Result(ResultType type, PieceColor color) {
     static Result create(final ResultType type, final PieceColor color) {
-      return new Result(type, color, System.currentTimeMillis());
+      return new Result(type, color);
     }
   }
 }

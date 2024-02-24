@@ -23,6 +23,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 
 public interface ChessPlayer extends Audience {
   default Component displayName() {
@@ -37,6 +38,23 @@ public interface ChessPlayer extends Audience {
 
   static ChessPlayer player(final org.bukkit.entity.Player player) {
     return new Player(player.getUniqueId());
+  }
+
+  static ChessPlayer offlinePlayer(final OfflinePlayer offlinePlayer) {
+    return new ChessPlayer() {
+      @Override
+      public Component name() {
+        return Component.text(offlinePlayer.getName());
+      }
+
+      @Override
+      public Component displayName() {
+        if (offlinePlayer.isOnline()) {
+          return offlinePlayer.getPlayer().displayName();
+        }
+        return ChessPlayer.super.displayName();
+      }
+    };
   }
 
   static ChessPlayer cpu(final int elo) {

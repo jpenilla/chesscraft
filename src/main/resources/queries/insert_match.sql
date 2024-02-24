@@ -10,7 +10,8 @@ REPLACE INTO chesscraft_matches (
   black_time_control,
   moves,
   current_fen,
-  cpu_move_delay
+  cpu_move_delay,
+  last_updated
 ) VALUES (
   :id,
   :white_cpu,
@@ -23,5 +24,6 @@ REPLACE INTO chesscraft_matches (
   :black_time_control,
   :moves,
   :current_fen,
-  :cpu_move_delay
+  :cpu_move_delay,
+  DEFAULT
 );

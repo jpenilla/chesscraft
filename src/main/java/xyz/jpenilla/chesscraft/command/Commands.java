@@ -22,11 +22,11 @@ import java.util.Objects;
 import java.util.UUID;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
@@ -62,6 +62,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 
 import static org.incendo.cloud.bukkit.parser.MaterialParser.materialParser;
+import static org.incendo.cloud.bukkit.parser.OfflinePlayerParser.offlinePlayerParser;
 import static org.incendo.cloud.bukkit.parser.selector.SinglePlayerSelectorParser.singlePlayerSelectorParser;
 import static org.incendo.cloud.exception.handling.ExceptionHandler.unwrappingHandler;
 import static org.incendo.cloud.key.CloudKey.cloudKey;
@@ -194,127 +195,44 @@ public final class Commands {
 
     this.mgr.command(chess.literal("cancel_match")
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.OCCUPIED_ONLY))
-      .permission("chesscraft.command.cancel_game")
+      .permission("chesscraft.command.cancel_match")
       .handler(this::cancelMatch));
 
     this.mgr.command(chess.literal("pause_match")
       .senderType(Player.class)
-      .handler(ctx -> {
-        final Player sender = ctx.sender();
-        final ChessBoard board = this.playerBoard(sender);
-        if (board == null) {
-          sender.sendMessage(this.messages().mustBeInMatch());
-          return;
-        }
-        final Audience gameAudience = board.game().audience();
-        final ChessPlayer opponent = board.game().player(board.game().color(ChessPlayer.player(sender)).other());
-        if (opponent.isCpu()) {
-          final GameState state = board.game().snapshotState(null);
-          board.endGame();
-          this.plugin.database().saveMatchAsync(state, false);
-          gameAudience.sendMessage(this.messages().pausedMatch());
-        } else {
-          this.boardManager.pauseProposals().put(((ChessPlayer.Player) opponent).uuid(), new Object());
-          sender.sendMessage(this.messages().pauseProposedSender(board.game(), board.game().color(ChessPlayer.player(sender))));
-          opponent.sendMessage(this.messages().pauseProposedRecipient(board.game(), board.game().color(ChessPlayer.player(sender)).other()));
-        }
-      }));
+      .permission("chesscraft.command.pause_match")
+      .handler(this::pauseMatch));
 
     this.mgr.command(chess.literal("accept_pause")
       .senderType(Player.class)
-      .handler(ctx -> {
-        final Player sender = ctx.sender();
-        final ChessBoard board = this.playerBoard(sender);
-        if (board == null) {
-          sender.sendMessage(this.messages().mustBeInMatch());
-          return;
-        }
-        final @Nullable Object proposal = this.boardManager.pauseProposals().getIfPresent(sender.getUniqueId());
-        final Audience gameAudience = board.game().audience();
-        if (proposal != null) {
-          this.boardManager.pauseProposals().invalidate(sender.getUniqueId());
-          final GameState state = board.game().snapshotState(null);
-          board.endGame();
-          this.plugin.database().saveMatchAsync(state, false);
-          gameAudience.sendMessage(this.messages().pausedMatch());
-        } else {
-          sender.sendMessage(this.messages().noPauseProposed());
-        }
-      }));
+      .permission("chesscraft.command.accept_pause")
+      .handler(this::acceptPause));
 
     this.mgr.command(chess.literal("resume_match")
       .required("id", uuidParser())
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
       .senderType(Player.class)
-      .handler(ctx -> {
-        final ChessBoard board = ctx.get("board");
-        final UUID id = ctx.get("id");
-        this.plugin.database().queryMatch(id).whenCompleteAsync((matchOptional, thr) -> {
-          if (thr != null) {
-            this.plugin.getSLF4JLogger().warn("Exception querying match {}", id, thr);
-            return;
-          }
+      .permission("chesscraft.command.resume_match")
+      .handler(this::resumeMatch));
 
-          if (matchOptional.isEmpty()) {
-            ctx.sender().sendMessage(this.messages().noPausedMatch(id));
-            return;
-          }
-          final GameState match = matchOptional.get();
-          if (match.result() != null) {
-            ctx.sender().sendMessage(this.messages().noPausedMatch(id));
-            return;
-          }
+    final Command.Builder<CommandSender> pausedMatches = chess.literal("paused_matches")
+      .handler(this::pausedMatches);
+    this.mgr.command(pausedMatches.permission("chesscraft.command.paused_matches.self")
+      .senderType(Player.class));
+    this.mgr.command(pausedMatches.permission("chesscraft.command.paused_matches.others")
+      .required("player", offlinePlayerParser()));
 
-          final PieceColor color = match.color(ctx.sender().getUniqueId());
-          if (!match.cpu(color.other())) {
-            final UUID opponentId = match.playerId(color.other());
-            final @Nullable Player player = Bukkit.getPlayer(opponentId);
-            if (player == null) {
-              ctx.sender().sendMessage(this.messages().opponentOffline(
-                Bukkit.getOfflinePlayer(opponentId).getName()
-              ));
-              return;
-            }
-          }
-
-          board.resumeGame(match);
-        }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
-      }));
-
-    this.mgr.command(chess.literal("resumable_matches")
-      .senderType(Player.class)
-      .handler(ctx -> {
-        this.plugin.database().queryIncompleteMatches(ctx.sender().getUniqueId()).whenComplete((games, thr) -> {
-          if (thr != null) {
-            this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", ctx.sender().getUniqueId(), thr);
-            return;
-          }
-
-          for (final GameState game : games) {
-            ctx.sender().sendMessage(game.describe().clickEvent(ClickEvent.suggestCommand("/chess resume_match " + game.id() + " ")));
-          }
-        });
-      }));
-
-    this.mgr.command(chess.literal("complete_matches")
-      .senderType(Player.class)
-      .handler(ctx -> {
-        this.plugin.database().queryCompleteMatches(ctx.sender().getUniqueId()).whenComplete((games, thr) -> {
-          if (thr != null) {
-            this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", ctx.sender().getUniqueId(), thr);
-            return;
-          }
-
-          for (final GameState game : games) {
-            ctx.sender().sendMessage(game.describe());
-          }
-        });
-      }));
+    final Command.Builder<CommandSender> completeMatches = chess.literal("complete_matches")
+      .handler(this::completedMatches);
+    this.mgr.command(completeMatches.permission("chesscraft.command.complete_matches.self")
+      .senderType(Player.class));
+    this.mgr.command(completeMatches.permission("chesscraft.command.complete_matches.others")
+      .required("player", offlinePlayerParser()));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
     ctx.sender().sendRichMessage("<bold><black>Chess<white>Craft");
-    ctx.sender().sendRichMessage("<gray><italic>  v" + this.plugin.getDescription().getVersion());
+    ctx.sender().sendRichMessage("<gray><italic>  v" + this.plugin.getPluginMeta().getVersion());
   }
 
   private void boards(final CommandContext<CommandSender> ctx) {
@@ -558,6 +476,137 @@ public final class Commands {
     board.endGameAndWait();
     game.audience().sendMessage(this.messages().matchCancelled());
     ctx.sender().sendMessage(this.messages().matchCancelled());
+  }
+
+  private void pauseMatch(final CommandContext<Player> ctx) {
+    final Player sender = ctx.sender();
+    final ChessBoard board = this.playerBoard(sender);
+    if (board == null) {
+      sender.sendMessage(this.messages().mustBeInMatch());
+      return;
+    }
+    final Audience gameAudience = board.game().audience();
+    final ChessPlayer opponent = board.game().player(board.game().color(ChessPlayer.player(sender)).other());
+    if (opponent.isCpu()) {
+      final GameState state = board.game().snapshotState(null);
+      board.endGame();
+      this.plugin.database().saveMatchAsync(state, false);
+      gameAudience.sendMessage(this.messages().pausedMatch());
+    } else {
+      this.boardManager.pauseProposals().put(((ChessPlayer.Player) opponent).uuid(), new Object());
+      sender.sendMessage(this.messages().pauseProposedSender(board.game(), board.game().color(ChessPlayer.player(sender))));
+      opponent.sendMessage(this.messages().pauseProposedRecipient(board.game(), board.game().color(ChessPlayer.player(sender)).other()));
+    }
+  }
+
+  private void acceptPause(final CommandContext<Player> ctx) {
+    final Player sender = ctx.sender();
+    final ChessBoard board = this.playerBoard(sender);
+    if (board == null) {
+      sender.sendMessage(this.messages().mustBeInMatch());
+      return;
+    }
+    final @Nullable Object proposal = this.boardManager.pauseProposals().getIfPresent(sender.getUniqueId());
+    final Audience gameAudience = board.game().audience();
+    if (proposal != null) {
+      this.boardManager.pauseProposals().invalidate(sender.getUniqueId());
+      final GameState state = board.game().snapshotState(null);
+      board.endGame();
+      this.plugin.database().saveMatchAsync(state, false);
+      gameAudience.sendMessage(this.messages().pausedMatch());
+    } else {
+      sender.sendMessage(this.messages().noPauseProposed());
+    }
+  }
+
+  private void resumeMatch(final CommandContext<Player> ctx) {
+    final ChessBoard board = ctx.get("board");
+    final UUID id = ctx.get("id");
+    this.plugin.database().queryMatch(id).whenCompleteAsync((matchOptional, thr) -> {
+      if (thr != null) {
+        this.plugin.getSLF4JLogger().warn("Exception querying match {}", id, thr);
+        return;
+      }
+
+      if (matchOptional.isEmpty()) {
+        ctx.sender().sendMessage(this.messages().noPausedMatch(id));
+        return;
+      }
+      final GameState match = matchOptional.get();
+      if (match.result() != null) {
+        ctx.sender().sendMessage(this.messages().noPausedMatch(id));
+        return;
+      }
+
+      final @Nullable PieceColor color = match.color(ctx.sender().getUniqueId());
+      if (color == null) {
+        // todo user is not a player in this match
+        throw new IllegalStateException();
+      }
+      if (!match.cpu(color.other())) {
+        final UUID opponentId = match.playerId(color.other());
+        final @Nullable Player player = Bukkit.getPlayer(opponentId);
+        if (player == null) {
+          ctx.sender().sendMessage(this.messages().opponentOffline(
+            Bukkit.getOfflinePlayer(opponentId).getName()
+          ));
+          return;
+        }
+      }
+
+      board.resumeGame(match);
+    }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
+  }
+
+  private static UUID targetUuid(CommandContext<? extends CommandSender> ctx) {
+    return ctx.<OfflinePlayer>optional("player").map(OfflinePlayer::getUniqueId).orElseGet(() -> {
+      if (ctx.sender() instanceof Player p) {
+        return p.getUniqueId();
+      } else {
+        // todo
+        throw CommandCompleted.withoutMessage();
+      }
+    });
+  }
+
+  private void pausedMatches(final CommandContext<? extends CommandSender> ctx) {
+    final UUID player = targetUuid(ctx);
+
+    this.plugin.database().queryIncompleteMatches(player).whenComplete((games, thr) -> {
+      if (thr != null) {
+        this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", player, thr);
+        return;
+      }
+
+      if (games.isEmpty()) {
+        ctx.sender().sendMessage(this.messages().noPausedMatches());
+        return;
+      }
+
+      for (final GameState game : games) {
+        ctx.sender().sendMessage(this.messages().pausedMatchInfo(game));
+      }
+    });
+  }
+
+  private void completedMatches(final CommandContext<? extends CommandSender> ctx) {
+    final UUID player = targetUuid(ctx);
+
+    this.plugin.database().queryCompleteMatches(player).whenComplete((games, thr) -> {
+      if (thr != null) {
+        this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", player, thr);
+        return;
+      }
+
+      if (games.isEmpty()) {
+        ctx.sender().sendMessage(this.messages().noCompleteMatches());
+        return;
+      }
+
+      for (final GameState game : games) {
+        ctx.sender().sendMessage(this.messages().completeMatchInfo(game));
+      }
+    });
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {

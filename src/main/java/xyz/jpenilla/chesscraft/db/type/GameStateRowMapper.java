@@ -59,7 +59,8 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
       moveListMapper.map(rs, "moves", ctx),
       fenMapper.map(rs, "current_fen", ctx),
       rs.getInt("cpu_move_delay"),
-      result
+      result,
+      rs.getTimestamp("last_updated")
     );
   }
 }

@@ -18,12 +18,12 @@ CREATE TABLE chesscraft_matches
   `black_time_control` TEXT,
   `moves` LONGTEXT NOT NULL,
   `current_fen` VARCHAR(128) NOT NULL,
-  `cpu_move_delay` INTEGER NOT NULL
+  `cpu_move_delay` INTEGER NOT NULL,
+  `last_updated` DATETIME NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE chesscraft_complete_matches
 (
   `id` UUID NOT NULL PRIMARY KEY REFERENCES chesscraft_matches (`id`),
-  `result` MEDIUMTEXT NOT NULL,
-  `time` DATETIME NOT NULL DEFAULT NOW()
+  `result` MEDIUMTEXT NOT NULL
 );

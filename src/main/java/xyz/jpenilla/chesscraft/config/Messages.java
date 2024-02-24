@@ -29,6 +29,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
@@ -309,10 +310,34 @@ public final class Messages {
     return parse(this.opponentOffline, Placeholder.parsed("opponent_username", opponentUsername));
   }
 
-  private String noPausedMatch = "<red>There is no paused match with the id <uuid>";
+  private String noPausedMatch = "<red>There is no paused match with the id <match_id>";
 
   public Component noPausedMatch(final UUID uuid) {
-    return parse(this.noPausedMatch, Placeholder.parsed("uuid", uuid.toString()));
+    return parse(this.noPausedMatch, Placeholder.parsed("match_id", uuid.toString()));
+  }
+
+  private String noPausedMatches = "<red>You do not have any paused matches.";
+
+  public Component noPausedMatches() {
+    return parse(this.noPausedMatches);
+  }
+
+  private String noCompleteMatches = "<red>You do not have any completed matches.";
+
+  public Component noCompleteMatches() {
+    return parse(this.noCompleteMatches);
+  }
+
+  private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> from <time>";
+
+  public Component pausedMatchInfo(final GameState state) {
+    return parse(this.pausedMatchInfo, blackWhitePlayerTags(state.blackOffline(), state.whiteOffline()), Placeholder.parsed("match_id", state.id().toString()), Placeholder.unparsed("time", state.lastUpdated().toString()));
+  }
+
+  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> from <time>: <result>";
+
+  public Component completeMatchInfo(final GameState state) {
+    return parse(this.completeMatchInfo, blackWhitePlayerTags(state.blackOffline(), state.whiteOffline()), Placeholder.unparsed("result", state.result().toString()), Placeholder.unparsed("time", state.lastUpdated().toString()));
   }
 
   private String on = "<green>On";

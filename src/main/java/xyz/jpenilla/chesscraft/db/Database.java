@@ -20,6 +20,8 @@ package xyz.jpenilla.chesscraft.db;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Timestamp;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -79,14 +81,20 @@ public final class Database {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_incomplete_matches"))
       .bind("player_id", playerId)
       .mapTo(GameState.class)
-      .collectIntoList());
+      .list()
+      .stream()
+      .sorted(newestFirst())
+      .toList());
   }
 
   public CompletionStage<List<GameState>> queryCompleteMatches(final UUID playerId) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_complete_matches"))
       .bind("player_id", playerId)
       .mapTo(GameState.class)
-      .collectIntoList());
+      .list()
+      .stream()
+      .sorted(newestFirst())
+      .toList());
   }
 
   public CompletionStage<Optional<GameState>> queryMatch(final UUID id) {
@@ -150,6 +158,10 @@ public final class Database {
         .bind("displayname", Optional.ofNullable(Bukkit.getPlayer(state.blackId())).map(Player::displayName).orElse(null))
         .execute();
     }
+  }
+
+  private static Comparator<GameState> newestFirst() {
+    return Comparator.<GameState, Timestamp>comparing(state -> Objects.requireNonNull(state.lastUpdated(), "lastUpdated")).reversed();
   }
 
   public static Database init(final ChessCraft plugin) {

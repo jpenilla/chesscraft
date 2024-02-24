@@ -173,7 +173,8 @@ public final class ChessGame implements BoardStateHolder {
       List.copyOf(this.moves),
       Fen.read(this.currentFen),
       this.moveDelay,
-      result
+      result,
+      null
     );
   }
 
