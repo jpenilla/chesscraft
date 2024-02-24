@@ -170,6 +170,12 @@ public final class Messages {
     return parse(this.matchStarted, blackWhitePlayerTags(black, white), Placeholder.unparsed("board", board.name()));
   }
 
+  private String matchResumed = "<green>Match has resumed!";
+
+  public Component matchResumed(final ChessBoard board, final ChessPlayer white, final ChessPlayer black) {
+    return parse(this.matchResumed, blackWhitePlayerTags(black, white), Placeholder.unparsed("board", board.name()));
+  }
+
   private String mustBeInMatch = "<red>You must be in a match to use this command.";
 
   public Component mustBeInMatch() {

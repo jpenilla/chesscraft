@@ -278,8 +278,6 @@ public final class Commands {
           }
 
           board.resumeGame(match);
-          // todo
-          board.game().audience().sendMessage(Component.text("match resumed"));
         }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
       }));
 

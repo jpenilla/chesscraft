@@ -276,7 +276,7 @@ public final class ChessBoard {
       throw new IllegalStateException("Board is occupied");
     }
     this.game = new ChessGame(this.plugin, this, state);
-    this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, state.white(), state.black()));
+    this.game.audience().sendMessage(this.plugin.config().messages().matchResumed(this, state.white(), state.black()));
     if (state.white().isCpu() && state.currentFen().nextMove() == PieceColor.WHITE) {
       this.game.cpuMove();
     }
