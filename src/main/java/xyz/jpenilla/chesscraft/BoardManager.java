@@ -17,8 +17,8 @@
  */
 package xyz.jpenilla.chesscraft;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.leangen.geantyref.TypeToken;
 import io.papermc.paper.event.player.PlayerItemFrameChangeEvent;
 import java.io.IOException;
@@ -89,8 +89,8 @@ public final class BoardManager implements Listener {
     this.boards = new ConcurrentHashMap<>();
     this.displaysFile = plugin.getDataFolder().toPath().resolve("displays.yml");
     this.displays = new ConcurrentHashMap<>();
-    this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
-    this.pauseProposals = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
+    this.challenges = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
+    this.pauseProposals = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
       Files.createDirectories(this.boardsFile.getParent());
     } catch (final IOException ex) {
@@ -399,7 +399,7 @@ public final class BoardManager implements Listener {
   }
 
   private static final class AutoCpuGames {
-    private final Cache<String, Object> delay = CacheBuilder.newBuilder()
+    private final Cache<String, Object> delay = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofSeconds(10))
       .build();
     private final ConcurrentHashMap<String, Runnable> taskMap = new ConcurrentHashMap<>();

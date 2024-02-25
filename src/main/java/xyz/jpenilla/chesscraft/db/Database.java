@@ -54,6 +54,7 @@ import xyz.jpenilla.chesscraft.db.type.MoveListColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.NativeUUIDColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.ResultColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlColumnMapper;
+import xyz.jpenilla.chesscraft.db.type.TimeControlSettingsColumnMapper;
 import xyz.jpenilla.gremlin.runtime.util.Util;
 
 public final class Database {
@@ -162,6 +163,7 @@ public final class Database {
         .bind("moves", state.moves())
         .bind("current_fen", state.currentFen())
         .bind("cpu_move_delay", state.cpuMoveDelay())
+        .bind("time_control_settings", state.timeControlSettings())
         .execute();
 
       if (insertResult) {
@@ -231,6 +233,9 @@ public final class Database {
       // TimeControl
       .registerColumnMapper(new TimeControlColumnMapper())
       .registerArgument(new TimeControlColumnMapper())
+      // TimeControlSettings
+      .registerColumnMapper(new TimeControlSettingsColumnMapper())
+      .registerArgument(new TimeControlSettingsColumnMapper())
       // Component
       .registerColumnMapper(new ComponentColumnMapper())
       .registerArgument(new ComponentColumnMapper())

@@ -11,6 +11,7 @@ REPLACE INTO chesscraft_matches (
   moves,
   current_fen,
   cpu_move_delay,
+  time_control_settings,
   last_updated
 ) VALUES (
   :id,
@@ -25,5 +26,6 @@ REPLACE INTO chesscraft_matches (
   :moves,
   :current_fen,
   :cpu_move_delay,
+  :time_control_settings,
   DEFAULT
 );

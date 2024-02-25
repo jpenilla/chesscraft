@@ -19,10 +19,17 @@ package xyz.jpenilla.chesscraft.db.type;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
 import java.lang.reflect.Type;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Duration;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jdbi.v3.core.argument.AbstractArgumentFactory;
@@ -39,6 +46,7 @@ public abstract class GsonColumnMapper<T>
 
   private final Gson gson = GsonComponentSerializer.gson().populator().apply(new GsonBuilder())
     .registerTypeAdapter(Fen.class, new Fen.JsonSerializer())
+    .registerTypeAdapter(Duration.class, new DurationAdapter())
     .create();
   private final Type type;
 
@@ -61,5 +69,17 @@ public abstract class GsonColumnMapper<T>
     }
 
     return null;
+  }
+
+  private static final class DurationAdapter implements JsonSerializer<Duration>, JsonDeserializer<Duration> {
+    @Override
+    public Duration deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context) throws JsonParseException {
+      return Duration.ofMillis(json.getAsLong());
+    }
+
+    @Override
+    public JsonElement serialize(final Duration src, final Type typeOfSrc, final JsonSerializationContext context) {
+      return context.serialize(src.toMillis());
+    }
   }
 }

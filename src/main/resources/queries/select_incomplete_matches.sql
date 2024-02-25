@@ -10,6 +10,7 @@ SELECT chesscraft_matches.id AS id,
        chesscraft_matches.moves AS moves,
        chesscraft_matches.current_fen AS current_fen,
        chesscraft_matches.cpu_move_delay AS cpu_move_delay,
+       chesscraft_matches.time_control_settings AS time_control_settings,
        chesscraft_matches.last_updated AS last_updated
 FROM chesscraft_matches
 LEFT OUTER JOIN chesscraft_complete_matches ON chesscraft_matches.id=chesscraft_complete_matches.id

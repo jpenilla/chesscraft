@@ -28,6 +28,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.Fen;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 
 public final class GameStateRowMapper implements RowMapper<GameState> {
   @Override
@@ -37,6 +38,7 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
     final ColumnMapper<List<ChessGame.Move>> moveListMapper = ctx.findColumnMapperFor(new GenericType<List<ChessGame.Move>>() {}).orElseThrow();
     final ColumnMapper<GameState.Result> resultMapper = ctx.findColumnMapperFor(GameState.Result.class).orElseThrow();
     final ColumnMapper<Fen> fenMapper = ctx.findColumnMapperFor(Fen.class).orElseThrow();
+    final ColumnMapper<TimeControlSettings> timeControlSettings = ctx.findColumnMapperFor(TimeControlSettings.class).orElseThrow();
 
     final boolean whiteCpu = rs.getBoolean("white_cpu");
     final boolean blackCpu = rs.getBoolean("black_cpu");
@@ -59,6 +61,7 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
       moveListMapper.map(rs, "moves", ctx),
       fenMapper.map(rs, "current_fen", ctx),
       rs.getInt("cpu_move_delay"),
+      timeControlSettings.map(rs, "time_control_settings", ctx),
       result,
       rs.getTimestamp("last_updated")
     );

@@ -74,6 +74,7 @@ public final class ChessGame implements BoardStateHolder {
   private final ChessPlayer black;
   private final int moveDelay;
   private final CountDownLatch delayLatch = new CountDownLatch(1);
+  private final TimeControlSettings timeControlSettings;
   private PieceType whiteNextPromotion = PieceType.QUEEN;
   private PieceType blackNextPromotion = PieceType.QUEEN;
   private final @Nullable TimeControl whiteTime;
@@ -119,6 +120,7 @@ public final class ChessGame implements BoardStateHolder {
       this.blackTime = null;
       this.timeControlTask = null;
     }
+    this.timeControlSettings = timeControl;
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
@@ -155,6 +157,7 @@ public final class ChessGame implements BoardStateHolder {
     } else {
       this.timeControlTask = null;
     }
+    this.timeControlSettings = state.timeControlSettings();
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
@@ -164,15 +167,16 @@ public final class ChessGame implements BoardStateHolder {
   public GameState snapshotState(final GameState.@Nullable Result result) {
     return new GameState(
       this.id,
-      this.white instanceof ChessPlayer.OnlinePlayer player ? player.uuid() : null,
+      this.white instanceof ChessPlayer.Player player ? player.uuid() : null,
       this.white instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
       this.whiteTime == null ? null : this.whiteTime.copy(),
-      this.black instanceof ChessPlayer.OnlinePlayer player ? player.uuid() : null,
+      this.black instanceof ChessPlayer.Player player ? player.uuid() : null,
       this.black instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
       this.blackTime == null ? null : this.blackTime.copy(),
       List.copyOf(this.moves),
       Fen.read(this.currentFen),
       this.moveDelay,
+      this.timeControlSettings,
       result,
       null
     );

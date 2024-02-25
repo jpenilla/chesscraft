@@ -27,6 +27,7 @@ import org.bukkit.Bukkit;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.Fen;
+import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.db.Database;
 
@@ -41,6 +42,7 @@ public record GameState(
   List<ChessGame.Move> moves,
   Fen currentFen,
   int cpuMoveDelay,
+  @Nullable TimeControlSettings timeControlSettings,
   @Nullable Result result,
   @Nullable Timestamp lastUpdated
 ) {
