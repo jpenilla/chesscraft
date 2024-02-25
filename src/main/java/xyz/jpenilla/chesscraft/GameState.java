@@ -75,7 +75,7 @@ public record GameState(
   public CompletableFuture<ChessPlayer> blackOffline(final Database db) {
     return this.blackCpu()
       ? CompletableFuture.completedFuture(ChessPlayer.cpu(this.blackElo()))
-      : db.cachedPlayer(this.whiteId()).toCompletableFuture();
+      : db.cachedPlayer(this.blackId()).toCompletableFuture();
   }
 
   public boolean playersOnline() {
