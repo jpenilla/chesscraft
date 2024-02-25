@@ -19,6 +19,7 @@ package xyz.jpenilla.chesscraft.config;
 
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -338,6 +339,47 @@ public final class Messages {
 
   public Component completeMatchInfo(final GameState state) {
     return parse(this.completeMatchInfo, blackWhitePlayerTags(state.blackOffline(), state.whiteOffline()), Placeholder.unparsed("result", state.result().toString()), Placeholder.unparsed("time", state.lastUpdated().toString()));
+  }
+
+  private String pausedMatchesHeader = "Paused matches for <displayname>";
+
+  public Component pausedMatchesHeader(final Component username, final Component displayName) {
+    return parse(this.pausedMatchesHeader, Placeholder.component("username", username), Placeholder.component("displayname", displayName));
+  }
+
+  private String matchHistoryHeader = "Match history for <displayname>";
+
+  public Component matchHistoryHeader(final Component username, final Component displayName) {
+    return parse(this.matchHistoryHeader, Placeholder.component("username", username), Placeholder.component("displayname", displayName));
+  }
+
+  private String clickForPreviousPage = "Click for previous page";
+
+  public Component clickForPreviousPage() {
+    return parse(this.clickForPreviousPage);
+  }
+
+  private String clickForNextPage = "Click for next page";
+
+  public Component clickForNextPage() {
+    return parse(this.clickForNextPage);
+  }
+
+  private String pageOutOfRange = "<red>Page <page> is out of range! There are only <pages> pages.";
+
+  public Component pageOutOfRange(final int page, final int pages) {
+    return parse(this.pageOutOfRange, Placeholder.parsed("page", String.valueOf(page)), Placeholder.parsed("pages", String.valueOf(pages)));
+  }
+
+  private String paginationFooter = "<gray>Page <page><white>/</white><pages> <aqua><buttons>";
+
+  public Component paginationFooter(final int page, final int pages, final ComponentLike buttons) {
+    return parse(
+      this.paginationFooter,
+      Placeholder.parsed("page", String.valueOf(page)),
+      Placeholder.parsed("pages", String.valueOf(pages)),
+      Placeholder.component("buttons", buttons)
+    );
   }
 
   private String on = "<green>On";

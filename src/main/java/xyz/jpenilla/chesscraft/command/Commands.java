@@ -20,6 +20,9 @@ package xyz.jpenilla.chesscraft.command;
 import io.leangen.geantyref.TypeToken;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -45,6 +48,7 @@ import org.incendo.cloud.paper.PaperCommandManager;
 import org.incendo.cloud.parser.flag.CommandFlag;
 import org.incendo.cloud.parser.flag.FlagContext;
 import org.incendo.cloud.translations.LocaleExtractor;
+import org.incendo.cloud.type.tuple.Pair;
 import xyz.jpenilla.chesscraft.BoardManager;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessCraft;
@@ -60,6 +64,8 @@ import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.Pagination;
+import xyz.jpenilla.chesscraft.util.PaginationHelper;
 
 import static org.incendo.cloud.bukkit.parser.MaterialParser.materialParser;
 import static org.incendo.cloud.bukkit.parser.OfflinePlayerParser.offlinePlayerParser;
@@ -84,11 +90,13 @@ public final class Commands {
   private final ChessCraft plugin;
   private final PaperCommandManager<CommandSender> mgr;
   private final BoardManager boardManager;
+  private final PaginationHelper pagination;
 
   public Commands(final ChessCraft plugin) {
     this.plugin = plugin;
     this.boardManager = plugin.boardManager();
     this.mgr = createCommandManager(plugin);
+    this.pagination = new PaginationHelper(plugin);
   }
 
   public void register() {
@@ -213,20 +221,25 @@ public final class Commands {
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
       .senderType(Player.class)
       .permission("chesscraft.command.resume_match")
-      .handler(this::resumeMatch));
+      .futureHandler(this::resumeMatch));
+
+    final Consumer<Command.Builder<? extends CommandSender>> withPage = builder -> {
+      this.mgr.command(builder);
+      this.mgr.command(builder.literal("page").required("page", integerParser(1)));
+    };
 
     final Command.Builder<CommandSender> pausedMatches = chess.literal("paused_matches")
-      .handler(this::pausedMatches);
-    this.mgr.command(pausedMatches.permission("chesscraft.command.paused_matches.self")
+      .futureHandler(this::pausedMatches);
+    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.self")
       .senderType(Player.class));
-    this.mgr.command(pausedMatches.permission("chesscraft.command.paused_matches.others")
+    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.others")
       .required("player", offlinePlayerParser()));
 
-    final Command.Builder<CommandSender> completeMatches = chess.literal("complete_matches")
-      .handler(this::completedMatches);
-    this.mgr.command(completeMatches.permission("chesscraft.command.complete_matches.self")
+    final Command.Builder<CommandSender> matchHistory = chess.literal("match_history")
+      .futureHandler(this::matchHistory);
+    withPage.accept(matchHistory.permission("chesscraft.command.match_history.self")
       .senderType(Player.class));
-    this.mgr.command(completeMatches.permission("chesscraft.command.complete_matches.others")
+    withPage.accept(matchHistory.permission("chesscraft.command.match_history.others")
       .required("player", offlinePlayerParser()));
   }
 
@@ -519,15 +532,11 @@ public final class Commands {
     }
   }
 
-  private void resumeMatch(final CommandContext<Player> ctx) {
+  private CompletableFuture<Void> resumeMatch(final CommandContext<Player> ctx) {
     final ChessBoard board = ctx.get("board");
     final UUID id = ctx.get("id");
-    this.plugin.database().queryMatch(id).whenCompleteAsync((matchOptional, thr) -> {
-      if (thr != null) {
-        this.plugin.getSLF4JLogger().warn("Exception querying match {}", id, thr);
-        return;
-      }
 
+    return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOptional -> {
       if (matchOptional.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noPausedMatch(id));
         return;
@@ -555,13 +564,18 @@ public final class Commands {
       }
 
       board.resumeGame(match);
-    }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
+    }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin)).toCompletableFuture();
   }
 
-  private static UUID targetUuid(CommandContext<? extends CommandSender> ctx) {
-    return ctx.<OfflinePlayer>optional("player").map(OfflinePlayer::getUniqueId).orElseGet(() -> {
+  private static Pair<UUID, ChessPlayer> target(final CommandContext<? extends CommandSender> ctx) {
+    return ctx.<OfflinePlayer>optional("player").map(offlinePlayer -> {
+      if (offlinePlayer.isOnline()) {
+        return Pair.of(offlinePlayer.getUniqueId(), ChessPlayer.player(Objects.requireNonNull(offlinePlayer.getPlayer())));
+      }
+      return Pair.of(offlinePlayer.getUniqueId(), ChessPlayer.offlinePlayer(offlinePlayer));
+    }).orElseGet(() -> {
       if (ctx.sender() instanceof Player p) {
-        return p.getUniqueId();
+        return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
       } else {
         // todo
         throw CommandCompleted.withoutMessage();
@@ -569,44 +583,62 @@ public final class Commands {
     });
   }
 
-  private void pausedMatches(final CommandContext<? extends CommandSender> ctx) {
-    final UUID player = targetUuid(ctx);
+  private CompletableFuture<Void> pausedMatches(final CommandContext<? extends CommandSender> ctx) {
+    final Pair<UUID, ChessPlayer> player = target(ctx);
 
-    this.plugin.database().queryIncompleteMatches(player).whenComplete((games, thr) -> {
-      if (thr != null) {
-        this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", player, thr);
-        return;
-      }
-
+    return this.plugin.database().queryIncompleteMatches(player.first()).thenAccept(games -> {
       if (games.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noPausedMatches());
         return;
       }
 
-      for (final GameState game : games) {
-        ctx.sender().sendMessage(this.messages().pausedMatchInfo(game));
-      }
-    });
+      final Pagination<GameState> pagination = Pagination.<GameState>builder()
+        .header((page, pages) -> this.messages().pausedMatchesHeader(player.second().name(), player.second().displayName()))
+        .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", player.first())))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(item)))
+        .pageOutOfRange(this.pagination.pageOutOfRange())
+        .build();
+
+      pagination.render(games, ctx.<Integer>optional("page").orElse(1), 5)
+        .forEach(ctx.sender()::sendMessage);
+    }).toCompletableFuture();
   }
 
-  private void completedMatches(final CommandContext<? extends CommandSender> ctx) {
-    final UUID player = targetUuid(ctx);
+  private CompletableFuture<Void> matchHistory(final CommandContext<? extends CommandSender> ctx) {
+    final Pair<UUID, ChessPlayer> player = target(ctx);
 
-    this.plugin.database().queryCompleteMatches(player).whenComplete((games, thr) -> {
-      if (thr != null) {
-        this.plugin.getSLF4JLogger().warn("Exception querying matches for {}", player, thr);
-        return;
-      }
-
+    return this.plugin.database().queryCompleteMatches(player.first()).thenAccept(games -> {
       if (games.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noCompleteMatches());
         return;
       }
 
-      for (final GameState game : games) {
-        ctx.sender().sendMessage(this.messages().completeMatchInfo(game));
+      final Pagination<GameState> pagination = Pagination.<GameState>builder()
+        .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName()))
+        .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(item)))
+        .pageOutOfRange(this.pagination.pageOutOfRange())
+        .build();
+
+      pagination.render(games, ctx.<Integer>optional("page").orElse(1), 5)
+        .forEach(ctx.sender()::sendMessage);
+    }).toCompletableFuture();
+  }
+
+  private static IntFunction<String> commandString(
+    final CommandContext<? extends CommandSender> ctx,
+    final String base,
+    final UUID player
+  ) {
+    return page -> {
+      final String id;
+      if (ctx.sender() instanceof Player sender && sender.getUniqueId().equals(player)) {
+        id = "";
+      } else {
+        id = " " + ctx.parsingContext("player").consumedInput();
       }
-    });
+      return base + id + " page " + page;
+    };
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {
