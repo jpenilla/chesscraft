@@ -525,6 +525,14 @@ public final class Commands {
     final ChessBoard board = ctx.get("board");
     final UUID id = ctx.get("id");
 
+    if (this.boardManager.inGame(ctx.sender())) {
+      ctx.sender().sendMessage(this.messages().alreadyInGame());
+      return CompletableFuture.completedFuture(null);
+    } else if (board.hasGame() || board.autoCpuGame().cpuGamesOnly()) {
+      ctx.sender().sendMessage(this.messages().boardOccupied(board.name()));
+      return CompletableFuture.completedFuture(null);
+    }
+
     return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOptional -> {
       if (matchOptional.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noPausedMatch(id));
@@ -540,7 +548,6 @@ public final class Commands {
       if (color == null) {
         throw CommandCompleted.withMessage(this.messages().youAreNotInThisMatch());
       }
-      // TODO require opponent to accept resume
       if (!match.cpu(color.other())) {
         final UUID opponentId = match.playerId(color.other());
         final @Nullable Player player = Bukkit.getPlayer(opponentId);
@@ -550,6 +557,11 @@ public final class Commands {
           ));
           return;
         }
+        if (this.boardManager.inGame(player)) {
+          ctx.sender().sendMessage(this.messages().opponentAlreadyInGame(player));
+          return;
+        }
+        // TODO require opponent to accept resume
       }
 
       board.resumeGame(match);
