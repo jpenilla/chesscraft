@@ -19,7 +19,7 @@ CREATE TABLE chesscraft_matches
   `moves` LONGTEXT NOT NULL,
   `current_fen` VARCHAR(128) NOT NULL,
   `cpu_move_delay` INTEGER NOT NULL,
-  `time_control_settings` VARCHAR(32),
+  `time_control_settings` VARCHAR(128),
   `last_updated` DATETIME NOT NULL DEFAULT NOW()
 );
 
