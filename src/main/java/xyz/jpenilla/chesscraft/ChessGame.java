@@ -164,10 +164,10 @@ public final class ChessGame implements BoardStateHolder {
   public GameState snapshotState(final GameState.@Nullable Result result) {
     return new GameState(
       this.id,
-      this.white instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.white instanceof ChessPlayer.OnlinePlayer player ? player.uuid() : null,
       this.white instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
       this.whiteTime == null ? null : this.whiteTime.copy(),
-      this.black instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.black instanceof ChessPlayer.OnlinePlayer player ? player.uuid() : null,
       this.black instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
       this.blackTime == null ? null : this.blackTime.copy(),
       List.copyOf(this.moves),
@@ -238,7 +238,7 @@ public final class ChessGame implements BoardStateHolder {
     final Vec3i selectedPos = this.board.toWorld(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
-    if (!(c instanceof ChessPlayer.Player chessPlayer)) {
+    if (!(c instanceof ChessPlayer.OnlinePlayer chessPlayer)) {
       return;
     }
     final Player player = chessPlayer.player();
@@ -316,8 +316,11 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   public boolean hasPlayer(final Player player) {
-    final ChessPlayer w = ChessPlayer.player(player);
-    return this.white.equals(w) || this.black.equals(w);
+    final ChessPlayer.Player chessPlayer = ChessPlayer.player(player);
+    if (this.white instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid())) {
+      return true;
+    }
+    return this.black instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid());
   }
 
   public void applyToWorld() {

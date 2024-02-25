@@ -21,12 +21,14 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.db.Database;
 
 public record GameState(
   UUID id,
@@ -62,16 +64,16 @@ public record GameState(
       : ChessPlayer.player(Objects.requireNonNull(Bukkit.getPlayer(this.blackId())));
   }
 
-  public ChessPlayer whiteOffline() {
+  public CompletableFuture<ChessPlayer> whiteOffline(final Database db) {
     return this.whiteCpu()
-      ? ChessPlayer.cpu(this.whiteElo())
-      : ChessPlayer.offlinePlayer(Bukkit.getOfflinePlayer(this.whiteId()));
+      ? CompletableFuture.completedFuture(ChessPlayer.cpu(this.whiteElo()))
+      : db.cachedPlayer(this.whiteId()).toCompletableFuture();
   }
 
-  public ChessPlayer blackOffline() {
+  public CompletableFuture<ChessPlayer> blackOffline(final Database db) {
     return this.blackCpu()
-      ? ChessPlayer.cpu(this.blackElo())
-      : ChessPlayer.offlinePlayer(Bukkit.getOfflinePlayer(this.blackId()));
+      ? CompletableFuture.completedFuture(ChessPlayer.cpu(this.blackElo()))
+      : db.cachedPlayer(this.whiteId()).toCompletableFuture();
   }
 
   public boolean playersOnline() {

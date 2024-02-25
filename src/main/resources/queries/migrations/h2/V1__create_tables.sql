@@ -2,7 +2,7 @@ CREATE TABLE chesscraft_players
 (
   `id` UUID NOT NULL PRIMARY KEY,
   `username` VARCHAR(30) NOT NULl,
-  `displayname` MEDIUMTEXT
+  `displayname` MEDIUMTEXT NOT NULL
 );
 
 CREATE TABLE chesscraft_matches

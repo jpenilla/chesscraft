@@ -499,7 +499,7 @@ public final class Commands {
     if (opponent.isCpu()) {
       this.boardManager.pauseMatch(board);
     } else {
-      this.boardManager.pauseProposals().put(((ChessPlayer.Player) opponent).uuid(), new Object());
+      this.boardManager.pauseProposals().put(((ChessPlayer.OnlinePlayer) opponent).uuid(), new Object());
       sender.sendMessage(this.messages().pauseProposedSender(board.game(), board.game().color(ChessPlayer.player(sender))));
       opponent.sendMessage(this.messages().pauseProposedRecipient(board.game(), board.game().color(ChessPlayer.player(sender)).other()));
     }
@@ -553,7 +553,7 @@ public final class Commands {
         final @Nullable Player player = Bukkit.getPlayer(opponentId);
         if (player == null) {
           ctx.sender().sendMessage(this.messages().opponentOffline(
-            Bukkit.getOfflinePlayer(opponentId).getName()
+            this.plugin.database().cachedPlayer(opponentId).toCompletableFuture().join()
           ));
           return;
         }
@@ -569,24 +569,23 @@ public final class Commands {
   }
 
   private Pair<UUID, ChessPlayer> target(final CommandContext<? extends CommandSender> ctx) {
-    return ctx.<OfflinePlayer>optional("player").map(offlinePlayer -> {
-      if (offlinePlayer.isOnline()) {
-        return Pair.of(offlinePlayer.getUniqueId(), ChessPlayer.player(Objects.requireNonNull(offlinePlayer.getPlayer())));
-      }
-      return Pair.of(offlinePlayer.getUniqueId(), ChessPlayer.offlinePlayer(offlinePlayer));
-    }).orElseGet(() -> {
-      if (ctx.sender() instanceof Player p) {
-        return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
-      } else {
-        throw CommandCompleted.withMessage(this.messages().nonPlayerMustProvidePlayer());
-      }
-    });
+    return ctx.<OfflinePlayer>optional("player")
+      .map(offlinePlayer -> Pair.of(
+        offlinePlayer.getUniqueId(),
+        this.plugin.database().cachedPlayer(offlinePlayer.getUniqueId()).toCompletableFuture().join()
+      )).orElseGet(() -> {
+        if (ctx.sender() instanceof Player p) {
+          return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
+        } else {
+          throw CommandCompleted.withMessage(this.messages().nonPlayerMustProvidePlayer());
+        }
+      });
   }
 
   private CompletableFuture<Void> pausedMatches(final CommandContext<? extends CommandSender> ctx) {
     final Pair<UUID, ChessPlayer> player = this.target(ctx);
 
-    return this.plugin.database().queryIncompleteMatches(player.first()).thenAccept(games -> {
+    return this.plugin.database().queryIncompleteMatches(player.first()).thenAcceptAsync(games -> {
       if (games.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noPausedMatches());
         return;
@@ -595,7 +594,7 @@ public final class Commands {
       Pagination.<GameState>builder()
         .header((page, pages) -> this.messages().pausedMatchesHeader(player.second().name(), player.second().displayName()))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(item)))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item)))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)
@@ -606,7 +605,7 @@ public final class Commands {
   private CompletableFuture<Void> matchHistory(final CommandContext<? extends CommandSender> ctx) {
     final Pair<UUID, ChessPlayer> player = this.target(ctx);
 
-    return this.plugin.database().queryCompleteMatches(player.first()).thenAccept(games -> {
+    return this.plugin.database().queryCompleteMatches(player.first()).thenAcceptAsync(games -> {
       if (games.isEmpty()) {
         ctx.sender().sendMessage(this.messages().noCompleteMatches());
         return;
@@ -615,7 +614,7 @@ public final class Commands {
       Pagination.<GameState>builder()
         .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName()))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(item)))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item)))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)

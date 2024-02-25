@@ -75,6 +75,8 @@ dependencies {
   compileOnly(libs.jdbiCore)
   runtimeDownload(libs.jdbiCore)
   runtimeDownload(libs.h2)
+  compileOnly(libs.caffeine)
+  runtimeDownload(libs.caffeine)
 }
 
 indraSpotlessLicenser {

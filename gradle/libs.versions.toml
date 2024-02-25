@@ -21,3 +21,4 @@ mysql = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql"
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
 mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version.ref = "mariadb" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
+caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"

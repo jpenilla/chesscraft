@@ -36,12 +36,16 @@ public interface ChessPlayer extends Audience {
     return this instanceof Cpu;
   }
 
-  static ChessPlayer player(final org.bukkit.entity.Player player) {
-    return new Player(player.getUniqueId());
+  static Player player(final org.bukkit.entity.Player player) {
+    return new OnlinePlayer(player.getUniqueId());
   }
 
-  static ChessPlayer offlinePlayer(final OfflinePlayer offlinePlayer) {
-    return new ChessPlayer() {
+  interface Player extends ChessPlayer {
+    UUID uuid();
+  }
+
+  static Player offlinePlayer(final OfflinePlayer offlinePlayer) {
+    return new Player() {
       @Override
       public Component name() {
         return Component.text(offlinePlayer.getName());
@@ -52,16 +56,23 @@ public interface ChessPlayer extends Audience {
         if (offlinePlayer.isOnline()) {
           return offlinePlayer.getPlayer().displayName();
         }
-        return ChessPlayer.super.displayName();
+        return Player.super.displayName();
+      }
+
+      @Override
+      public UUID uuid() {
+        return offlinePlayer.getUniqueId();
       }
     };
   }
+
+  record CachedPlayer(UUID uuid, Component name, Component displayName) implements Player {}
 
   static ChessPlayer cpu(final int elo) {
     return new Cpu(elo, UUID.randomUUID());
   }
 
-  record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
+  record OnlinePlayer(UUID uuid) implements Player, ForwardingAudience.Single {
     @Override
     public Audience audience() {
       return player();

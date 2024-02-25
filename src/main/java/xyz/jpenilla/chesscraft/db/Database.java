@@ -17,28 +17,36 @@
  */
 package xyz.jpenilla.chesscraft.db;
 
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.flywaydb.core.Flyway;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.async.JdbiExecutor;
 import xyz.jpenilla.chesscraft.ChessCraft;
+import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.GameState;
+import xyz.jpenilla.chesscraft.db.type.CachedPlayerRowMapper;
 import xyz.jpenilla.chesscraft.db.type.ComponentColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.FenColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.GameStateRowMapper;
@@ -55,6 +63,9 @@ public final class Database {
   private final JdbiExecutor jdbiExecutor;
   private final ExecutorService threadPool;
   private final QueriesLocator queries;
+  private final AsyncLoadingCache<UUID, ChessPlayer.CachedPlayer> playerCache = Caffeine.newBuilder()
+    .expireAfterAccess(Duration.ofMinutes(15))
+    .buildAsync((key, executor) -> Database.this.queryPlayer(key).thenApply(o -> o.orElse(null)).toCompletableFuture());
 
   private Database(final ChessCraft plugin, final HikariDataSource dataSource, final Jdbi jdbi) {
     this.plugin = plugin;
@@ -104,6 +115,26 @@ public final class Database {
       .findOne());
   }
 
+  public CompletionStage<ChessPlayer> cachedPlayer(final UUID id) {
+    final Player player = this.plugin.getServer().getPlayer(id);
+    if (player != null) {
+      return CompletableFuture.completedFuture(ChessPlayer.player(player));
+    }
+    return this.playerCache.get(id).thenApply(cached -> {
+      if (cached != null) {
+        return cached;
+      }
+      return ChessPlayer.offlinePlayer(Bukkit.getOfflinePlayer(id));
+    });
+  }
+
+  private CompletionStage<Optional<ChessPlayer.CachedPlayer>> queryPlayer(final UUID id) {
+    return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_player"))
+      .bind("id", id)
+      .mapTo(ChessPlayer.CachedPlayer.class)
+      .findOne());
+  }
+
   public void saveMatchAsync(final GameState state, final boolean insertResult) {
     this.threadPool.execute(() -> {
       try {
@@ -145,19 +176,29 @@ public final class Database {
 
   private void updatePlayers(final GameState state, final Handle handle) {
     if (!state.whiteCpu()) {
-      handle.createUpdate(this.queries.query("insert_player"))
-        .bind("id", state.whiteId())
-        .bind("username", Bukkit.getOfflinePlayer(state.whiteId()).getName())
-        .bind("displayname", Optional.ofNullable(Bukkit.getPlayer(state.whiteId())).map(Player::displayName).orElse(null))
-        .execute();
+      this.updatePlayer(handle, state.whiteId());
     }
     if (!state.blackCpu()) {
-      handle.createUpdate(this.queries.query("insert_player"))
-        .bind("id", state.blackId())
-        .bind("username", Bukkit.getOfflinePlayer(state.blackId()).getName())
-        .bind("displayname", Optional.ofNullable(Bukkit.getPlayer(state.blackId())).map(Player::displayName).orElse(null))
-        .execute();
+      this.updatePlayer(handle, state.blackId());
     }
+  }
+
+  private void updatePlayer(final Handle handle, final UUID playerId) {
+    final @Nullable Player player = Bukkit.getPlayer(playerId);
+    if (player == null) {
+      return;
+    }
+    final String username = player.getName();
+    final Component displayName = player.displayName();
+    handle.createUpdate(this.queries.query("insert_player"))
+      .bind("id", playerId)
+      .bind("username", username)
+      .bind("displayname", displayName)
+      .execute();
+    this.playerCache.put(
+      playerId,
+      CompletableFuture.completedFuture(new ChessPlayer.CachedPlayer(playerId, Component.text(username), displayName))
+    );
   }
 
   private static Comparator<GameState> newestFirst() {
@@ -205,7 +246,9 @@ public final class Database {
       .registerArgument(new ResultColumnMapper())
       // Fen
       .registerColumnMapper(new FenColumnMapper())
-      .registerArgument(new FenColumnMapper());
+      .registerArgument(new FenColumnMapper())
+      // CachedPlayer
+      .registerRowMapper(new CachedPlayerRowMapper());
 
     return new Database(plugin, dataSource, jdbi);
   }

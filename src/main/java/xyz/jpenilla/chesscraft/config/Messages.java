@@ -36,6 +36,7 @@ import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.db.Database;
 import xyz.jpenilla.chesscraft.util.OptionTagResolver;
 
 import static java.util.Objects.requireNonNull;
@@ -313,10 +314,10 @@ public final class Messages {
     return parse(this.noPauseProposed);
   }
 
-  private String opponentOffline = "<red><opponent_username> is not online!";
+  private String opponentOffline = "<red><opponent_name> is not online!";
 
-  public Component opponentOffline(final String opponentUsername) {
-    return parse(this.opponentOffline, parsed("opponent_username", opponentUsername));
+  public Component opponentOffline(final ChessPlayer opponent) {
+    return parse(this.opponentOffline, component("opponent_displayname", opponent.displayName()), component("opponent_name", opponent.name()));
   }
 
   private String noPausedMatch = "<red>There is no paused match with the id <match_id>";
@@ -345,16 +346,16 @@ public final class Messages {
 
   private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <gray><i><time>";
 
-  public Component pausedMatchInfo(final GameState state) {
-    return parse(this.pausedMatchInfo, blackWhitePlayerTags(state.blackOffline(), state.whiteOffline()), parsed("match_id", state.id().toString()), this.timeTag(state));
+  public Component pausedMatchInfo(final Database db, final GameState state) {
+    return parse(this.pausedMatchInfo, blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()), parsed("match_id", state.id().toString()), this.timeTag(state));
   }
 
   private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <result> <gray><i><time>";
 
-  public Component completeMatchInfo(final GameState state) {
+  public Component completeMatchInfo(final Database db, final GameState state) {
     return parse(
       this.completeMatchInfo,
-      blackWhitePlayerTags(state.blackOffline(), state.whiteOffline()),
+      blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
       component("result", requireNonNull(state.result(), "result").describe(this)),
       this.timeTag(state)
     );
