@@ -130,7 +130,7 @@ public final class ChessGame implements BoardStateHolder {
     final ChessBoard board,
     final GameState state
   ) {
-    this.id = UUID.randomUUID();
+    this.id = state.id();
     this.plugin = plugin;
     this.board = board;
     this.white = state.whiteCpu()
