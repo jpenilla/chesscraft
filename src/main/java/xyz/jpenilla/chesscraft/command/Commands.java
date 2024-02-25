@@ -230,15 +230,13 @@ public final class Commands {
 
     final Command.Builder<CommandSender> pausedMatches = chess.literal("paused_matches")
       .futureHandler(this::pausedMatches);
-    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.self")
-      .senderType(Player.class));
+    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.self"));
     withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.others")
       .required("player", offlinePlayerParser()));
 
     final Command.Builder<CommandSender> matchHistory = chess.literal("match_history")
       .futureHandler(this::matchHistory);
-    withPage.accept(matchHistory.permission("chesscraft.command.match_history.self")
-      .senderType(Player.class));
+    withPage.accept(matchHistory.permission("chesscraft.command.match_history.self"));
     withPage.accept(matchHistory.permission("chesscraft.command.match_history.others")
       .required("player", offlinePlayerParser()));
   }
