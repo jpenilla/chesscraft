@@ -204,9 +204,13 @@ public final class BoardManager implements Listener {
     HandlerList.unregisterAll(this);
     this.boards.forEach((name, board) -> {
       if (board.hasGame()) {
-        final ChessGame game = board.game();
-        board.endGameAndWait();
-        game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
+        if (board.game().cpuVsCpu()) {
+          final ChessGame game = board.game();
+          board.endGameAndWait();
+          game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
+        } else {
+          this.pauseMatch(board);
+        }
       }
     });
     this.boards.clear();
@@ -249,6 +253,14 @@ public final class BoardManager implements Listener {
 
   private void saveDisplays() {
     ConfigHelper.saveConfig(this.displaysFile, new TypeToken<>() {}, this.displays);
+  }
+
+  public void pauseMatch(final ChessBoard board) {
+    final ChessGame game = board.game();
+    board.endGameAndWait();
+    final GameState state = game.snapshotState(null);
+    this.plugin.database().saveMatchAsync(state, false);
+    game.audience().sendMessage(this.plugin.config().messages().pausedMatch());
   }
 
   public boolean inGame(final Player player) {
@@ -305,6 +317,7 @@ public final class BoardManager implements Listener {
         this.challenges.invalidate(challenge.player().getUniqueId());
       }
     }
+    this.pauseProposals.invalidate(event.getPlayer().getUniqueId());
   }
 
   @EventHandler

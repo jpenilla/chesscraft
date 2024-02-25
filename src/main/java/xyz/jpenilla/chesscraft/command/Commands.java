@@ -23,7 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -262,7 +261,7 @@ public final class Commands {
   }
 
   private void reload(final CommandContext<CommandSender> ctx) {
-    ctx.sender().sendRichMessage("<gray><italic>Reloading configs... This will end any active matches.");
+    ctx.sender().sendRichMessage("<gray><italic>Reloading configs... This will pause any active matches.");
     this.plugin.reloadMainConfig();
     this.boardManager.reload();
     ctx.sender().sendRichMessage("<green>Reloaded configs.");
@@ -496,13 +495,9 @@ public final class Commands {
       sender.sendMessage(this.messages().mustBeInMatch());
       return;
     }
-    final Audience gameAudience = board.game().audience();
     final ChessPlayer opponent = board.game().player(board.game().color(ChessPlayer.player(sender)).other());
     if (opponent.isCpu()) {
-      final GameState state = board.game().snapshotState(null);
-      board.endGame();
-      this.plugin.database().saveMatchAsync(state, false);
-      gameAudience.sendMessage(this.messages().pausedMatch());
+      this.boardManager.pauseMatch(board);
     } else {
       this.boardManager.pauseProposals().put(((ChessPlayer.Player) opponent).uuid(), new Object());
       sender.sendMessage(this.messages().pauseProposedSender(board.game(), board.game().color(ChessPlayer.player(sender))));
@@ -518,13 +513,9 @@ public final class Commands {
       return;
     }
     final @Nullable Object proposal = this.boardManager.pauseProposals().getIfPresent(sender.getUniqueId());
-    final Audience gameAudience = board.game().audience();
     if (proposal != null) {
       this.boardManager.pauseProposals().invalidate(sender.getUniqueId());
-      final GameState state = board.game().snapshotState(null);
-      board.endGame();
-      this.plugin.database().saveMatchAsync(state, false);
-      gameAudience.sendMessage(this.messages().pausedMatch());
+      this.boardManager.pauseMatch(board);
     } else {
       sender.sendMessage(this.messages().noPauseProposed());
     }

@@ -73,8 +73,8 @@ public final class Database {
   }
 
   public void close() {
-    this.dataSource.close();
     Util.shutdownExecutor(this.threadPool, TimeUnit.SECONDS, 3);
+    this.dataSource.close();
   }
 
   public CompletionStage<List<GameState>> queryIncompleteMatches(final UUID playerId) {
