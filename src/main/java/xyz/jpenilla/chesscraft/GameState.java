@@ -21,8 +21,10 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
@@ -117,6 +119,16 @@ public record GameState(
   public record Result(ResultType type, PieceColor color) {
     static Result create(final ResultType type, final PieceColor color) {
       return new Result(type, color);
+    }
+
+    public Component describe(final Messages messages) {
+      return switch (this.type) {
+        case WIN -> messages.resultWin(this.color);
+        case STALEMATE -> messages.resultStalemate();
+        case REPETITION -> messages.resultDrawByRepetition();
+        case DRAW_BY_50 -> messages.resultDrawByFiftyMoveRule();
+        case FORFEIT -> messages.resultForfeit(this.color);
+      };
     }
   }
 }
