@@ -329,6 +329,12 @@ public final class Messages {
     return parse(this.noCompleteMatches);
   }
 
+  private String youAreNotInThisMatch = "<red>You are not a player in that match.";
+
+  public Component youAreNotInThisMatch() {
+    return parse(this.youAreNotInThisMatch);
+  }
+
   private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> from <time>";
 
   public Component pausedMatchInfo(final GameState state) {
@@ -380,6 +386,12 @@ public final class Messages {
       Placeholder.parsed("pages", String.valueOf(pages)),
       Placeholder.component("buttons", buttons)
     );
+  }
+
+  private String nonPlayerMustProvidePlayer = "<red>Must specify the player.";
+
+  public Component nonPlayerMustProvidePlayer() {
+    return parse(this.nonPlayerMustProvidePlayer);
   }
 
   private String on = "<green>On";
