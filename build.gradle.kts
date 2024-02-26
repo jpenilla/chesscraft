@@ -72,6 +72,8 @@ dependencies {
   runtimeDownload(libs.hikariCP)
   compileOnly(libs.flyway)
   runtimeDownload(libs.flyway)
+  runtimeDownload(libs.mysql)
+  runtimeDownload(libs.flywayMysql)
   compileOnly(libs.jdbiCore)
   runtimeDownload(libs.jdbiCore)
   runtimeDownload(libs.h2)

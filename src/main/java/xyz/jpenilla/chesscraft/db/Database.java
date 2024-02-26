@@ -46,6 +46,7 @@ import org.jdbi.v3.core.async.JdbiExecutor;
 import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.GameState;
+import xyz.jpenilla.chesscraft.config.DatabaseSettings;
 import xyz.jpenilla.chesscraft.db.type.CachedPlayerRowMapper;
 import xyz.jpenilla.chesscraft.db.type.ComponentColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.FenColumnMapper;
@@ -211,14 +212,23 @@ public final class Database {
   }
 
   public static Database init(final ChessCraft plugin) {
+    plugin.getSLF4JLogger().info("Initializing database...");
+
     SQLDrivers.loadFrom(Database.class.getClassLoader());
 
+    final DatabaseSettings settings = plugin.config().databaseSettings();
+
     final HikariConfig hikariConfig = new HikariConfig();
-    hikariConfig.setJdbcUrl("jdbc:h2:" + plugin.getDataFolder().getAbsolutePath() + "/database;MODE=MySQL");
-    hikariConfig.setUsername("");
-    hikariConfig.setPassword("");
+    hikariConfig.setJdbcUrl(settings.type == DatabaseSettings.DatabaseType.H2 ? h2Url(plugin) : settings.url);
+    hikariConfig.setUsername(settings.type == DatabaseSettings.DatabaseType.H2 ? "" : settings.username);
+    hikariConfig.setPassword(settings.type == DatabaseSettings.DatabaseType.H2 ? "" : settings.password);
     hikariConfig.setPoolName("ChessCraft-HikariPool");
     hikariConfig.setThreadFactory(threadFactory(plugin, "ChessCraft-Hikari-%d"));
+    hikariConfig.setMaximumPoolSize(settings.connectionPool.maximumPoolSize);
+    hikariConfig.setMinimumIdle(settings.connectionPool.minimumIdle);
+    hikariConfig.setMaxLifetime(settings.connectionPool.maximumLifetime);
+    hikariConfig.setKeepaliveTime(settings.connectionPool.keepaliveTime);
+    hikariConfig.setConnectionTimeout(settings.connectionPool.connectionTimeout);
 
     final HikariDataSource dataSource = new HikariDataSource(hikariConfig);
 
@@ -258,6 +268,12 @@ public final class Database {
       // CachedPlayer
       .registerRowMapper(new CachedPlayerRowMapper());
 
+    plugin.getSLF4JLogger().info("Done.");
+
     return new Database(plugin, dataSource, jdbi);
+  }
+
+  private static String h2Url(ChessCraft plugin) {
+    return "jdbc:h2:" + plugin.getDataFolder().getAbsolutePath() + "/database;MODE=MySQL";
   }
 }
