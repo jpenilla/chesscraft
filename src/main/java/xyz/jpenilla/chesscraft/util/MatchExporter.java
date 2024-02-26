@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.jpenilla.chesscraft.data;
+package xyz.jpenilla.chesscraft.util;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -26,6 +26,7 @@ import org.checkerframework.common.returnsreceiver.qual.This;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
 import xyz.jpenilla.chesscraft.GameState;
+import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;

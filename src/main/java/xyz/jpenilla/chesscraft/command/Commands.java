@@ -59,7 +59,6 @@ import xyz.jpenilla.chesscraft.command.parser.ChessBoardParser;
 import xyz.jpenilla.chesscraft.command.parser.TimeControlParser;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
-import xyz.jpenilla.chesscraft.data.MatchExporter;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.PVPChallengeImpl;
 import xyz.jpenilla.chesscraft.data.PVPChallengeResumeMatchImpl;
@@ -67,6 +66,7 @@ import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Pagination;
 import xyz.jpenilla.chesscraft.util.PaginationHelper;
 
