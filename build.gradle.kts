@@ -23,8 +23,9 @@ indra {
 
 repositories {
   mavenCentral()
-  maven("https://repo.papermc.io/repository/maven-public/")
+  sonatype.ossSnapshots()
   sonatype.s01Snapshots()
+  maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
@@ -32,10 +33,15 @@ dependencies {
     exclude("org.yaml", "snakeyaml")
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("cloud.commandframework:cloud-bom:1.8.4"))
-  implementation("cloud.commandframework:cloud-paper")
+  implementation(platform("org.incendo:cloud-bom:2.0.0-beta.3"))
+  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.4"))
+  implementation(platform("org.incendo:cloud-translations-bom:1.0.0-SNAPSHOT"))
+  implementation("org.incendo:cloud-paper")
+  implementation("org.incendo:cloud-translations-core")
+  implementation("org.incendo:cloud-translations-bukkit")
+  implementation("org.incendo:cloud-translations-minecraft-extras")
   compileOnly("com.mojang", "brigadier", "1.0.18")
-  implementation("cloud.commandframework:cloud-minecraft-extras") {
+  implementation("org.incendo:cloud-minecraft-extras") {
     isTransitive = false
   }
   implementation("org.spongepowered:configurate-yaml:4.1.2")
@@ -70,7 +76,8 @@ indraSpotlessLicenser {
 val runVersions = listOf(
   "19.4",
   "20.1",
-  "20.2"
+  "20.2",
+  "20.4"
 )
 
 tasks {
@@ -86,6 +93,9 @@ tasks {
   }
   assemble {
     dependsOn(shadowJar)
+  }
+  compileJava {
+    options.compilerArgs.add("-Xlint:-classfile")
   }
   runServer {
     minecraftVersion("1.${runVersions.last()}")
@@ -109,7 +119,7 @@ tasks {
   }
   fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
   shadowJar {
-    reloc("cloud.commandframework")
+    reloc("org.incendo")
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")
