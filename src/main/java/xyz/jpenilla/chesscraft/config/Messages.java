@@ -320,6 +320,12 @@ public final class Messages {
     return parse(this.opponentOffline, component("opponent_displayname", opponent.displayName()), component("opponent_name", opponent.name()));
   }
 
+  private String noSuchMatch = "<red>There is no match recorded with the id <match_id>.";
+
+  public Component noSuchMatch(final UUID id) {
+    return parse(this.noSuchMatch, parsed("match_id", id.toString()));
+  }
+
   private String noPausedMatch = "<red>There is no paused match with the id <match_id>";
 
   public Component noPausedMatch(final UUID uuid) {

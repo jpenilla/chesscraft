@@ -648,7 +648,7 @@ public final class Commands {
 
   private CompletableFuture<Void> exportMatch(final CommandContext<Player> ctx) {
     final UUID id = ctx.get("id");
-    return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOpt -> matchOpt.ifPresent(match -> {
+    return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOpt -> matchOpt.ifPresentOrElse(match -> {
       if (!ctx.sender().getUniqueId().equals(match.whiteId()) && !ctx.sender().getUniqueId().equals(match.blackId())) {
         if (!ctx.sender().hasPermission("chesscraft.command.export_match.others")) {
           ctx.sender().sendMessage(this.messages().cannotExportOthers());
@@ -664,7 +664,7 @@ public final class Commands {
         this.messages().clickToCopyPgn()
           .clickEvent(ClickEvent.copyToClipboard(MatchExporter.writePgn(match, this.plugin.database()).join()))
       );
-    })).toCompletableFuture();
+    }, () -> ctx.sender().sendMessage(this.messages().noSuchMatch(id)))).toCompletableFuture();
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {
