@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jdbi.v3.core.generic.GenericType;
 import org.jdbi.v3.core.mapper.ColumnMapper;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -46,11 +47,16 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
 
     GameState.Result result;
     try {
-      final String resultColor = Util.trim(rs.getString("result_color"));
-      result = new GameState.Result(
-        GameState.ResultType.valueOf(Util.trim(rs.getString("result_type"))),
-        resultColor == null ? null : PieceColor.decode(resultColor)
-      );
+      final @Nullable String resultType = Util.trim(rs.getString("result_type"));
+      if (resultType == null) {
+        result = null;
+      } else {
+        final @Nullable String resultColor = Util.trim(rs.getString("result_color"));
+        result = new GameState.Result(
+          GameState.ResultType.valueOf(resultType),
+          resultColor == null ? null : PieceColor.decode(resultColor)
+        );
+      }
     } catch (final SQLException e) {
       result = null;
     }
