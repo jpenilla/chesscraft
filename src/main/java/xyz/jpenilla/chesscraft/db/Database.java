@@ -137,6 +137,9 @@ public final class Database {
   }
 
   public void saveMatchAsync(final GameState state, final boolean insertResult) {
+    if (state.whiteCpu() && state.blackCpu()) {
+      return;
+    }
     this.threadPool.execute(() -> {
       try {
         this.saveMatch(state, insertResult);
