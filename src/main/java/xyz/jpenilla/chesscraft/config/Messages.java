@@ -374,7 +374,7 @@ public final class Messages {
     );
   }
 
-  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <result> <gray><i><time></gray> <export_button>";
+  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname><gray>:</gray> <result> <gray><i><time></gray> <export_button>";
 
   public Component completeMatchInfo(final Database db, final GameState state, final boolean showExportButton) {
     return parse(
