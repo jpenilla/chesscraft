@@ -34,7 +34,7 @@ dependencies {
   }
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
   implementation(platform("org.incendo:cloud-bom:2.0.0-beta.3"))
-  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.4"))
+  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-SNAPSHOT"))
   implementation(platform("org.incendo:cloud-translations-bom:1.0.0-SNAPSHOT"))
   implementation("org.incendo:cloud-paper")
   implementation("org.incendo:cloud-translations-core")
