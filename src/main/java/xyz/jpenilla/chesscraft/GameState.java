@@ -30,6 +30,7 @@ import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.db.Database;
+import xyz.jpenilla.chesscraft.util.Elo;
 
 public record GameState(
   UUID id,
@@ -133,6 +134,17 @@ public record GameState(
         case DRAW_BY_50 -> messages.resultDrawByFiftyMoveRule();
         case FORFEIT -> messages.resultForfeit(this.color);
       };
+    }
+  }
+
+  public Elo.MatchOutcome matchOutcome() {
+    final ResultType type = Objects.requireNonNull(this.result(), "result").type();
+    if (type == ResultType.STALEMATE || type == ResultType.DRAW_BY_50 || type == ResultType.REPETITION) {
+      return Elo.MatchOutcome.DRAW;
+    } else if (type == ResultType.WIN) {
+      return this.result().color() == PieceColor.WHITE ? Elo.MatchOutcome.PLAYER_ONE_WIN : Elo.MatchOutcome.PLAYER_TWO_WIN;
+    } else { // FORFEIT
+      return this.result().color() == PieceColor.WHITE ? Elo.MatchOutcome.PLAYER_TWO_WIN : Elo.MatchOutcome.PLAYER_ONE_WIN;
     }
   }
 }

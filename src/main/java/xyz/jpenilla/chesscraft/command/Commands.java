@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -248,6 +249,10 @@ public final class Commands {
       .permission("chesscraft.command.export_match")
       .senderType(Player.class)
       .futureHandler(this::exportMatch));
+
+    this.mgr.command(chess.literal("leaderboard")
+      .permission("chesscraft.command.leaderboard")
+      .futureHandler(this::leaderboard));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
@@ -686,6 +691,43 @@ public final class Commands {
           .clickEvent(ClickEvent.copyToClipboard(MatchExporter.writePgn(match, this.plugin.database()).join()))
       );
     }, () -> ctx.sender().sendMessage(this.messages().noSuchMatch(id)))).toCompletableFuture();
+  }
+
+  private CompletableFuture<Void> leaderboard(final CommandContext<CommandSender> ctx) {
+    final int limit = 8;
+    return this.plugin.database().queryLeaderboard(limit).thenAcceptAsync(leaderboard -> {
+      ctx.sender().sendMessage(this.messages().leaderboardHeader());
+      for (int i = 0; i < limit; i++) {
+        Pair<UUID, Integer> pair;
+        try {
+          pair = leaderboard.get(i);
+          final ChessPlayer player = this.plugin.database().cachedPlayer(pair.first()).toCompletableFuture().join();
+          leaderboardLine(ctx.sender(), i, player, pair);
+        } catch (final IndexOutOfBoundsException ignored) {
+          leaderboardLine(ctx.sender(), i, null, null);
+        }
+      }
+    }).toCompletableFuture();
+  }
+
+  private static void leaderboardLine(
+    final CommandSender sender,
+    final int i,
+    final @Nullable ChessPlayer player,
+    final @Nullable Pair<UUID, Integer> pair
+  ) {
+    final TextComponent.Builder builder = Component.text()
+      .append(Component.text(String.format("%2d", i + 1)))
+      .append(Component.text(". "));
+    if (player != null && pair != null) {
+      builder.append(player.displayName())
+        .append(Component.text(": "))
+        .append(Component.text(pair.second()));
+    } else {
+      builder.append(Component.text("__________", NamedTextColor.GRAY))
+        .append(Component.space());
+    }
+    sender.sendMessage(builder);
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {

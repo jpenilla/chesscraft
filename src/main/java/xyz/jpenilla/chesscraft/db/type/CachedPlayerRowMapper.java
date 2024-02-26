@@ -35,7 +35,10 @@ public final class CachedPlayerRowMapper implements RowMapper<ChessPlayer.Cached
     return new ChessPlayer.CachedPlayer(
       uuid.map(rs, "id", ctx),
       Component.text(Util.trim(rs.getString("username"))),
-      component.map(rs, "displayname", ctx)
+      component.map(rs, "displayname", ctx),
+      rs.getInt("rating"),
+      rs.getInt("peak_rating"),
+      rs.getInt("rated_matches")
     );
   }
 }

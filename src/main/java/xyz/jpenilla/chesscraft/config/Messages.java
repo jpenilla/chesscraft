@@ -416,6 +416,12 @@ public final class Messages {
     return parse(this.clickToCopyPgn);
   }
 
+  private String leaderboardHeader = "<green><bold>ChesCraft server leaderboard";
+
+  public Component leaderboardHeader() {
+    return parse(this.leaderboardHeader);
+  }
+
   private TagResolver timeTag(final GameState state) {
     final Timestamp timestamp = requireNonNull(state.lastUpdated(), "lastUpdated");
     final LocalDateTime localDateTime = timestamp.toLocalDateTime();

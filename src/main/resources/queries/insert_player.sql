@@ -1,9 +1,15 @@
 REPLACE INTO chesscraft_players (
   id,
   username,
-  displayname
+  displayname,
+  rating,
+  peak_rating,
+  rated_matches
 ) VALUES (
   :id,
   :username,
-  :displayname
+  :displayname,
+  :rating,
+  :peak_rating,
+  :rated_matches
 );

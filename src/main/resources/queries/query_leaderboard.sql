@@ -1,8 +1,8 @@
 SELECT id,
        username,
-       displayname,
        rating,
-       peak_rating,
        rated_matches
 FROM chesscraft_players
-WHERE id = :id;
+WHERE rated_matches > 0
+ORDER BY rating DESC, username
+LIMIT :limit;

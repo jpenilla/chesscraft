@@ -36,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,6 +44,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.flywaydb.core.Flyway;
+import org.incendo.cloud.type.tuple.Pair;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.async.JdbiExecutor;
@@ -59,6 +61,7 @@ import xyz.jpenilla.chesscraft.db.type.NativeUUIDColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.ResultColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlSettingsColumnMapper;
+import xyz.jpenilla.chesscraft.util.Elo;
 import xyz.jpenilla.gremlin.runtime.util.Util;
 
 public final class Database implements Listener {
@@ -140,10 +143,24 @@ public final class Database implements Listener {
   }
 
   private CompletionStage<Optional<ChessPlayer.CachedPlayer>> queryPlayer(final UUID id) {
-    return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_player"))
+    return this.jdbiExecutor.withHandle(handle -> this.queryPlayer(id, handle));
+  }
+
+  private Optional<ChessPlayer.CachedPlayer> queryPlayer(final UUID id, final Handle handle) {
+    return handle.createQuery(this.queries.query("select_player"))
       .bind("id", id)
       .mapTo(ChessPlayer.CachedPlayer.class)
-      .findOne());
+      .findOne();
+  }
+
+  public CompletionStage<List<Pair<UUID, Integer>>> queryLeaderboard(final int limit) {
+    return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("query_leaderboard"))
+      .bind("limit", limit)
+      .map((rs, ctx) -> Pair.of(
+        ctx.findColumnMapperFor(UUID.class).orElseThrow().map(rs, "id", ctx),
+        rs.getInt("rating")
+      ))
+      .collectIntoList());
   }
 
   public void saveMatchAsync(final GameState state, final boolean insertResult) {
@@ -161,7 +178,7 @@ public final class Database implements Listener {
 
   public void saveMatch(final GameState state, final boolean insertResult) {
     this.jdbi.useTransaction(handle -> {
-      this.updatePlayers(state, handle);
+      this.updatePlayers(state, handle, insertResult);
 
       handle.createUpdate(this.queries.query("insert_match"))
         .bind("id", state.id())
@@ -189,30 +206,53 @@ public final class Database implements Listener {
     });
   }
 
-  private void updatePlayers(final GameState state, final Handle handle) {
-    if (!state.whiteCpu()) {
-      this.updatePlayer(handle, state.whiteId());
-    }
-    if (!state.blackCpu()) {
-      this.updatePlayer(handle, state.blackId());
+  private void updatePlayers(final GameState state, final Handle handle, boolean insertResult) {
+    if (!state.blackCpu() && !state.whiteCpu() && insertResult) {
+      final Optional<ChessPlayer.CachedPlayer> white = this.queryPlayer(state.whiteId(), handle);
+      final Optional<ChessPlayer.CachedPlayer> black = this.queryPlayer(state.blackId(), handle);
+      final Elo.NewRatings newRatings = Elo.computeNewRatings(
+        white.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer),
+        black.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer),
+        state.matchOutcome()
+      );
+      this.updatePlayer(handle, state.whiteId(), newRatings.playerOne());
+      this.updatePlayer(handle, state.blackId(), newRatings.playerTwo());
+    } else {
+      if (!state.whiteCpu()) {
+        this.updatePlayer(handle, state.whiteId(), null);
+      }
+      if (!state.blackCpu()) {
+        this.updatePlayer(handle, state.blackId(), null);
+      }
     }
   }
 
-  private void updatePlayer(final Handle handle, final UUID playerId) {
-    final @Nullable Player player = Bukkit.getPlayer(playerId);
-    if (player == null) {
-      return;
+  private void updatePlayer(final Handle handle, final UUID playerId, Elo.@Nullable RatingData ratingData) {
+    final Optional<ChessPlayer.CachedPlayer> existing = this.queryPlayer(playerId, handle);
+    final Optional<Player> player = Optional.ofNullable(Bukkit.getPlayer(playerId));
+    final String username = player.map(Player::getName)
+      .orElseGet(() -> existing.map(c -> PlainTextComponentSerializer.plainText().serialize(c.name()))
+        .orElseGet(() -> Objects.requireNonNull(Bukkit.getOfflinePlayer(playerId).getName(), "name")));
+    final Component displayName = player.map(Player::displayName)
+      .orElseGet(() -> existing.map(ChessPlayer.CachedPlayer::displayName)
+        .orElseGet(() -> Component.text(username)));
+    if (ratingData == null) {
+      ratingData = existing.map(ChessPlayer.CachedPlayer::ratingData)
+        .orElseGet(Elo.RatingData::newPlayer);
     }
-    final String username = player.getName();
-    final Component displayName = player.displayName();
     handle.createUpdate(this.queries.query("insert_player"))
       .bind("id", playerId)
       .bind("username", username)
       .bind("displayname", displayName)
+      .bind("rating", ratingData.rating())
+      .bind("peak_rating", ratingData.peakRating())
+      .bind("rated_matches", ratingData.matches())
       .execute();
     this.playerCache.put(
       playerId,
-      CompletableFuture.completedFuture(new ChessPlayer.CachedPlayer(playerId, Component.text(username), displayName))
+      CompletableFuture.completedFuture(new ChessPlayer.CachedPlayer(
+        playerId, Component.text(username), displayName, ratingData.rating(), ratingData.peakRating(), ratingData.matches()
+      ))
     );
   }
 

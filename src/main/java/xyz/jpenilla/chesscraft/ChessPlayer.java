@@ -24,6 +24,7 @@ import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import xyz.jpenilla.chesscraft.util.Elo;
 
 public interface ChessPlayer extends Audience {
   default Component displayName() {
@@ -66,7 +67,18 @@ public interface ChessPlayer extends Audience {
     };
   }
 
-  record CachedPlayer(UUID uuid, Component name, Component displayName) implements Player {}
+  record CachedPlayer(
+    UUID uuid,
+    Component name,
+    Component displayName,
+    int rating,
+    int peakRating,
+    int ratedMatches
+  ) implements Player {
+    public Elo.RatingData ratingData() {
+      return new Elo.RatingData(this.rating, this.peakRating, this.ratedMatches);
+    }
+  }
 
   static ChessPlayer cpu(final int elo) {
     return new Cpu(elo, UUID.randomUUID());
