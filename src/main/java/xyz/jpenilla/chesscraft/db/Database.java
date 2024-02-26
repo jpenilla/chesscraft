@@ -38,6 +38,9 @@ import java.util.concurrent.TimeUnit;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.flywaydb.core.Flyway;
 import org.jdbi.v3.core.Handle;
@@ -58,7 +61,7 @@ import xyz.jpenilla.chesscraft.db.type.TimeControlColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlSettingsColumnMapper;
 import xyz.jpenilla.gremlin.runtime.util.Util;
 
-public final class Database {
+public final class Database implements Listener {
   private final ChessCraft plugin;
   private final HikariDataSource dataSource;
   private final Jdbi jdbi;
@@ -76,6 +79,12 @@ public final class Database {
     this.threadPool = Executors.newFixedThreadPool(8, threadFactory(plugin, "ChessCraft-JDBI-%d"));
     this.queries = new QueriesLocator();
     this.jdbiExecutor = JdbiExecutor.create(this.jdbi, this.threadPool);
+    plugin.getServer().getPluginManager().registerEvents(this, plugin);
+  }
+
+  @EventHandler
+  public void onQuit(final PlayerQuitEvent e) {
+    this.playerCache.synchronous().invalidate(e.getPlayer().getUniqueId());
   }
 
   private static ThreadFactory threadFactory(final ChessCraft plugin, final String nameFormat) {
