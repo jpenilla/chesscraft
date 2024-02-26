@@ -128,7 +128,7 @@ public final class Database implements Listener {
       .findOne());
   }
 
-  public CompletionStage<ChessPlayer> cachedPlayer(final UUID id) {
+  public CompletionStage<ChessPlayer> onlineOrCachedPlayer(final UUID id) {
     final Player player = this.plugin.getServer().getPlayer(id);
     if (player != null) {
       return CompletableFuture.completedFuture(ChessPlayer.player(player));

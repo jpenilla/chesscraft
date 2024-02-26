@@ -137,12 +137,8 @@ public final class ChessGame implements BoardStateHolder {
     this.id = state.id();
     this.plugin = plugin;
     this.board = board;
-    this.white = state.whiteCpu()
-      ? ChessPlayer.cpu(state.whiteElo())
-      : ChessPlayer.player(Objects.requireNonNull(Bukkit.getPlayer(state.whiteId())));
-    this.black = state.blackCpu()
-      ? ChessPlayer.cpu(state.blackElo())
-      : ChessPlayer.player(Objects.requireNonNull(Bukkit.getPlayer(state.blackId())));
+    this.white = state.white();
+    this.black = state.black();
     this.pieces = ChessBoard.initBoard();
     this.moves = new CopyOnWriteArrayList<>(state.moves());
     this.moveDelay = state.cpuMoveDelay();

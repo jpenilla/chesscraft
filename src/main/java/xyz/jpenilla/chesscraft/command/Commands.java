@@ -575,7 +575,7 @@ public final class Commands {
         final @Nullable Player player = Bukkit.getPlayer(opponentId);
         if (player == null) {
           ctx.sender().sendMessage(this.messages().opponentOffline(
-            this.plugin.database().cachedPlayer(opponentId).toCompletableFuture().join()
+            this.plugin.database().onlineOrCachedPlayer(opponentId).toCompletableFuture().join()
           ));
           return;
         }
@@ -606,7 +606,7 @@ public final class Commands {
     return ctx.<OfflinePlayer>optional("player")
       .map(offlinePlayer -> Pair.of(
         offlinePlayer.getUniqueId(),
-        this.plugin.database().cachedPlayer(offlinePlayer.getUniqueId()).toCompletableFuture().join()
+        this.plugin.database().onlineOrCachedPlayer(offlinePlayer.getUniqueId()).toCompletableFuture().join()
       )).orElseGet(() -> {
         if (ctx.sender() instanceof Player p) {
           return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
@@ -701,7 +701,7 @@ public final class Commands {
         Pair<UUID, Integer> pair;
         try {
           pair = leaderboard.get(i);
-          final ChessPlayer player = this.plugin.database().cachedPlayer(pair.first()).toCompletableFuture().join();
+          final ChessPlayer player = this.plugin.database().onlineOrCachedPlayer(pair.first()).toCompletableFuture().join();
           leaderboardLine(ctx.sender(), i, player, pair);
         } catch (final IndexOutOfBoundsException ignored) {
           leaderboardLine(ctx.sender(), i, null, null);
