@@ -344,21 +344,58 @@ public final class Messages {
     return parse(this.youAreNotInThisMatch);
   }
 
-  private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <gray><i><time>";
+  private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <gray><i><time></gray> <export_button>";
 
-  public Component pausedMatchInfo(final Database db, final GameState state) {
-    return parse(this.pausedMatchInfo, blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()), parsed("match_id", state.id().toString()), this.timeTag(state));
+  public Component pausedMatchInfo(final Database db, final GameState state, final boolean showExportButton) {
+    return parse(
+      this.pausedMatchInfo,
+      blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
+      parsed("match_id", state.id().toString()),
+      this.exportButton(showExportButton),
+      this.timeTag(state)
+    );
   }
 
-  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <result> <gray><i><time>";
+  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <result> <gray><i><time></gray> <export_button>";
 
-  public Component completeMatchInfo(final Database db, final GameState state) {
+  public Component completeMatchInfo(final Database db, final GameState state, final boolean showExportButton) {
     return parse(
       this.completeMatchInfo,
       blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
       component("result", requireNonNull(state.result(), "result").describe(this)),
+      parsed("match_id", state.id().toString()),
+      this.exportButton(showExportButton),
       this.timeTag(state)
     );
+  }
+
+  private String exportButton = "<hover:show_text:'Click to export match in PGN format'><click:run_command:'/chess export_match <match_id>'><green>↓";
+
+  private TagResolver exportButton(final boolean allow) {
+    return TagResolver.resolver("export_button", (queue, context) -> {
+      if (allow) {
+        return Tag.selfClosingInserting(context.deserialize(this.exportButton));
+      }
+      return Tag.selfClosingInserting(Component.empty());
+    });
+  }
+
+  private String cannotExportIncomplete = "<red>You do not have permission to export incomplete matches.";
+
+  public Component cannotExportIncomplete() {
+    return parse(this.cannotExportIncomplete);
+  }
+
+  private String cannotExportOthers = "<red>You do not have permission to export matches that you are not a participant in.";
+
+  public Component cannotExportOthers() {
+    return parse(this.cannotExportOthers);
+  }
+
+  private String clickToCopyPgn = "<green>Click to copy exported PGN.";
+
+  public Component clickToCopyPgn() {
+    return parse(this.clickToCopyPgn);
   }
 
   private TagResolver timeTag(final GameState state) {

@@ -22,7 +22,9 @@ import com.destroystokyo.paper.util.SneakyThrow;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -178,7 +180,7 @@ public final class ChessGame implements BoardStateHolder {
       this.moveDelay,
       this.timeControlSettings,
       result,
-      null
+      Timestamp.valueOf(LocalDateTime.now())
     );
   }
 

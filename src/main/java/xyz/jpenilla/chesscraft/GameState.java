@@ -44,7 +44,7 @@ public record GameState(
   int cpuMoveDelay,
   @Nullable TimeControlSettings timeControlSettings,
   @Nullable Result result,
-  @Nullable Timestamp lastUpdated
+  Timestamp lastUpdated
 ) {
   public boolean whiteCpu() {
     return this.whiteId == null;

@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
@@ -58,6 +59,7 @@ import xyz.jpenilla.chesscraft.command.parser.ChessBoardParser;
 import xyz.jpenilla.chesscraft.command.parser.TimeControlParser;
 import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
+import xyz.jpenilla.chesscraft.data.MatchExporter;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3i;
@@ -238,6 +240,12 @@ public final class Commands {
     withPage.accept(matchHistory.permission("chesscraft.command.match_history.self"));
     withPage.accept(matchHistory.permission("chesscraft.command.match_history.others")
       .required("player", offlinePlayerParser()));
+
+    this.mgr.command(chess.literal("export_match")
+      .required("id", uuidParser())
+      .permission("chesscraft.command.export_match")
+      .senderType(Player.class)
+      .futureHandler(this::exportMatch));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
@@ -594,7 +602,7 @@ public final class Commands {
       Pagination.<GameState>builder()
         .header((page, pages) -> this.messages().pausedMatchesHeader(player.second().name(), player.second().displayName()))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item)))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item, ctx.sender().hasPermission("chesscraft.command.export_match.incomplete"))))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)
@@ -614,7 +622,7 @@ public final class Commands {
       Pagination.<GameState>builder()
         .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName()))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item)))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, true)))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)
@@ -636,6 +644,27 @@ public final class Commands {
       }
       return base + id + " page " + page;
     };
+  }
+
+  private CompletableFuture<Void> exportMatch(final CommandContext<Player> ctx) {
+    final UUID id = ctx.get("id");
+    return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOpt -> matchOpt.ifPresent(match -> {
+      if (!ctx.sender().getUniqueId().equals(match.whiteId()) && !ctx.sender().getUniqueId().equals(match.blackId())) {
+        if (!ctx.sender().hasPermission("chesscraft.command.export_match.others")) {
+          ctx.sender().sendMessage(this.messages().cannotExportOthers());
+          return;
+        }
+      }
+      if (match.result() == null && !ctx.sender().hasPermission("chesscraft.command.export_match.incomplete")) {
+        ctx.sender().sendMessage(this.messages().cannotExportIncomplete());
+        return;
+      }
+
+      ctx.sender().sendMessage(
+        this.messages().clickToCopyPgn()
+          .clickEvent(ClickEvent.copyToClipboard(MatchExporter.writePgn(match, this.plugin.database()).join()))
+      );
+    })).toCompletableFuture();
   }
 
   private @Nullable ChessBoard playerBoard(final Player sender) {

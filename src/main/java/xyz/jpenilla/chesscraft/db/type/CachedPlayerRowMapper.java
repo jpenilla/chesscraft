@@ -25,6 +25,7 @@ import org.jdbi.v3.core.mapper.ColumnMapper;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.util.Util;
 
 public final class CachedPlayerRowMapper implements RowMapper<ChessPlayer.CachedPlayer> {
   @Override
@@ -33,7 +34,7 @@ public final class CachedPlayerRowMapper implements RowMapper<ChessPlayer.Cached
     final ColumnMapper<Component> component = ctx.findColumnMapperFor(Component.class).orElseThrow();
     return new ChessPlayer.CachedPlayer(
       uuid.map(rs, "id", ctx),
-      Component.text(rs.getString("username")),
+      Component.text(Util.trim(rs.getString("username"))),
       component.map(rs, "displayname", ctx)
     );
   }
