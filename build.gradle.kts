@@ -73,6 +73,7 @@ dependencies {
   compileOnly(libs.flyway)
   runtimeDownload(libs.flyway)
   runtimeDownload(libs.mysql)
+  runtimeDownload(libs.mariadb)
   runtimeDownload(libs.flywayMysql)
   compileOnly(libs.jdbiCore)
   runtimeDownload(libs.jdbiCore)
