@@ -397,6 +397,7 @@ public final class Commands {
   private void deny(final CommandContext<Player> ctx) {
     final @Nullable PVPChallenge challenge = this.pollChallenge(ctx);
     if (challenge == null) {
+      ctx.sender().sendMessage(this.messages().noPendingChallenge());
       return;
     }
     challenge.challenger().sendMessage(this.messages().challengeDenied(
