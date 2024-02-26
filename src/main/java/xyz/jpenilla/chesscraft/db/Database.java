@@ -235,7 +235,7 @@ public final class Database {
     final Flyway flyway = Flyway.configure(Database.class.getClassLoader())
       .baselineVersion("0")
       .baselineOnMigrate(true)
-      .locations("queries/migrations/h2")
+      .locations("queries/migrations/mysql")
       .dataSource(dataSource)
       .validateMigrationNaming(true)
       .validateOnMigrate(true)

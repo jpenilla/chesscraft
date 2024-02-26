@@ -5,20 +5,13 @@ jdbi = "3.44.1"
 hikari = "5.1.0"
 mysql = "8.3.0"
 flyway = "10.7.2"
-mariadb = "3.3.2"
-postgresql = "42.7.1"
 h2 = "2.2.224"
 
 [libraries]
 jdbiCore = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
-jdbiObject = { group = "org.jdbi", name = "jdbi3-sqlobject", version.ref = "jdbi" }
-jdbiPostgres = { group = "org.jdbi", name = "jdbi3-postgres", version.ref = "jdbi" }
 hikariCP = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 flyway = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" }
 flywayMysql = { group = "org.flywaydb", name = "flyway-mysql", version.ref = "flyway" }
-flywayPostgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 mysql = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql" }
-postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
-mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version.ref = "mariadb" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"
