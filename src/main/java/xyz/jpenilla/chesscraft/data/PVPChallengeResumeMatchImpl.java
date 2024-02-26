@@ -23,18 +23,11 @@ import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
-public interface PVPChallenge {
-  ChessBoard board();
-
-  Player challenger();
-
-  Player player();
-
-  PieceColor challengerColor();
-
-  @Nullable TimeControlSettings timeControl();
-
-  interface ResumeMatch extends PVPChallenge {
-    GameState state();
-  }
-}
+public record PVPChallengeResumeMatchImpl(
+  ChessBoard board,
+  Player challenger,
+  Player player,
+  PieceColor challengerColor,
+  @Nullable TimeControlSettings timeControl,
+  GameState state
+) implements PVPChallenge, PVPChallenge.ResumeMatch {}

@@ -141,6 +141,18 @@ public final class Messages {
     );
   }
 
+  private String resumeChallengeReceived = "<green>You have been challenged to resume your match with </green><challenger_color>♚</challenger_color><challenger_displayname><green>!\n" +
+    "Time controls<gray>:</gray> <white><time_control></white>\n" +
+    "Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
+
+  public Component resumeChallengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor, final @Nullable TimeControlSettings timeControl) {
+    return parse(
+      this.resumeChallengeReceived,
+      challengerPlayerTags(challenger, player, challengerColor),
+      timeControl != null ? unparsed("time_control", timeControl.toString()) : component("time_control", parse(this.noTimeControls))
+    );
+  }
+
   private String noPendingChallenge = "<red>You do not have an incoming challenge!";
 
   public Component noPendingChallenge() {

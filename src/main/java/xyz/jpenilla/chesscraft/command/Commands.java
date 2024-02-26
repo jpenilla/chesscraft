@@ -61,6 +61,8 @@ import xyz.jpenilla.chesscraft.config.Messages;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.MatchExporter;
 import xyz.jpenilla.chesscraft.data.PVPChallenge;
+import xyz.jpenilla.chesscraft.data.PVPChallengeImpl;
+import xyz.jpenilla.chesscraft.data.PVPChallengeResumeMatchImpl;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -352,7 +354,7 @@ public final class Commands {
     final @Nullable TimeControlSettings timeControl = ctx.<TimeControlSettings>optional("time_control").orElse(null);
     this.boardManager.challenges().put(
       opponent.getUniqueId(),
-      new PVPChallenge(board, sender, opponent, userColor, timeControl)
+      new PVPChallengeImpl(board, sender, opponent, userColor, timeControl)
     );
     sender.sendMessage(this.messages().challengeSent(user, opp, userColor));
     opponent.sendMessage(this.messages().challengeReceived(user, opp, userColor, timeControl));
@@ -379,13 +381,17 @@ public final class Commands {
       return;
     }
 
-    final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
-    final ChessPlayer opp = ChessPlayer.player(challenge.player());
-    challenge.board().startGame(
-      challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
-      challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
-      challenge.timeControl()
-    );
+    if (challenge instanceof PVPChallenge.ResumeMatch resume) {
+      resume.board().resumeGame(resume.state());
+    } else {
+      final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
+      final ChessPlayer opp = ChessPlayer.player(challenge.player());
+      challenge.board().startGame(
+        challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
+        challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
+        challenge.timeControl()
+      );
+    }
   }
 
   private void deny(final CommandContext<Player> ctx) {
@@ -536,7 +542,9 @@ public final class Commands {
     if (this.boardManager.inGame(ctx.sender())) {
       ctx.sender().sendMessage(this.messages().alreadyInGame());
       return CompletableFuture.completedFuture(null);
-    } else if (board.hasGame() || board.autoCpuGame().cpuGamesOnly()) {
+    } else if (canCancelCpuMatch(board)) {
+      this.cancelCpuMatch(board);
+    } else if (board.hasGame() || board.autoCpuGame().cpuGamesOnly() || this.boardManager.challenges().asMap().values().stream().anyMatch(c -> c.board() == board)) {
       ctx.sender().sendMessage(this.messages().boardOccupied(board.name()));
       return CompletableFuture.completedFuture(null);
     }
@@ -569,7 +577,19 @@ public final class Commands {
           ctx.sender().sendMessage(this.messages().opponentAlreadyInGame(player));
           return;
         }
-        // TODO require opponent to accept resume
+        ctx.sender().sendMessage(this.messages().challengeSent(
+          color == PieceColor.WHITE ? match.white() : match.black(),
+          color == PieceColor.WHITE ? match.black() : match.white(),
+          color
+        ));
+        this.boardManager.challenges().put(opponentId, new PVPChallengeResumeMatchImpl(board, ctx.sender(), player, color.other(), match.timeControlSettings(), match));
+        player.sendMessage(this.messages().resumeChallengeReceived(
+          color == PieceColor.WHITE ? match.white() : match.black(),
+          color == PieceColor.WHITE ? match.black() : match.white(),
+          color,
+          match.timeControlSettings()
+        ));
+        return;
       }
 
       board.resumeGame(match);
