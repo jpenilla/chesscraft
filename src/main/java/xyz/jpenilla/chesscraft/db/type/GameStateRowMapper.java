@@ -29,6 +29,8 @@ import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
+import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.util.Util;
 
 public final class GameStateRowMapper implements RowMapper<GameState> {
   @Override
@@ -36,7 +38,6 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
     final ColumnMapper<UUID> uuid = ctx.findColumnMapperFor(UUID.class).orElseThrow();
     final ColumnMapper<ChessGame.TimeControl> tc = ctx.findColumnMapperFor(ChessGame.TimeControl.class).orElseThrow();
     final ColumnMapper<List<ChessGame.Move>> moveListMapper = ctx.findColumnMapperFor(new GenericType<List<ChessGame.Move>>() {}).orElseThrow();
-    final ColumnMapper<GameState.Result> resultMapper = ctx.findColumnMapperFor(GameState.Result.class).orElseThrow();
     final ColumnMapper<Fen> fenMapper = ctx.findColumnMapperFor(Fen.class).orElseThrow();
     final ColumnMapper<TimeControlSettings> timeControlSettings = ctx.findColumnMapperFor(TimeControlSettings.class).orElseThrow();
 
@@ -45,7 +46,11 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
 
     GameState.Result result;
     try {
-      result = resultMapper.map(rs, "result", ctx);
+      final String resultColor = Util.trim(rs.getString("result_color"));
+      result = new GameState.Result(
+        GameState.ResultType.valueOf(Util.trim(rs.getString("result_type"))),
+        resultColor == null ? null : PieceColor.decode(resultColor)
+      );
     } catch (final SQLException e) {
       result = null;
     }

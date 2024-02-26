@@ -58,7 +58,6 @@ import xyz.jpenilla.chesscraft.db.type.FenColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.GameStateRowMapper;
 import xyz.jpenilla.chesscraft.db.type.MoveListColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.NativeUUIDColumnMapper;
-import xyz.jpenilla.chesscraft.db.type.ResultColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlColumnMapper;
 import xyz.jpenilla.chesscraft.db.type.TimeControlSettingsColumnMapper;
 import xyz.jpenilla.chesscraft.util.Elo;
@@ -200,7 +199,8 @@ public final class Database implements Listener {
         Objects.requireNonNull(state.result(), "result");
         handle.createUpdate(this.queries.query("record_result"))
           .bind("id", state.id())
-          .bind("result", state.result())
+          .bind("result_type", state.result().type().name())
+          .bind("result_color", state.result().color().encode())
           .execute();
       }
     });
@@ -308,9 +308,6 @@ public final class Database implements Listener {
       .registerRowMapper(new GameStateRowMapper())
       // UUID
       .registerColumnMapper(new NativeUUIDColumnMapper())
-      // GameState.Result
-      .registerColumnMapper(new ResultColumnMapper())
-      .registerArgument(new ResultColumnMapper())
       // Fen
       .registerColumnMapper(new FenColumnMapper())
       .registerArgument(new FenColumnMapper())

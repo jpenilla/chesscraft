@@ -29,5 +29,6 @@ CREATE TABLE chesscraft_matches
 CREATE TABLE chesscraft_complete_matches
 (
   `id` UUID NOT NULL PRIMARY KEY REFERENCES chesscraft_matches (`id`),
-  `result` MEDIUMTEXT NOT NULL
+  `result_type` VARCHAR(16) NOT NULL,
+  `result_color` CHAR(1) CHECK(`result_color` = 'w' OR `result_color` = 'b')
 );
