@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -101,34 +100,34 @@ public final class Database implements Listener {
     this.dataSource.close();
   }
 
-  public CompletionStage<List<GameState>> queryIncompleteMatches(final UUID playerId) {
+  public CompletableFuture<List<GameState>> queryIncompleteMatches(final UUID playerId) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_incomplete_matches"))
       .bind("player_id", playerId)
       .mapTo(GameState.class)
       .list()
       .stream()
       .sorted(newestFirst())
-      .toList());
+      .toList()).toCompletableFuture();
   }
 
-  public CompletionStage<List<GameState>> queryCompleteMatches(final UUID playerId) {
+  public CompletableFuture<List<GameState>> queryCompleteMatches(final UUID playerId) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_complete_matches"))
       .bind("player_id", playerId)
       .mapTo(GameState.class)
       .list()
       .stream()
       .sorted(newestFirst())
-      .toList());
+      .toList()).toCompletableFuture();
   }
 
-  public CompletionStage<Optional<GameState>> queryMatch(final UUID id) {
+  public CompletableFuture<Optional<GameState>> queryMatch(final UUID id) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("select_match"))
       .bind("id", id)
       .mapTo(GameState.class)
-      .findOne());
+      .findOne()).toCompletableFuture();
   }
 
-  public CompletionStage<ChessPlayer> onlineOrCachedPlayer(final UUID id) {
+  public CompletableFuture<ChessPlayer.Player> onlineOrCachedPlayer(final UUID id) {
     final Player player = this.plugin.getServer().getPlayer(id);
     if (player != null) {
       return CompletableFuture.completedFuture(ChessPlayer.player(player));
@@ -141,8 +140,8 @@ public final class Database implements Listener {
     });
   }
 
-  private CompletionStage<Optional<ChessPlayer.CachedPlayer>> queryPlayer(final UUID id) {
-    return this.jdbiExecutor.withHandle(handle -> this.queryPlayer(id, handle));
+  public CompletableFuture<Optional<ChessPlayer.CachedPlayer>> queryPlayer(final UUID id) {
+    return this.jdbiExecutor.withHandle(handle -> this.queryPlayer(id, handle)).toCompletableFuture();
   }
 
   private Optional<ChessPlayer.CachedPlayer> queryPlayer(final UUID id, final Handle handle) {
@@ -152,14 +151,14 @@ public final class Database implements Listener {
       .findOne();
   }
 
-  public CompletionStage<List<Pair<UUID, Integer>>> queryLeaderboard(final int limit) {
+  public CompletableFuture<List<Pair<UUID, Integer>>> queryLeaderboard(final int limit) {
     return this.jdbiExecutor.withHandle(handle -> handle.createQuery(this.queries.query("query_leaderboard"))
       .bind("limit", limit)
       .map((rs, ctx) -> Pair.of(
         ctx.findColumnMapperFor(UUID.class).orElseThrow().map(rs, "id", ctx),
         rs.getInt("rating")
       ))
-      .collectIntoList());
+      .collectIntoList()).toCompletableFuture();
   }
 
   public void saveMatchAsync(final GameState state, final boolean insertResult) {

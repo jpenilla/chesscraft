@@ -46,8 +46,8 @@ public final class MatchExporter {
   }
 
   private CompletableFuture<String> writePgn(final Database db) {
-    final CompletableFuture<ChessPlayer> whiteFuture = this.state.whiteOffline(db);
-    final CompletableFuture<ChessPlayer> blackFuture = this.state.blackOffline(db);
+    final CompletableFuture<? extends ChessPlayer> whiteFuture = this.state.whiteOffline(db);
+    final CompletableFuture<? extends ChessPlayer> blackFuture = this.state.blackOffline(db);
     return CompletableFuture.allOf(whiteFuture, blackFuture).thenApply($ -> {
       final LocalDateTime lastUpdated = this.state.lastUpdated().toLocalDateTime();
 

@@ -465,10 +465,10 @@ public final class Messages {
     return parse(this.pausedMatchesHeader, component("username", username), component("displayname", displayName));
   }
 
-  private String matchHistoryHeader = "<green><bold>Match history for <displayname>";
+  private String matchHistoryHeader = "<green><bold>Match history</green> <displayname> <gray>(<white><rating></white>)";
 
-  public Component matchHistoryHeader(final Component username, final Component displayName) {
-    return parse(this.matchHistoryHeader, component("username", username), component("displayname", displayName));
+  public Component matchHistoryHeader(final Component username, final Component displayName, final int rating) {
+    return parse(this.matchHistoryHeader, component("username", username), component("displayname", displayName), parsed("rating", String.valueOf(rating)));
   }
 
   private String clickForPreviousPage = "Click for previous page";

@@ -67,16 +67,16 @@ public record GameState(
       : ChessPlayer.player(Objects.requireNonNull(Bukkit.getPlayer(this.blackId())));
   }
 
-  public CompletableFuture<ChessPlayer> whiteOffline(final Database db) {
+  public CompletableFuture<? extends ChessPlayer> whiteOffline(final Database db) {
     return this.whiteCpu()
       ? CompletableFuture.completedFuture(ChessPlayer.cpu(this.whiteElo()))
-      : db.onlineOrCachedPlayer(this.whiteId()).toCompletableFuture();
+      : db.onlineOrCachedPlayer(this.whiteId());
   }
 
-  public CompletableFuture<ChessPlayer> blackOffline(final Database db) {
+  public CompletableFuture<? extends ChessPlayer> blackOffline(final Database db) {
     return this.blackCpu()
       ? CompletableFuture.completedFuture(ChessPlayer.cpu(this.blackElo()))
-      : db.onlineOrCachedPlayer(this.blackId()).toCompletableFuture();
+      : db.onlineOrCachedPlayer(this.blackId());
   }
 
   public boolean playersOnline() {

@@ -67,6 +67,7 @@ import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.Elo;
 import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Pagination;
 import xyz.jpenilla.chesscraft.util.PaginationHelper;
@@ -575,7 +576,7 @@ public final class Commands {
         final @Nullable Player player = Bukkit.getPlayer(opponentId);
         if (player == null) {
           ctx.sender().sendMessage(this.messages().opponentOffline(
-            this.plugin.database().onlineOrCachedPlayer(opponentId).toCompletableFuture().join()
+            this.plugin.database().onlineOrCachedPlayer(opponentId).join()
           ));
           return;
         }
@@ -599,14 +600,14 @@ public final class Commands {
       }
 
       board.resumeGame(match);
-    }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin)).toCompletableFuture();
+    }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
   }
 
-  private Pair<UUID, ChessPlayer> target(final CommandContext<? extends CommandSender> ctx) {
+  private Pair<UUID, ChessPlayer.Player> target(final CommandContext<? extends CommandSender> ctx) {
     return ctx.<OfflinePlayer>optional("player")
       .map(offlinePlayer -> Pair.of(
         offlinePlayer.getUniqueId(),
-        this.plugin.database().onlineOrCachedPlayer(offlinePlayer.getUniqueId()).toCompletableFuture().join()
+        this.plugin.database().onlineOrCachedPlayer(offlinePlayer.getUniqueId()).join()
       )).orElseGet(() -> {
         if (ctx.sender() instanceof Player p) {
           return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
@@ -617,7 +618,7 @@ public final class Commands {
   }
 
   private CompletableFuture<Void> pausedMatches(final CommandContext<? extends CommandSender> ctx) {
-    final Pair<UUID, ChessPlayer> player = this.target(ctx);
+    final Pair<UUID, ChessPlayer.Player> player = this.target(ctx);
 
     return this.plugin.database().queryIncompleteMatches(player.first()).thenAcceptAsync(games -> {
       if (games.isEmpty()) {
@@ -633,11 +634,11 @@ public final class Commands {
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)
         .forEach(ctx.sender()::sendMessage);
-    }).toCompletableFuture();
+    });
   }
 
   private CompletableFuture<Void> matchHistory(final CommandContext<? extends CommandSender> ctx) {
-    final Pair<UUID, ChessPlayer> player = this.target(ctx);
+    final Pair<UUID, ChessPlayer.Player> player = this.target(ctx);
 
     return this.plugin.database().queryCompleteMatches(player.first()).thenAcceptAsync(games -> {
       if (games.isEmpty()) {
@@ -645,15 +646,19 @@ public final class Commands {
         return;
       }
 
+      final int rating = player.second() instanceof ChessPlayer.CachedPlayer cached
+        ? cached.rating()
+        : this.plugin.database().queryPlayer(player.first()).join().map(ChessPlayer.CachedPlayer::rating).orElse(Elo.INITIAL_RATING);
+
       Pagination.<GameState>builder()
-        .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName()))
+        .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName(), rating))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
         .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, player.first(), true)))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)
         .forEach(ctx.sender()::sendMessage);
-    }).toCompletableFuture();
+    });
   }
 
   private static IntFunction<String> commandString(
@@ -690,7 +695,7 @@ public final class Commands {
         this.messages().clickToCopyPgn()
           .clickEvent(ClickEvent.copyToClipboard(MatchExporter.writePgn(match, this.plugin.database()).join()))
       );
-    }, () -> ctx.sender().sendMessage(this.messages().noSuchMatch(id)))).toCompletableFuture();
+    }, () -> ctx.sender().sendMessage(this.messages().noSuchMatch(id))));
   }
 
   private CompletableFuture<Void> leaderboard(final CommandContext<CommandSender> ctx) {
@@ -701,13 +706,13 @@ public final class Commands {
         Pair<UUID, Integer> pair;
         try {
           pair = leaderboard.get(i);
-          final ChessPlayer player = this.plugin.database().onlineOrCachedPlayer(pair.first()).toCompletableFuture().join();
+          final ChessPlayer player = this.plugin.database().onlineOrCachedPlayer(pair.first()).join();
           leaderboardLine(ctx.sender(), i, player, pair);
         } catch (final IndexOutOfBoundsException ignored) {
           leaderboardLine(ctx.sender(), i, null, null);
         }
       }
-    }).toCompletableFuture();
+    });
   }
 
   private static void leaderboardLine(
