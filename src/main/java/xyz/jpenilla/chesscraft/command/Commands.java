@@ -105,8 +105,6 @@ public final class Commands {
   }
 
   public void register() {
-    this.plugin.getServer().getScheduler().runTaskTimerAsynchronously(this.plugin, this.boardManager.challenges()::cleanUp, 20L, 20L * 60L);
-
     new HelpCommand(this.mgr).register();
 
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
@@ -390,13 +388,7 @@ public final class Commands {
     if (challenge instanceof PVPChallenge.ResumeMatch resume) {
       resume.board().resumeGame(resume.state());
     } else {
-      final ChessPlayer senderPlayer = ChessPlayer.player(challenge.challenger());
-      final ChessPlayer opp = ChessPlayer.player(challenge.player());
-      challenge.board().startGame(
-        challenge.challengerColor() == PieceColor.WHITE ? senderPlayer : opp,
-        challenge.challengerColor() == PieceColor.BLACK ? senderPlayer : opp,
-        challenge.timeControl()
-      );
+      challenge.board().startGame(challenge.white(), challenge.black(), challenge.timeControl());
     }
   }
 
@@ -603,14 +595,15 @@ public final class Commands {
     }, this.plugin.getServer().getScheduler().getMainThreadExecutor(this.plugin));
   }
 
-  private Pair<UUID, ChessPlayer.Player> target(final CommandContext<? extends CommandSender> ctx) {
+  private record TargetPlayer(UUID uuid, ChessPlayer.Player player) {}
+
+  private CompletableFuture<TargetPlayer> target(final CommandContext<? extends CommandSender> ctx) {
     return ctx.<OfflinePlayer>optional("player")
-      .map(offlinePlayer -> Pair.of(
-        offlinePlayer.getUniqueId(),
-        this.plugin.database().onlineOrCachedPlayer(offlinePlayer.getUniqueId()).join()
-      )).orElseGet(() -> {
+      .map(offlinePlayer -> this.plugin.database().onlineOrCachedPlayer(offlinePlayer.getUniqueId())
+        .thenApply(p -> new TargetPlayer(offlinePlayer.getUniqueId(), p)))
+      .orElseGet(() -> {
         if (ctx.sender() instanceof Player p) {
-          return Pair.of(p.getUniqueId(), ChessPlayer.player(p));
+          return CompletableFuture.completedFuture(new TargetPlayer(p.getUniqueId(), ChessPlayer.player(p)));
         } else {
           throw CommandCompleted.withMessage(this.messages().nonPlayerMustProvidePlayer());
         }
@@ -618,46 +611,46 @@ public final class Commands {
   }
 
   private CompletableFuture<Void> pausedMatches(final CommandContext<? extends CommandSender> ctx) {
-    final Pair<UUID, ChessPlayer.Player> player = this.target(ctx);
+    return this.target(ctx).thenCompose(target -> {
+      return this.plugin.database().queryIncompleteMatches(target.uuid()).thenAcceptAsync(games -> {
+        if (games.isEmpty()) {
+          ctx.sender().sendMessage(this.messages().noPausedMatches());
+          return;
+        }
 
-    return this.plugin.database().queryIncompleteMatches(player.first()).thenAcceptAsync(games -> {
-      if (games.isEmpty()) {
-        ctx.sender().sendMessage(this.messages().noPausedMatches());
-        return;
-      }
-
-      Pagination.<GameState>builder()
-        .header((page, pages) -> this.messages().pausedMatchesHeader(player.second().name(), player.second().displayName()))
-        .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item, ctx.sender().hasPermission("chesscraft.command.export_match.incomplete"))))
-        .pageOutOfRange(this.pagination.pageOutOfRange())
-        .build()
-        .render(games, ctx.<Integer>optional("page").orElse(1), 5)
-        .forEach(ctx.sender()::sendMessage);
+        Pagination.<GameState>builder()
+          .header((page, pages) -> this.messages().pausedMatchesHeader(target.player().name(), target.player().displayName()))
+          .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", target.uuid())))
+          .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item, ctx.sender().hasPermission("chesscraft.command.export_match.incomplete"))))
+          .pageOutOfRange(this.pagination.pageOutOfRange())
+          .build()
+          .render(games, ctx.<Integer>optional("page").orElse(1), 5)
+          .forEach(ctx.sender()::sendMessage);
+      });
     });
   }
 
   private CompletableFuture<Void> matchHistory(final CommandContext<? extends CommandSender> ctx) {
-    final Pair<UUID, ChessPlayer.Player> player = this.target(ctx);
+    return this.target(ctx).thenCompose(target -> {
+      return this.plugin.database().queryCompleteMatches(target.uuid()).thenAcceptAsync(games -> {
+        if (games.isEmpty()) {
+          ctx.sender().sendMessage(this.messages().noCompleteMatches());
+          return;
+        }
 
-    return this.plugin.database().queryCompleteMatches(player.first()).thenAcceptAsync(games -> {
-      if (games.isEmpty()) {
-        ctx.sender().sendMessage(this.messages().noCompleteMatches());
-        return;
-      }
+        final int rating = target.player() instanceof ChessPlayer.CachedPlayer cached
+          ? cached.rating()
+          : this.plugin.database().queryPlayer(target.uuid()).join().map(ChessPlayer.CachedPlayer::rating).orElse(Elo.INITIAL_RATING);
 
-      final int rating = player.second() instanceof ChessPlayer.CachedPlayer cached
-        ? cached.rating()
-        : this.plugin.database().queryPlayer(player.first()).join().map(ChessPlayer.CachedPlayer::rating).orElse(Elo.INITIAL_RATING);
-
-      Pagination.<GameState>builder()
-        .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName(), rating))
-        .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, player.first(), true)))
-        .pageOutOfRange(this.pagination.pageOutOfRange())
-        .build()
-        .render(games, ctx.<Integer>optional("page").orElse(1), 5)
-        .forEach(ctx.sender()::sendMessage);
+        Pagination.<GameState>builder()
+          .header((page, pages) -> this.messages().matchHistoryHeader(target.player().name(), target.player().displayName(), rating))
+          .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", target.uuid())))
+          .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, target.uuid(), true)))
+          .pageOutOfRange(this.pagination.pageOutOfRange())
+          .build()
+          .render(games, ctx.<Integer>optional("page").orElse(1), 5)
+          .forEach(ctx.sender()::sendMessage);
+      });
     });
   }
 

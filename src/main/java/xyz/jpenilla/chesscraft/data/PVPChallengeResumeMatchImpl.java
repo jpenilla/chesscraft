@@ -30,4 +30,4 @@ public record PVPChallengeResumeMatchImpl(
   PieceColor challengerColor,
   @Nullable TimeControlSettings timeControl,
   GameState state
-) implements PVPChallenge, PVPChallenge.ResumeMatch {}
+) implements PVPChallenge.ResumeMatch {}
