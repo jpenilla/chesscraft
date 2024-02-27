@@ -605,7 +605,7 @@ public final class Commands {
         if (ctx.sender() instanceof Player p) {
           return CompletableFuture.completedFuture(new TargetPlayer(p.getUniqueId(), ChessPlayer.player(p)));
         } else {
-          throw CommandCompleted.withMessage(this.messages().nonPlayerMustProvidePlayer());
+          return CompletableFuture.failedFuture(CommandCompleted.withMessage(this.messages().nonPlayerMustProvidePlayer()));
         }
       });
   }
