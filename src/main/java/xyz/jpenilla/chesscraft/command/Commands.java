@@ -648,7 +648,7 @@ public final class Commands {
       Pagination.<GameState>builder()
         .header((page, pages) -> this.messages().matchHistoryHeader(player.second().name(), player.second().displayName()))
         .footer(this.pagination.footerRenderer(commandString(ctx, "/chess match_history", player.first())))
-        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, true)))
+        .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().completeMatchInfo(this.plugin.database(), item, player.first(), true)))
         .pageOutOfRange(this.pagination.pageOutOfRange())
         .build()
         .render(games, ctx.<Integer>optional("page").orElse(1), 5)

@@ -40,6 +40,12 @@ import xyz.jpenilla.chesscraft.db.Database;
 import xyz.jpenilla.chesscraft.util.OptionTagResolver;
 
 import static java.util.Objects.requireNonNull;
+import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component;
 import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.parsed;
 import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.unparsed;
@@ -374,14 +380,26 @@ public final class Messages {
     );
   }
 
-  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname><gray>:</gray> <result> <gray><i><time></gray> <export_button>";
+  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname><gray>:</gray> <result><rating_change> <gray><i><time></gray> <export_button>";
 
-  public Component completeMatchInfo(final Database db, final GameState state, final boolean showExportButton) {
+  public Component completeMatchInfo(final Database db, final GameState state, final UUID perspective, final boolean showExportButton) {
+    requireNonNull(state.result(), "result");
+    final TagResolver ratingChange;
+    if (state.result().noRatingChange()) {
+      ratingChange = component("rating_change", empty());
+    } else {
+      final int eloChange = state.color(perspective) == PieceColor.WHITE ? state.result().whiteEloChange() : state.result().blackEloChange();
+      ratingChange = component(
+        "rating_change",
+        textOfChildren(space(), this.plusMinus(eloChange), text(Math.abs(eloChange)))
+      );
+    }
     return parse(
       this.completeMatchInfo,
       blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
-      component("result", requireNonNull(state.result(), "result").describe(this)),
+      component("result", state.result().describe(this)),
       parsed("match_id", state.id().toString()),
+      ratingChange,
       this.exportButton(showExportButton),
       this.timeTag(state)
     );
@@ -540,6 +558,13 @@ public final class Messages {
 
   public Component resultForfeit(final PieceColor forfeited) {
     return parse(this.resultForfeit, Placeholder.styling("forfeit_color", forfeited.textColor()), Placeholder.styling("winner_color", forfeited.other().textColor()));
+  }
+
+  private final transient Component plus = text('+', GREEN);
+  private final transient Component minus = text('-', RED);
+
+  private Component plusMinus(final int num) {
+    return num > 0 ? this.plus : this.minus;
   }
 
   private String on = "<green>On";

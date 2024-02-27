@@ -121,9 +121,14 @@ public record GameState(
     FORFEIT
   }
 
-  public record Result(ResultType type, PieceColor color) {
+  public record Result(
+    ResultType type,
+    PieceColor color,
+    int whiteEloChange,
+    int blackEloChange
+  ) {
     static Result create(final ResultType type, final PieceColor color) {
-      return new Result(type, color);
+      return new Result(type, color, -1, -1);
     }
 
     public Component describe(final Messages messages) {
@@ -134,6 +139,10 @@ public record GameState(
         case DRAW_BY_50 -> messages.resultDrawByFiftyMoveRule();
         case FORFEIT -> messages.resultForfeit(this.color);
       };
+    }
+
+    public boolean noRatingChange() {
+      return this.whiteEloChange == 0 && this.blackEloChange == 0;
     }
   }
 

@@ -177,7 +177,7 @@ public final class Database implements Listener {
 
   public void saveMatch(final GameState state, final boolean insertResult) {
     this.jdbi.useTransaction(handle -> {
-      this.updatePlayers(state, handle, insertResult);
+      final EloChange eloChange = this.updatePlayers(state, handle, insertResult);
 
       handle.createUpdate(this.queries.query("insert_match"))
         .bind("id", state.id())
@@ -201,22 +201,28 @@ public final class Database implements Listener {
           .bind("id", state.id())
           .bind("result_type", state.result().type().name())
           .bind("result_color", state.result().color().encode())
+          .bind("white_elo_change", eloChange.white())
+          .bind("black_elo_change", eloChange.black())
           .execute();
       }
     });
   }
 
-  private void updatePlayers(final GameState state, final Handle handle, boolean insertResult) {
+  private record EloChange(int white, int black) {}
+
+  private EloChange updatePlayers(final GameState state, final Handle handle, boolean insertResult) {
     if (!state.blackCpu() && !state.whiteCpu() && insertResult) {
       final Optional<ChessPlayer.CachedPlayer> white = this.queryPlayer(state.whiteId(), handle);
+      final Elo.RatingData whiteRating = white.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer);
       final Optional<ChessPlayer.CachedPlayer> black = this.queryPlayer(state.blackId(), handle);
-      final Elo.NewRatings newRatings = Elo.computeNewRatings(
-        white.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer),
-        black.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer),
-        state.matchOutcome()
-      );
+      final Elo.RatingData blackRating = black.map(ChessPlayer.CachedPlayer::ratingData).orElseGet(Elo.RatingData::newPlayer);
+      final Elo.NewRatings newRatings = Elo.computeNewRatings(whiteRating, blackRating, state.matchOutcome());
       this.updatePlayer(handle, state.whiteId(), newRatings.playerOne());
       this.updatePlayer(handle, state.blackId(), newRatings.playerTwo());
+      return new EloChange(
+        newRatings.playerOne().rating() - whiteRating.rating(),
+        newRatings.playerTwo().rating() - blackRating.rating()
+      );
     } else {
       if (!state.whiteCpu()) {
         this.updatePlayer(handle, state.whiteId(), null);
@@ -224,6 +230,7 @@ public final class Database implements Listener {
       if (!state.blackCpu()) {
         this.updatePlayer(handle, state.blackId(), null);
       }
+      return new EloChange(0, 0);
     }
   }
 

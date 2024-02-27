@@ -30,5 +30,7 @@ CREATE TABLE chesscraft_complete_matches
 (
   `id` UUID NOT NULL PRIMARY KEY REFERENCES chesscraft_matches (`id`),
   `result_type` VARCHAR(16) NOT NULL,
-  `result_color` CHAR(1) CHECK(`result_color` = 'w' OR `result_color` = 'b')
+  `result_color` CHAR(1) CHECK(`result_color` = 'w' OR `result_color` = 'b'),
+  `white_elo_change` INTEGER,
+  `black_elo_change` INTEGER
 );

@@ -52,9 +52,13 @@ public final class GameStateRowMapper implements RowMapper<GameState> {
         result = null;
       } else {
         final @Nullable String resultColor = Util.trim(rs.getString("result_color"));
+        final int whiteEloChange = rs.getInt("white_elo_change");
+        final int blackEloChange = rs.getInt("black_elo_change");
         result = new GameState.Result(
           GameState.ResultType.valueOf(resultType),
-          resultColor == null ? null : PieceColor.decode(resultColor)
+          resultColor == null ? null : PieceColor.decode(resultColor),
+          whiteEloChange,
+          blackEloChange
         );
       }
     } catch (final SQLException e) {
