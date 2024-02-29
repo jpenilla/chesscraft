@@ -71,6 +71,7 @@ import xyz.jpenilla.chesscraft.util.Elo;
 import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Pagination;
 import xyz.jpenilla.chesscraft.util.PaginationHelper;
+import xyz.jpenilla.chesscraft.util.Permissions;
 
 import static org.incendo.cloud.bukkit.parser.MaterialParser.materialParser;
 import static org.incendo.cloud.bukkit.parser.OfflinePlayerParser.offlinePlayerParser;
@@ -110,15 +111,15 @@ public final class Commands {
     final Command.Builder<CommandSender> chess = this.mgr.commandBuilder("chess");
 
     this.mgr.command(chess.literal("version")
-      .permission("chesscraft.command.version")
+      .permission(Permissions.COMMAND_VERSION)
       .handler(this::version));
 
     this.mgr.command(chess.literal("boards")
-      .permission("chesscraft.command.boards")
+      .permission(Permissions.COMMAND_BOARDS)
       .handler(this::boards));
 
     this.mgr.command(chess.literal("reload")
-      .permission("chesscraft.command.reload")
+      .permission(Permissions.COMMAND_RELOAD)
       .handler(this::reload));
 
     this.mgr.command(chess.literal("create_board")
@@ -126,7 +127,7 @@ public final class Commands {
       .required("facing", enumParser(CardinalDirection.class))
       .optional("scale", integerParser(1), DefaultValue.constant(1))
       .senderType(Player.class)
-      .permission("chesscraft.command.create_board")
+      .permission(Permissions.COMMAND_CREATE_BOARD)
       .handler(this::createBoard));
 
     this.mgr.command(chess.literal("set_checkerboard")
@@ -134,12 +135,12 @@ public final class Commands {
       .flag(CommandFlag.builder("black").withComponent(materialParser()))
       .flag(CommandFlag.builder("white").withComponent(materialParser()))
       .flag(CommandFlag.builder("border").withComponent(materialParser()))
-      .permission("chesscraft.command.set_checkerboard")
+      .permission(Permissions.COMMAND_SET_CHECKERBOARD)
       .handler(this::setCheckerboard));
 
     this.mgr.command(chess.literal("delete_board")
       .required("board", chessBoardParser())
-      .permission("chesscraft.command.delete_board")
+      .permission(Permissions.COMMAND_DELETE_BOARD)
       .handler(this::deleteBoard));
 
     this.mgr.command(chess.literal("challenge")
@@ -149,7 +150,7 @@ public final class Commands {
       .required("cpu_elo", integerParser(100, 4000))
       .optional("time_control", timeControlParser())
       .senderType(Player.class)
-      .permission("chesscraft.command.challenge.cpu")
+      .permission(Permissions.COMMAND_CHALLENGE_CPU)
       .handler(this::challengeCpu));
 
     this.mgr.command(chess.literal("challenge")
@@ -159,39 +160,39 @@ public final class Commands {
       .required("color", enumParser(PieceColor.class))
       .optional("time_control", timeControlParser())
       .senderType(Player.class)
-      .permission("chesscraft.command.challenge.player")
+      .permission(Permissions.COMMAND_CHALLENGE_PLAYER)
       .handler(this::challengePlayer));
 
     this.mgr.command(chess.literal("accept")
       .senderType(Player.class)
-      .permission("chesscraft.command.accept")
+      .permission(Permissions.COMMAND_ACCEPT)
       .handler(this::accept));
 
     this.mgr.command(chess.literal("deny")
       .senderType(Player.class)
-      .permission("chesscraft.command.deny")
+      .permission(Permissions.COMMAND_DENY)
       .handler(this::deny));
 
     this.mgr.command(chess.literal("next_promotion")
       .required("type", promotionParser())
       .senderType(Player.class)
-      .permission("chesscraft.command.next_promotion")
+      .permission(Permissions.COMMAND_NEXT_PROMOTION)
       .handler(this::nextPromotion));
 
     this.mgr.command(chess.literal("show_legal_moves")
       .senderType(Player.class)
-      .permission("chesscraft.command.show_legal_moves")
+      .permission(Permissions.COMMAND_SHOW_LEGAL_MOVES)
       .handler(this::showLegalMoves));
 
     this.mgr.command(chess.literal("forfeit")
       .senderType(Player.class)
-      .permission("chesscraft.command.forfeit")
+      .permission(Permissions.COMMAND_FORFEIT)
       .handler(this::forfeit));
 
     this.mgr.command(chess.literal("reset_board")
       .required("board", chessBoardParser())
       .flag(CommandFlag.builder("clear"))
-      .permission("chesscraft.command.reset_board")
+      .permission(Permissions.COMMAND_RESET_BOARD)
       .handler(this::resetBoard));
 
     this.mgr.command(chess.literal("cpu_match")
@@ -201,29 +202,29 @@ public final class Commands {
       .flag(CommandFlag.builder("move_delay").withAliases("d").withComponent(integerParser(0)))
       .flag(CommandFlag.builder("time_control").withAliases("t").withComponent(timeControlParser()))
       .flag(CommandFlag.builder("replace").withAliases("r"))
-      .permission("chesscraft.command.cpu_match")
+      .permission(Permissions.COMMAND_CPU_MATCH)
       .handler(this::cpuMatch));
 
     this.mgr.command(chess.literal("cancel_match")
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.OCCUPIED_ONLY))
-      .permission("chesscraft.command.cancel_match")
+      .permission(Permissions.COMMAND_CANCEL_MATCH)
       .handler(this::cancelMatch));
 
     this.mgr.command(chess.literal("pause_match")
       .senderType(Player.class)
-      .permission("chesscraft.command.pause_match")
+      .permission(Permissions.COMMAND_PAUSE_MATCH)
       .handler(this::pauseMatch));
 
     this.mgr.command(chess.literal("accept_pause")
       .senderType(Player.class)
-      .permission("chesscraft.command.accept_pause")
+      .permission(Permissions.COMMAND_ACCEPT_PAUSE)
       .handler(this::acceptPause));
 
     this.mgr.command(chess.literal("resume_match")
       .required("id", uuidParser())
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
       .senderType(Player.class)
-      .permission("chesscraft.command.resume_match")
+      .permission(Permissions.COMMAND_RESUME_MATCH)
       .futureHandler(this::resumeMatch));
 
     final Consumer<Command.Builder<? extends CommandSender>> withPage = builder -> {
@@ -233,24 +234,24 @@ public final class Commands {
 
     final Command.Builder<CommandSender> pausedMatches = chess.literal("paused_matches")
       .futureHandler(this::pausedMatches);
-    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.self"));
-    withPage.accept(pausedMatches.permission("chesscraft.command.paused_matches.others")
+    withPage.accept(pausedMatches.permission(Permissions.COMMAND_PAUSED_MATCHES_SELF));
+    withPage.accept(pausedMatches.permission(Permissions.COMMAND_PAUSED_MATCHES_OTHERS)
       .required("player", offlinePlayerParser()));
 
     final Command.Builder<CommandSender> matchHistory = chess.literal("match_history")
       .futureHandler(this::matchHistory);
-    withPage.accept(matchHistory.permission("chesscraft.command.match_history.self"));
-    withPage.accept(matchHistory.permission("chesscraft.command.match_history.others")
+    withPage.accept(matchHistory.permission(Permissions.COMMAND_MATCH_HISTORY_SELF));
+    withPage.accept(matchHistory.permission(Permissions.COMMAND_MATCH_HISTORY_OTHERS)
       .required("player", offlinePlayerParser()));
 
     this.mgr.command(chess.literal("export_match")
       .required("id", uuidParser())
-      .permission("chesscraft.command.export_match")
+      .permission(Permissions.COMMAND_EXPORT_MATCH)
       .senderType(Player.class)
       .futureHandler(this::exportMatch));
 
     this.mgr.command(chess.literal("leaderboard")
-      .permission("chesscraft.command.leaderboard")
+      .permission(Permissions.COMMAND_LEADERBOARD)
       .futureHandler(this::leaderboard));
   }
 
@@ -621,7 +622,7 @@ public final class Commands {
         Pagination.<GameState>builder()
           .header((page, pages) -> this.messages().pausedMatchesHeader(target.player().name(), target.player().displayName()))
           .footer(this.pagination.footerRenderer(commandString(ctx, "/chess paused_matches", target.uuid())))
-          .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item, ctx.sender().hasPermission("chesscraft.command.export_match.incomplete"))))
+          .item((item, lastOfPage) -> this.pagination.wrapElement(this.messages().pausedMatchInfo(this.plugin.database(), item, ctx.sender().hasPermission(Permissions.COMMAND_EXPORT_MATCH_INCOMPLETE))))
           .pageOutOfRange(this.pagination.pageOutOfRange())
           .build()
           .render(games, ctx.<Integer>optional("page").orElse(1), 5)
@@ -674,12 +675,12 @@ public final class Commands {
     final UUID id = ctx.get("id");
     return this.plugin.database().queryMatch(id).thenAcceptAsync(matchOpt -> matchOpt.ifPresentOrElse(match -> {
       if (!ctx.sender().getUniqueId().equals(match.whiteId()) && !ctx.sender().getUniqueId().equals(match.blackId())) {
-        if (!ctx.sender().hasPermission("chesscraft.command.export_match.others")) {
+        if (!ctx.sender().hasPermission(Permissions.COMMAND_EXPORT_MATCH_OTHERS)) {
           ctx.sender().sendMessage(this.messages().cannotExportOthers());
           return;
         }
       }
-      if (match.result() == null && !ctx.sender().hasPermission("chesscraft.command.export_match.incomplete")) {
+      if (match.result() == null && !ctx.sender().hasPermission(Permissions.COMMAND_EXPORT_MATCH_INCOMPLETE)) {
         ctx.sender().sendMessage(this.messages().cannotExportIncomplete());
         return;
       }
