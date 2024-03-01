@@ -15,7 +15,9 @@ SELECT chesscraft_matches.id,
        chesscraft_complete_matches.result_type,
        chesscraft_complete_matches.result_color,
        chesscraft_complete_matches.white_elo_change,
-       chesscraft_complete_matches.black_elo_change
+       chesscraft_complete_matches.white_elo,
+       chesscraft_complete_matches.black_elo_change,
+       chesscraft_complete_matches.black_elo
 FROM chesscraft_matches
 LEFT OUTER JOIN chesscraft_complete_matches ON chesscraft_matches.id=chesscraft_complete_matches.id
 WHERE chesscraft_matches.id = :id;
