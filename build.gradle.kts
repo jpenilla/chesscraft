@@ -29,28 +29,27 @@ repositories {
 }
 
 dependencies {
-  compileOnly("io.papermc.paper", "paper-api", "1.20.2-R0.1-SNAPSHOT") {
+  compileOnly(libs.paperApi) {
     exclude("org.yaml", "snakeyaml")
   }
-  implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT")
-  implementation(platform("org.incendo:cloud-bom:2.0.0-beta.3"))
-  implementation(platform("org.incendo:cloud-minecraft-bom:2.0.0-beta.4"))
-  implementation(platform("org.incendo:cloud-translations-bom:1.0.0-SNAPSHOT"))
-  implementation("org.incendo:cloud-paper")
-  implementation("org.incendo:cloud-translations-core")
-  implementation("org.incendo:cloud-translations-bukkit")
-  implementation("org.incendo:cloud-translations-minecraft-extras")
-  compileOnly("com.mojang", "brigadier", "1.0.18")
-  implementation("org.incendo:cloud-minecraft-extras") {
+  implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT") // from included build
+  implementation(platform(libs.cloud.bom))
+  implementation(platform(libs.cloud.minecraft.bom))
+  implementation(platform(libs.cloud.translations.bom))
+  implementation(libs.cloud.paper)
+  implementation(libs.cloud.translations.core)
+  implementation(libs.cloud.translations.bukkit)
+  implementation(libs.cloud.translations.minecraft.extras)
+  compileOnly(libs.brigadier)
+  implementation(libs.cloud.minecraft.extras) {
     isTransitive = false
   }
-  implementation("org.spongepowered:configurate-yaml:4.1.2")
-  runtimeOnly("io.papermc:paper-trail:0.0.1-SNAPSHOT")
-  implementation("org.bstats", "bstats-bukkit", "3.0.2")
+  implementation(libs.configurate.yaml)
+  runtimeOnly(libs.paperTrail)
+  implementation(libs.bstatsBukkit)
 
-  val commonsCompress = "org.apache.commons:commons-compress:1.26.0"
-  runtimeDownload(commonsCompress)
-  compileOnly(commonsCompress)
+  runtimeDownload(libs.commonsCompress)
+  compileOnly(libs.commonsCompress)
 
   val cpuFeatures = "org.bytedeco:cpu_features:0.7.0-1.5.8"
   runtimeDownload(cpuFeatures)
@@ -67,6 +66,19 @@ dependencies {
   cpuFeaturesNatives("macosx-arm64", true)
   cpuFeaturesNatives("macosx-x86_64")
   cpuFeaturesNatives("windows-x86_64")
+
+  compileOnly(libs.hikariCP)
+  runtimeDownload(libs.hikariCP)
+  compileOnly(libs.flyway)
+  runtimeDownload(libs.flyway)
+  runtimeDownload(libs.mysql)
+  runtimeDownload(libs.mariadb)
+  runtimeDownload(libs.flywayMysql)
+  compileOnly(libs.jdbiCore)
+  runtimeDownload(libs.jdbiCore)
+  runtimeDownload(libs.h2)
+  compileOnly(libs.caffeine)
+  runtimeDownload(libs.caffeine)
 }
 
 indraSpotlessLicenser {

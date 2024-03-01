@@ -23,6 +23,8 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import xyz.jpenilla.chesscraft.util.Elo;
 
 public interface ChessPlayer extends Audience {
   default Component displayName() {
@@ -35,15 +37,54 @@ public interface ChessPlayer extends Audience {
     return this instanceof Cpu;
   }
 
-  static ChessPlayer player(final org.bukkit.entity.Player player) {
-    return new Player(player.getUniqueId());
+  static Player player(final org.bukkit.entity.Player player) {
+    return new OnlinePlayer(player.getUniqueId());
+  }
+
+  interface Player extends ChessPlayer {
+    UUID uuid();
+  }
+
+  static Player offlinePlayer(final OfflinePlayer offlinePlayer) {
+    return new Player() {
+      @Override
+      public Component name() {
+        return Component.text(offlinePlayer.getName());
+      }
+
+      @Override
+      public Component displayName() {
+        if (offlinePlayer.isOnline()) {
+          return offlinePlayer.getPlayer().displayName();
+        }
+        return Player.super.displayName();
+      }
+
+      @Override
+      public UUID uuid() {
+        return offlinePlayer.getUniqueId();
+      }
+    };
+  }
+
+  record CachedPlayer(
+    UUID uuid,
+    Component name,
+    Component displayName,
+    int rating,
+    int peakRating,
+    int ratedMatches
+  ) implements Player {
+    public Elo.RatingData ratingData() {
+      return new Elo.RatingData(this.rating, this.peakRating, this.ratedMatches);
+    }
   }
 
   static ChessPlayer cpu(final int elo) {
     return new Cpu(elo, UUID.randomUUID());
   }
 
-  record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
+  record OnlinePlayer(UUID uuid) implements Player, ForwardingAudience.Single {
     @Override
     public Audience audience() {
       return player();

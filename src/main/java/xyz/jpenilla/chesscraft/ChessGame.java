@@ -22,13 +22,16 @@ import com.destroystokyo.paper.util.SneakyThrow;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -37,6 +40,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.audience.Audience;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -62,6 +66,7 @@ import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 public final class ChessGame implements BoardStateHolder {
   public static final NamespacedKey HIDE_LEGAL_MOVES_KEY = new NamespacedKey("chesscraft", "hide_legal_moves");
 
+  private final UUID id;
   private final ChessBoard board;
   private final StockfishClient stockfish;
   // Rank 0-7 (8-1), File 0-7 (A-H)
@@ -71,6 +76,7 @@ public final class ChessGame implements BoardStateHolder {
   private final ChessPlayer black;
   private final int moveDelay;
   private final CountDownLatch delayLatch = new CountDownLatch(1);
+  private final TimeControlSettings timeControlSettings;
   private PieceType whiteNextPromotion = PieceType.QUEEN;
   private PieceType blackNextPromotion = PieceType.QUEEN;
   private final @Nullable TimeControl whiteTime;
@@ -93,6 +99,7 @@ public final class ChessGame implements BoardStateHolder {
     final @Nullable TimeControlSettings timeControl,
     final int moveDelay
   ) {
+    this.id = UUID.randomUUID();
     this.plugin = plugin;
     this.board = board;
     this.white = white;
@@ -115,10 +122,62 @@ public final class ChessGame implements BoardStateHolder {
       this.blackTime = null;
       this.timeControlTask = null;
     }
+    this.timeControlSettings = timeControl;
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
     Util.scheduleOrRun(plugin, this::applyToWorld);
+  }
+
+  ChessGame(
+    final ChessCraft plugin,
+    final ChessBoard board,
+    final GameState state
+  ) {
+    this.id = state.id();
+    this.plugin = plugin;
+    this.board = board;
+    this.white = state.white();
+    this.black = state.black();
+    this.pieces = ChessBoard.initBoard();
+    this.moves = new CopyOnWriteArrayList<>(state.moves());
+    this.moveDelay = state.cpuMoveDelay();
+    this.loadFen(state.currentFen());
+    try {
+      this.stockfish = this.createStockfishClient();
+    } catch (final Exception ex) {
+      throw new RuntimeException("Failed to initialize and/or connect to chess engine process", ex);
+    }
+    this.whiteTime = state.whiteTime() == null ? null : state.whiteTime().copy();
+    this.blackTime = state.blackTime() == null ? null : state.blackTime().copy();
+    if (this.whiteTime != null || this.blackTime != null) {
+      this.timeControlTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tickTime, 0L, 1L);
+    } else {
+      this.timeControlTask = null;
+    }
+    this.timeControlSettings = state.timeControlSettings();
+    for (final BoardDisplaySettings<?> display : this.board.displays()) {
+      this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
+    }
+    Util.scheduleOrRun(plugin, this::applyToWorld);
+  }
+
+  public GameState snapshotState(final GameState.@Nullable Result result) {
+    return new GameState(
+      this.id,
+      this.white instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.white instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
+      this.whiteTime == null ? null : this.whiteTime.copy(),
+      this.black instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.black instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
+      this.blackTime == null ? null : this.blackTime.copy(),
+      List.copyOf(this.moves),
+      Fen.read(this.currentFen),
+      this.moveDelay,
+      this.timeControlSettings,
+      result,
+      Timestamp.valueOf(LocalDateTime.now())
+    );
   }
 
   public ChessPlayer white() {
@@ -181,7 +240,7 @@ public final class ChessGame implements BoardStateHolder {
     final Vec3i selectedPos = this.board.toWorld(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
-    if (!(c instanceof ChessPlayer.Player chessPlayer)) {
+    if (!(c instanceof ChessPlayer.OnlinePlayer chessPlayer)) {
       return;
     }
     final Player player = chessPlayer.player();
@@ -259,8 +318,11 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   public boolean hasPlayer(final Player player) {
-    final ChessPlayer w = ChessPlayer.player(player);
-    return this.white.equals(w) || this.black.equals(w);
+    final ChessPlayer.Player chessPlayer = ChessPlayer.player(player);
+    if (this.white instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid())) {
+      return true;
+    }
+    return this.black instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid());
   }
 
   public void applyToWorld() {
@@ -341,6 +403,10 @@ public final class ChessGame implements BoardStateHolder {
     final long timesPositionSeen = this.moves.stream().filter(e -> Objects.deepEquals(e.boardAfter().pieces(), lastMove.boardAfter().pieces())).count();
     if (timesPositionSeen == 3) {
       this.announceDrawByRepetition();
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.REPETITION, null)),
+        true
+      );
       this.board.endGame();
       return CompletableFuture.completedFuture(null);
     }
@@ -369,6 +435,10 @@ public final class ChessGame implements BoardStateHolder {
 
       if (draw) {
         this.announceDrawByFifty();
+        this.plugin.database().saveMatchAsync(
+          this.snapshotState(GameState.Result.create(GameState.ResultType.DRAW_BY_50, null)),
+          true
+        );
         this.board.endGame();
         return CompletableFuture.completedFuture(null);
       }
@@ -385,8 +455,13 @@ public final class ChessGame implements BoardStateHolder {
       return this.stockfish.submit(QueryTypes.CHECKERS.builder(this.currentFen).build()).thenAccept(checkers -> {
         if (checkers.isEmpty()) {
           this.announceStalemate();
+          this.plugin.database().saveMatchAsync(this.snapshotState(GameState.Result.create(GameState.ResultType.STALEMATE, null)), true);
         } else {
           this.announceWin(this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
+          this.plugin.database().saveMatchAsync(
+            this.snapshotState(GameState.Result.create(GameState.ResultType.WIN, this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE)),
+            true
+          );
         }
         this.board.endGame();
       });
@@ -469,6 +544,10 @@ public final class ChessGame implements BoardStateHolder {
 
   public void forfeit(final PieceColor color) {
     this.board.endGameAndWait();
+    this.plugin.database().saveMatchAsync(
+      this.snapshotState(GameState.Result.create(GameState.ResultType.FORFEIT, color)),
+      true
+    );
     this.audience().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
   }
 
@@ -576,7 +655,7 @@ public final class ChessGame implements BoardStateHolder {
     throw new IllegalArgumentException();
   }
 
-  private record Move(String notation, PieceColor color, @Nullable Fen boardAfter) {
+  public record Move(String notation, PieceColor color, @Nullable Fen boardAfter) {
     public Move boardAfter(final Fen fen) {
       return new Move(this.notation, this.color, fen);
     }
@@ -595,6 +674,11 @@ public final class ChessGame implements BoardStateHolder {
       this.increment = timeControl.increment().toSeconds() * 20;
     }
 
+    public TimeControl(final long timeLeft, final long increment) {
+      this.timeLeft = timeLeft;
+      this.increment = increment;
+    }
+
     synchronized void move() {
       this.timeLeft += this.increment;
     }
@@ -604,9 +688,13 @@ public final class ChessGame implements BoardStateHolder {
       return this.timeLeft < 1;
     }
 
-    public String timeLeft() {
+    public String timeLeftString() {
       final Duration d = Duration.ofMillis(Math.round(this.timeLeft / 20.0D * 1000.0D));
       return TimeUtil.formatDurationClock(d);
+    }
+
+    public TimeControl copy() {
+      return new TimeControl(this.timeLeft, this.increment);
     }
   }
 }

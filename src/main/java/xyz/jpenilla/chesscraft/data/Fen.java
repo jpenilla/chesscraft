@@ -17,10 +17,16 @@
  */
 package xyz.jpenilla.chesscraft.data;
 
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSerializationContext;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -88,5 +94,17 @@ public record Fen(String fenString, Piece[][] pieces, PieceColor nextMove) imple
       }
     }
     return Reference2IntMaps.unmodifiable(map);
+  }
+
+  public static final class JsonSerializer implements com.google.gson.JsonSerializer<Fen>, JsonDeserializer<Fen> {
+    @Override
+    public Fen deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context) throws JsonParseException {
+      return Fen.read(json.getAsString());
+    }
+
+    @Override
+    public JsonElement serialize(final Fen src, final Type typeOfSrc, final JsonSerializationContext context) {
+      return context.serialize(src.fenString);
+    }
   }
 }

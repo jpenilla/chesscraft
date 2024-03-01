@@ -47,4 +47,8 @@ public enum PieceColor {
   public PieceColor other() {
     return this == WHITE ? BLACK : WHITE;
   }
+
+  public String encode() {
+    return this.abbreviation;
+  }
 }

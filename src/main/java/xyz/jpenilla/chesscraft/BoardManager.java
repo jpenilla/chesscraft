@@ -17,8 +17,8 @@
  */
 package xyz.jpenilla.chesscraft;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.leangen.geantyref.TypeToken;
 import io.papermc.paper.event.player.PlayerItemFrameChangeEvent;
 import java.io.IOException;
@@ -77,6 +77,7 @@ public final class BoardManager implements Listener {
   private final Map<String, ChessBoard> boards;
   private final Map<String, BoardDisplaySettings<?>> displays;
   private final Cache<UUID, PVPChallenge> challenges;
+  private final Cache<UUID, Object> pauseProposals;
   private @MonotonicNonNull AutoCpuGames autoCpuGames;
 
   private BukkitTask particleTask;
@@ -88,7 +89,8 @@ public final class BoardManager implements Listener {
     this.boards = new ConcurrentHashMap<>();
     this.displaysFile = plugin.getDataFolder().toPath().resolve("displays.yml");
     this.displays = new ConcurrentHashMap<>();
-    this.challenges = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
+    this.challenges = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
+    this.pauseProposals = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).build();
     try {
       Files.createDirectories(this.boardsFile.getParent());
     } catch (final IOException ex) {
@@ -98,6 +100,10 @@ public final class BoardManager implements Listener {
 
   public Cache<UUID, PVPChallenge> challenges() {
     return this.challenges;
+  }
+
+  public Cache<UUID, Object> pauseProposals() {
+    return this.pauseProposals;
   }
 
   public Collection<ChessBoard> boards() {
@@ -198,9 +204,13 @@ public final class BoardManager implements Listener {
     HandlerList.unregisterAll(this);
     this.boards.forEach((name, board) -> {
       if (board.hasGame()) {
-        final ChessGame game = board.game();
-        board.endGameAndWait();
-        game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
+        if (board.game().cpuVsCpu()) {
+          final ChessGame game = board.game();
+          board.endGameAndWait();
+          game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
+        } else {
+          this.pauseMatch(board);
+        }
       }
     });
     this.boards.clear();
@@ -243,6 +253,14 @@ public final class BoardManager implements Listener {
 
   private void saveDisplays() {
     ConfigHelper.saveConfig(this.displaysFile, new TypeToken<>() {}, this.displays);
+  }
+
+  public void pauseMatch(final ChessBoard board) {
+    final ChessGame game = board.game();
+    board.endGameAndWait();
+    final GameState state = game.snapshotState(null);
+    this.plugin.database().saveMatchAsync(state, false);
+    game.audience().sendMessage(this.plugin.config().messages().pausedMatch());
   }
 
   public boolean inGame(final Player player) {
@@ -299,6 +317,7 @@ public final class BoardManager implements Listener {
         this.challenges.invalidate(challenge.player().getUniqueId());
       }
     }
+    this.pauseProposals.invalidate(event.getPlayer().getUniqueId());
   }
 
   @EventHandler
@@ -380,7 +399,7 @@ public final class BoardManager implements Listener {
   }
 
   private static final class AutoCpuGames {
-    private final Cache<String, Object> delay = CacheBuilder.newBuilder()
+    private final Cache<String, Object> delay = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofSeconds(10))
       .build();
     private final ConcurrentHashMap<String, Runnable> taskMap = new ConcurrentHashMap<>();
