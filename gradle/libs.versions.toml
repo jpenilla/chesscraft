@@ -1,6 +1,7 @@
 [plugins]
 
 [versions]
+# database
 jdbi = "3.44.1"
 hikari = "5.1.0"
 mysql = "8.3.0"
@@ -8,6 +9,30 @@ flyway = "10.7.2"
 h2 = "2.2.224"
 
 [libraries]
+# cloud
+cloud-bom = "org.incendo:cloud-bom:2.0.0-beta.3"
+cloud-minecraft-bom = "org.incendo:cloud-minecraft-bom:2.0.0-beta.4"
+cloud-translations-bom = "org.incendo:cloud-translations-bom:1.0.0-SNAPSHOT"
+cloud-paper = { module = "org.incendo:cloud-paper" }
+cloud-translations-core = { module = "org.incendo:cloud-translations-core" }
+cloud-translations-bukkit = { module = "org.incendo:cloud-translations-bukkit" }
+cloud-translations-minecraft-extras = { module = "org.incendo:cloud-translations-minecraft-extras" }
+cloud-minecraft-extras = { module = "org.incendo:cloud-minecraft-extras" }
+brigadier = "com.mojang:brigadier:1.0.18"
+
+# paper
+paperApi = "io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT"
+paperTrail = "io.papermc:paper-trail:0.0.1-SNAPSHOT"
+
+# config
+configurate-yaml = "org.spongepowered:configurate-yaml:4.1.2"
+
+# misc libs
+caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"
+commonsCompress = "org.apache.commons:commons-compress:1.26.0"
+bstatsBukkit = "org.bstats:bstats-bukkit:3.0.2"
+
+# database
 jdbiCore = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
 hikariCP = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 flyway = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" }
@@ -15,4 +40,3 @@ flywayMysql = { group = "org.flywaydb", name = "flyway-mysql", version.ref = "fl
 mysql = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version = "3.3.3" }
-caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"
