@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -130,7 +131,8 @@ public final class BoardManager implements Listener {
       world.getKey(),
       this.displays(this.plugin.config().defaultDisplays()),
       this.stockfishPath,
-      new BoardData.AutoCpuGameSettings() // users will have to enable auto cpu games in the config file
+      new BoardData.AutoCpuGameSettings(), // users will have to enable auto cpu games in the config file
+      BoardData.DEFAULT_SOUND
     );
     this.boards.put(name, board);
     this.saveBoards();
@@ -188,7 +190,8 @@ public final class BoardManager implements Listener {
       data.dimension,
       this.displays(data.displays),
       this.stockfishPath,
-      data.autoCpuGame
+      data.autoCpuGame,
+      data.moveSound
     )));
   }
 
@@ -356,10 +359,17 @@ public final class BoardManager implements Listener {
 
   @ConfigSerializable
   public static final class BoardData {
+    public static final Sound DEFAULT_SOUND = Sound.sound()
+      .type(org.bukkit.Sound.ITEM_AXE_STRIP)
+      .seed(-5784237514302714804L)
+      .source(Sound.Source.BLOCK)
+      .build();
+
     private NamespacedKey dimension = NamespacedKey.minecraft("overworld");
     private Vec3i position = new Vec3i(0, 0, 0);
     private CardinalDirection facing = CardinalDirection.NORTH;
     private int scale = 1;
+    private Sound moveSound = DEFAULT_SOUND;
     private List<String> displays = List.of();
     private AutoCpuGameSettings autoCpuGame = new AutoCpuGameSettings();
 

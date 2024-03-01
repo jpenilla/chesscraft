@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Supplier;
+import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.yaml.NodeStyle;
@@ -39,9 +40,10 @@ public final class ConfigHelper {
         serializers.register(Vec3i.SERIALIZER);
         serializers.register(Vec3d.SERIALIZER);
         serializers.register(Rotation.SERIALIZER);
-        serializers.register(NamespacedKeySerializer.INSTANCE);
+        serializers.registerExact(NamespacedKeySerializer.INSTANCE);
         serializers.register(new RGBAHexBukkitColorSerializer());
         serializers.registerExact(PieceOptions.class, PieceOptions.SERIALIZER);
+        serializers.registerAll(ConfigurateComponentSerializer.configurate().serializers());
         serializers.registerExact(new TypeToken<>() {}, new BoardDisplaySettings.Serializer());
       }))
       .path(file)

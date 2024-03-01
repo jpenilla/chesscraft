@@ -26,6 +26,7 @@ paperTrail = "io.papermc:paper-trail:0.0.1-SNAPSHOT"
 
 # config
 configurate-yaml = "org.spongepowered:configurate-yaml:4.1.2"
+adventure-serializer-configurate4 = "net.kyori:adventure-serializer-configurate4:4.16.0"
 
 # misc libs
 caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"

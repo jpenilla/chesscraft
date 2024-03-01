@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -42,6 +43,7 @@ public final class ChessBoard {
   // southwest corner pos
   private final Vec3i loc;
   private final CardinalDirection facing;
+  private final Sound moveSound;
   private final BoardManager.BoardData.AutoCpuGameSettings autoCpuGame;
   private final int scale;
   private final String name;
@@ -61,12 +63,14 @@ public final class ChessBoard {
     final NamespacedKey world,
     final List<? extends BoardDisplaySettings<?>> displays,
     final Path stockfishPath,
-    final BoardManager.BoardData.AutoCpuGameSettings autoCpuGame
+    final BoardManager.BoardData.AutoCpuGameSettings autoCpuGame,
+    final Sound moveSound
   ) {
     this.plugin = plugin;
     this.name = name;
     this.loc = loc;
     this.facing = facing;
+    this.moveSound = moveSound;
     if (scale < 1) {
       throw new IllegalArgumentException("Scale cannot be less than 1.");
     }
@@ -75,7 +79,11 @@ public final class ChessBoard {
     this.displays = displays;
     this.stockfishPath = stockfishPath;
     this.autoCpuGame = autoCpuGame;
-    this.pieceHandler = plugin.config().pieces().createHandler();
+    this.pieceHandler = plugin.config().pieces().createHandler(plugin);
+  }
+
+  public Sound moveSound() {
+    return this.moveSound;
   }
 
   public List<? extends BoardDisplaySettings<?>> displays() {

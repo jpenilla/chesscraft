@@ -38,7 +38,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerTextures;
 import org.bukkit.util.Transformation;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -51,6 +50,8 @@ import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
+import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Reflection;
 
 public interface PieceHandler {
@@ -68,9 +69,11 @@ public interface PieceHandler {
   void removeFromWorld(ChessBoard board, World world);
 
   final class DisplayEntity implements PieceHandler {
+    private final ChessCraft plugin;
     private final PieceOptions.DisplayEntity options;
 
-    public DisplayEntity(final PieceOptions.DisplayEntity options) {
+    public DisplayEntity(final ChessCraft plugin, final PieceOptions.DisplayEntity options) {
+      this.plugin = plugin;
       this.options = options;
     }
 
@@ -85,7 +88,10 @@ public interface PieceHandler {
         }
 
         final List<Entity> existing = pieceAt(world, board, pos);
-        final Consumer<ItemDisplay> displayConfigure = itemDisplay -> this.configureItemDisplay(board, itemDisplay, piece);
+        final Consumer<ItemDisplay> displayConfigure = itemDisplay -> {
+          this.configureItemDisplay(board, itemDisplay, piece);
+          itemDisplay.setTeleportDuration(0);
+        };
         final @Nullable ItemDisplay existingItemDisplay = (ItemDisplay) existing.stream().filter(it -> it instanceof ItemDisplay).findFirst().orElse(null);
         if (existingItemDisplay != null) {
           displayConfigure.accept(existingItemDisplay);
@@ -127,37 +133,116 @@ public interface PieceHandler {
       final BoardPosition fromPos = BoardPosition.fromString(move.notation().substring(0, 2));
       final BoardPosition toPos = BoardPosition.fromString(move.notation().substring(2, 4));
 
-      // Remove any captures pieces
+      // Collect captured pieces (or rook in case of castle)
+      final List<List<Entity>> captures = new ArrayList<>();
       board.forEachPosition(pos -> {
         if (!pos.equals(fromPos) && game.piece(pos) == null) {
-          removePieceAt(world, board, board.toWorld(pos));
+          final List<Entity> entities = pieceAt(world, board, board.toWorld(pos));
+          if (entities.size() == 2) {
+            captures.add(entities);
+          }
         }
       });
+      final List<Entity> destEntities = pieceAt(world, board, board.toWorld(toPos));
+      if (destEntities.size() == 2) {
+        captures.add(destEntities);
+      }
 
-      // Remove any piece at destination
-      removePieceAt(world, board, board.toWorld(toPos));
+      final List<Entity> movedPieceEntities = pieceAt(world, board, board.toWorld(fromPos));
 
-      final List<Entity> entities = pieceAt(world, board, board.toWorld(fromPos));
-
-      // Couldn't find piece, reapply whole board
-      if (entities.size() != 2) {
-        this.applyToWorld(board, game, world);
+      if (movedPieceEntities.size() != 2) {
+        this.inconsistentState(board, game, world);
         return;
       }
 
-      for (final Entity entity : entities) {
+      final @Nullable Piece movedPiece = game.piece(toPos);
+      if (movedPiece == null) {
+        this.inconsistentState(board, game, world);
+        return;
+      }
+
+      this.movePiece(board, game, world, movedPieceEntities, toPos, movedPiece);
+
+      // castling
+      if (movedPiece.type() == PieceType.KING && Math.abs(toPos.file() - fromPos.file()) == 2) {
+        if (captures.size() != 1 || captures.get(0).size() != 2) {
+          this.inconsistentState(board, game, world);
+          return;
+        }
+        final List<Entity> rook = captures.get(0);
+        final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
+        this.movePiece(board, game, world, rook, rookDest, movedPiece);
+      } else {
+        for (final List<Entity> capture : captures) {
+          for (final Entity entity : capture) {
+            if (entity instanceof ItemDisplay display) {
+              display.setInterpolationDuration(15);
+              display.setInterpolationDelay(-1);
+              // ensure interpolation duration change is sent
+              this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
+                if (board.hasGame() && board.game() == game) {
+                  final Transformation transformation = display.getTransformation();
+                  final Vector3f scale = transformation.getScale().mul(0.01f);
+                  display.setTransformation(new Transformation(
+                    transformation.getTranslation(),
+                    transformation.getLeftRotation(),
+                    scale,
+                    transformation.getRightRotation()
+                  ));
+                  this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
+                    if (board.hasGame() && board.game() == game) {
+                      display.remove();
+                    }
+                  }, 15);
+                }
+              }, 2L);
+            } else {
+              entity.remove();
+            }
+          }
+        }
+      }
+    }
+
+    private void inconsistentState(
+      final ChessBoard board,
+      final BoardStateHolder game,
+      final World world
+    ) {
+      this.plugin.getSLF4JLogger().warn(
+        "Found inconsistent board state, reapplying entire board\n{}",
+        MatchExporter.writePgn(board.game().snapshotState(null), this.plugin.database()).join(),
+        new Throwable()
+      );
+      this.applyToWorld(board, game, world);
+    }
+
+    private void movePiece(
+      final ChessBoard board,
+      final BoardStateHolder game,
+      final World world,
+      final List<Entity> movedPiece,
+      final BoardPosition toPos,
+      final Piece destPiece
+    ) {
+      for (final Entity entity : movedPiece) {
         if (entity instanceof ItemDisplay display) {
           display.setTeleportDuration(5);
-          final ChessCraft plugin = JavaPlugin.getPlugin(ChessCraft.class);
           // ensure teleport duration change is sent
-          plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            display.teleport(board.toWorld(toPos).toLocation(world));
-            display.setTeleportDuration(0);
+          this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
+            if (board.hasGame() && board.game() == game) {
+              display.teleport(board.toWorld(toPos).toLocation(world));
+              world.playSound(board.moveSound(), display.getX(), display.getY(), display.getZ());
+              display.setTeleportDuration(0);
+            }
           }, 2L);
+          // needed in case of promotion
           this.configureItemDisplay(board, display, game.piece(toPos));
-        } else {
+        } else if (entity instanceof Interaction interaction) {
           final Vec3i pos = board.toWorld(toPos);
           entity.teleport(interactionLoc(board, world, pos));
+          // needed in case of promotion
+          this.configureInteraction(board, interaction, destPiece);
         }
       }
     }
