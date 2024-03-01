@@ -635,9 +635,17 @@ public final class ChessGame implements BoardStateHolder {
     Objects.requireNonNull(this.blackTime, "blackTime");
     if (this.nextMove == PieceColor.WHITE && this.whiteTime.tick()) {
       this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.OUT_OF_TIME, PieceColor.WHITE)),
+        true
+      );
       this.board.endGame();
     } else if (this.nextMove == PieceColor.BLACK && this.blackTime.tick()) {
       this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.OUT_OF_TIME, PieceColor.BLACK)),
+        true
+      );
       this.board.endGame();
     }
     if (this.plugin.getServer().getCurrentTick() % 4 == 0) {

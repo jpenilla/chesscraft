@@ -64,7 +64,7 @@ public final class MatchExporter {
         resultString = switch (result.type()) {
           case WIN -> result.color() == PieceColor.WHITE ? "1-0" : "0-1";
           case STALEMATE, REPETITION, DRAW_BY_50 -> "1/2-1/2";
-          case FORFEIT -> result.color() == PieceColor.WHITE ? "0-1" : "1-0";
+          case FORFEIT, OUT_OF_TIME -> result.color() == PieceColor.WHITE ? "0-1" : "1-0";
         };
       } else {
         resultString = null;

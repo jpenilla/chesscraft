@@ -115,6 +115,7 @@ public record GameState(
 
   public enum ResultType {
     WIN,
+    OUT_OF_TIME,
     STALEMATE,
     REPETITION,
     DRAW_BY_50,
@@ -134,6 +135,7 @@ public record GameState(
     public Component describe(final Messages messages) {
       return switch (this.type) {
         case WIN -> messages.resultWin(this.color);
+        case OUT_OF_TIME -> messages.resultOutOfTime(this.color);
         case STALEMATE -> messages.resultStalemate();
         case REPETITION -> messages.resultDrawByRepetition();
         case DRAW_BY_50 -> messages.resultDrawByFiftyMoveRule();

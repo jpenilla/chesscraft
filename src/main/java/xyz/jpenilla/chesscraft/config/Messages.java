@@ -536,6 +536,12 @@ public final class Messages {
     return parse(this.resultWin, Placeholder.styling("winner_color", winner.textColor()), Placeholder.styling("loser_color", winner.other().textColor()));
   }
 
+  private String resultOutOfTime = "<loser_color>♚</loser_color>Out of time";
+
+  public Component resultOutOfTime(final PieceColor loser) {
+    return parse(this.resultOutOfTime, Placeholder.styling("winner_color", loser.other().textColor()), Placeholder.styling("loser_color", loser.textColor()));
+  }
+
   private String resultStalemate = "Stalemate";
 
   public Component resultStalemate() {
