@@ -200,14 +200,16 @@ public final class Database implements Listener {
           .bind("id", state.id())
           .bind("result_type", state.result().type().name())
           .bind("result_color", state.result().color().encode())
-          .bind("white_elo_change", eloChange.white())
-          .bind("black_elo_change", eloChange.black())
+          .bind("white_elo_change", eloChange.whiteChange())
+          .bind("white_elo", eloChange.whiteElo())
+          .bind("black_elo_change", eloChange.blackChange())
+          .bind("black_elo", eloChange.blackElo())
           .execute();
       }
     });
   }
 
-  private record EloChange(int white, int black) {}
+  private record EloChange(int whiteElo, int whiteChange, int blackElo, int blackChange) {}
 
   private EloChange updatePlayers(final GameState state, final Handle handle, boolean insertResult) {
     if (!state.blackCpu() && !state.whiteCpu() && insertResult) {
@@ -219,17 +221,29 @@ public final class Database implements Listener {
       this.updatePlayer(handle, state.whiteId(), newRatings.playerOne());
       this.updatePlayer(handle, state.blackId(), newRatings.playerTwo());
       return new EloChange(
+        whiteRating.rating(),
         newRatings.playerOne().rating() - whiteRating.rating(),
+        blackRating.rating(),
         newRatings.playerTwo().rating() - blackRating.rating()
       );
     } else {
+      int whiteElo = 0;
       if (!state.whiteCpu()) {
+        final Optional<ChessPlayer.CachedPlayer> white = this.queryPlayer(state.whiteId(), handle);
+        if (white.isPresent()) {
+          whiteElo = white.get().rating();
+        }
         this.updatePlayer(handle, state.whiteId(), null);
       }
+      int blackElo = 0;
       if (!state.blackCpu()) {
+        final Optional<ChessPlayer.CachedPlayer> black = this.queryPlayer(state.blackId(), handle);
+        if (black.isPresent()) {
+          blackElo = black.get().rating();
+        }
         this.updatePlayer(handle, state.blackId(), null);
       }
-      return new EloChange(0, 0);
+      return new EloChange(whiteElo, 0, blackElo, 0);
     }
   }
 
