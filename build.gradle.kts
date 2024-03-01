@@ -45,7 +45,9 @@ dependencies {
     isTransitive = false
   }
   implementation(libs.configurate.yaml)
-  implementation(libs.adventure.serializer.configurate4)
+  implementation(libs.adventure.serializer.configurate4) {
+    isTransitive = false
+  }
   runtimeOnly(libs.paperTrail)
   implementation(libs.bstatsBukkit)
 
