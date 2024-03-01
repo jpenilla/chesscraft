@@ -69,6 +69,9 @@ public interface PieceHandler {
   void removeFromWorld(ChessBoard board, World world);
 
   final class DisplayEntity implements PieceHandler {
+    private static final int SHRINK_DURATION = 12;
+    private static final int TELEPORT_DURATION = 5;
+
     private final ChessCraft plugin;
     private final PieceOptions.DisplayEntity options;
 
@@ -176,7 +179,7 @@ public interface PieceHandler {
         for (final List<Entity> capture : captures) {
           for (final Entity entity : capture) {
             if (entity instanceof ItemDisplay display) {
-              display.setInterpolationDuration(15);
+              display.setInterpolationDuration(SHRINK_DURATION);
               display.setInterpolationDelay(-1);
               // ensure interpolation duration change is sent
               this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
@@ -193,7 +196,7 @@ public interface PieceHandler {
                     if (board.hasGame() && board.game() == game) {
                       display.remove();
                     }
-                  }, 15);
+                  }, SHRINK_DURATION);
                 }
               }, 2L);
             } else {
@@ -227,7 +230,7 @@ public interface PieceHandler {
     ) {
       for (final Entity entity : movedPiece) {
         if (entity instanceof ItemDisplay display) {
-          display.setTeleportDuration(5);
+          display.setTeleportDuration(TELEPORT_DURATION);
           // ensure teleport duration change is sent
           this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
             if (board.hasGame() && board.game() == game) {
