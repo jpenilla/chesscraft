@@ -38,6 +38,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerTextures;
 import org.bukkit.util.Transformation;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -45,6 +46,7 @@ import org.joml.AxisAngle4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import xyz.jpenilla.chesscraft.config.PieceOptions;
+import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.CardinalDirection;
 import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
@@ -53,6 +55,15 @@ import xyz.jpenilla.chesscraft.util.Reflection;
 
 public interface PieceHandler {
   void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
+
+  default void applyMoveToWorld(
+    final ChessBoard board,
+    final BoardStateHolder game,
+    final World world,
+    final ChessGame.Move move
+  ) {
+    this.applyToWorld(board, game, world);
+  }
 
   void removeFromWorld(ChessBoard board, World world);
 
@@ -74,13 +85,7 @@ public interface PieceHandler {
         }
 
         final List<Entity> existing = pieceAt(world, board, pos);
-        final Consumer<ItemDisplay> displayConfigure = itemDisplay -> {
-          itemDisplay.setTransformation(transformationFor(board, piece));
-          itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
-          itemDisplay.setItemStack(this.options.item(piece));
-          itemDisplay.setInvulnerable(true);
-          itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
-        };
+        final Consumer<ItemDisplay> displayConfigure = itemDisplay -> this.configureItemDisplay(board, itemDisplay, piece);
         final @Nullable ItemDisplay existingItemDisplay = (ItemDisplay) existing.stream().filter(it -> it instanceof ItemDisplay).findFirst().orElse(null);
         if (existingItemDisplay != null) {
           displayConfigure.accept(existingItemDisplay);
@@ -89,15 +94,9 @@ public interface PieceHandler {
           Reflection.spawn(pos.toLocation(world), ItemDisplay.class, displayConfigure);
         }
 
-        final Consumer<Interaction> interactionConfigure = interaction -> {
-          interaction.setInvulnerable(true);
-          interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
-          interaction.setResponsive(true);
-          interaction.setInteractionHeight((float) this.options.height(piece.type()) * board.scale());
-          interaction.setInteractionWidth(0.5f * board.scale());
-        };
+        final Consumer<Interaction> interactionConfigure = interaction -> this.configureInteraction(board, interaction, piece);
         final @Nullable Interaction existingInteraction = (Interaction) existing.stream().filter(it -> it instanceof Interaction).findFirst().orElse(null);
-        final Location interactionLoc = new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale());
+        final Location interactionLoc = interactionLoc(board, world, pos);
         if (existingInteraction != null) {
           interactionConfigure.accept(existingInteraction);
           existingInteraction.teleport(interactionLoc);
@@ -105,6 +104,66 @@ public interface PieceHandler {
           Reflection.spawn(interactionLoc, Interaction.class, interactionConfigure);
         }
       });
+    }
+
+    private void configureInteraction(final ChessBoard board, final Interaction interaction, final Piece piece) {
+      interaction.setInvulnerable(true);
+      interaction.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+      interaction.setResponsive(true);
+      interaction.setInteractionHeight((float) this.options.height(piece.type()) * board.scale());
+      interaction.setInteractionWidth(0.5f * board.scale());
+    }
+
+    private void configureItemDisplay(final ChessBoard board, final ItemDisplay itemDisplay, final Piece piece) {
+      itemDisplay.setTransformation(transformationFor(board, piece));
+      itemDisplay.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+      itemDisplay.setItemStack(this.options.item(piece));
+      itemDisplay.setInvulnerable(true);
+      itemDisplay.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
+    }
+
+    @Override
+    public void applyMoveToWorld(final ChessBoard board, final BoardStateHolder game, final World world, final ChessGame.Move move) {
+      final BoardPosition fromPos = BoardPosition.fromString(move.notation().substring(0, 2));
+      final BoardPosition toPos = BoardPosition.fromString(move.notation().substring(2, 4));
+
+      // Remove any captures pieces
+      board.forEachPosition(pos -> {
+        if (!pos.equals(fromPos) && game.piece(pos) == null) {
+          removePieceAt(world, board, board.toWorld(pos));
+        }
+      });
+
+      // Remove any piece at destination
+      removePieceAt(world, board, board.toWorld(toPos));
+
+      final List<Entity> entities = pieceAt(world, board, board.toWorld(fromPos));
+
+      // Couldn't find piece, reapply whole board
+      if (entities.size() != 2) {
+        this.applyToWorld(board, game, world);
+        return;
+      }
+
+      for (final Entity entity : entities) {
+        if (entity instanceof ItemDisplay display) {
+          display.setTeleportDuration(5);
+          final ChessCraft plugin = JavaPlugin.getPlugin(ChessCraft.class);
+          // ensure teleport duration change is sent
+          plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            display.teleport(board.toWorld(toPos).toLocation(world));
+            display.setTeleportDuration(0);
+          }, 2L);
+          this.configureItemDisplay(board, display, game.piece(toPos));
+        } else {
+          final Vec3i pos = board.toWorld(toPos);
+          entity.teleport(interactionLoc(board, world, pos));
+        }
+      }
+    }
+
+    private static Location interactionLoc(final ChessBoard board, final World world, final Vec3i pos) {
+      return new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale());
     }
 
     private static Transformation transformationFor(final ChessBoard board, final Piece piece) {
