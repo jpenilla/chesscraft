@@ -171,7 +171,7 @@ public interface PieceHandler {
         }
         final List<Entity> rook = captures.get(0);
         final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
-        this.movePiece(board, game, world, rook, rookDest, movedPiece);
+        this.movePiece(board, game, world, rook, rookDest, game.piece(rookDest));
       } else {
         for (final List<Entity> capture : captures) {
           for (final Entity entity : capture) {
@@ -237,7 +237,7 @@ public interface PieceHandler {
             }
           }, 2L);
           // needed in case of promotion
-          this.configureItemDisplay(board, display, game.piece(toPos));
+          this.configureItemDisplay(board, display, destPiece);
         } else if (entity instanceof Interaction interaction) {
           final Vec3i pos = board.toWorld(toPos);
           entity.teleport(interactionLoc(board, world, pos));
