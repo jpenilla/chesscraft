@@ -326,7 +326,15 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   public void applyToWorld() {
-    this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+    this.applyToWorld(null);
+  }
+
+  public void applyToWorld(final @Nullable Move move) {
+    if (move == null) {
+      this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+    } else {
+      this.board.pieceHandler().applyMoveToWorld(this.board, this, this.board.world(), move);
+    }
     for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
       if (pair.second() instanceof AbstractTextDisplayHolder t) {
         t.ensureSpawned();
@@ -371,7 +379,7 @@ public final class ChessGame implements BoardStateHolder {
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
 
-        Util.schedule(this.plugin, this::applyToWorld);
+        Util.schedule(this.plugin, () -> this.applyToWorld(movePair));
         this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),

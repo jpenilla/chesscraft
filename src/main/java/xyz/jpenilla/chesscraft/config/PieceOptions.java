@@ -27,6 +27,7 @@ import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
+import xyz.jpenilla.chesscraft.ChessCraft;
 import xyz.jpenilla.chesscraft.PieceHandler;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
@@ -36,7 +37,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceType;
 public interface PieceOptions {
   Serializer SERIALIZER = new Serializer();
 
-  PieceHandler createHandler();
+  PieceHandler createHandler(ChessCraft plugin);
 
   Mode mode();
 
@@ -98,8 +99,8 @@ public interface PieceOptions {
     }
 
     @Override
-    public PieceHandler createHandler() {
-      return new PieceHandler.DisplayEntity(this);
+    public PieceHandler createHandler(final ChessCraft plugin) {
+      return new PieceHandler.DisplayEntity(plugin, this);
     }
 
     @Override
@@ -154,7 +155,7 @@ public interface PieceOptions {
     }
 
     @Override
-    public PieceHandler createHandler() {
+    public PieceHandler createHandler(final ChessCraft plugin) {
       return new PieceHandler.ItemFrame(this);
     }
 
@@ -191,7 +192,7 @@ public interface PieceOptions {
     }
 
     @Override
-    public PieceHandler createHandler() {
+    public PieceHandler createHandler(final ChessCraft plugin) {
       return new PieceHandler.PlayerHead(this);
     }
 

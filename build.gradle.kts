@@ -45,6 +45,9 @@ dependencies {
     isTransitive = false
   }
   implementation(libs.configurate.yaml)
+  implementation(libs.adventure.serializer.configurate4) {
+    isTransitive = false
+  }
   runtimeOnly(libs.paperTrail)
   implementation(libs.bstatsBukkit)
 
@@ -135,6 +138,7 @@ tasks {
     reloc("io.leangen.geantyref")
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")
+    reloc("net.kyori.adventure.serializer.configurate4")
     reloc("org.yaml.snakeyaml")
     reloc("io.papermc.papertrail")
     reloc("org.bstats")
