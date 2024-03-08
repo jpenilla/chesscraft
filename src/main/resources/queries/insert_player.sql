@@ -1,4 +1,4 @@
-REPLACE INTO chesscraft_players (
+INSERT INTO chesscraft_players (
   id,
   username,
   displayname,

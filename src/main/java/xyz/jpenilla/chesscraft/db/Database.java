@@ -260,7 +260,7 @@ public final class Database implements Listener {
       ratingData = existing.map(ChessPlayer.CachedPlayer::ratingData)
         .orElseGet(Elo.RatingData::newPlayer);
     }
-    handle.createUpdate(this.queries.query("insert_player"))
+    handle.createUpdate(this.queries.query(existing.isEmpty() ? "insert_player" : "update_player"))
       .bind("id", playerId)
       .bind("username", username)
       .bind("displayname", displayName)
