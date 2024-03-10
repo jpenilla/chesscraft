@@ -15,6 +15,9 @@ With ChessCraft, players can challenge each other to intense chess battles in a 
 - In-world chess matches, reminiscent of life-size chess boards.
 - Pieces: Supports both custom models through a resource pack (linked below), and using textured player heads for resource pack free use.
 - Automatic downloading of the correct Stockfish (chess engine powering ChessCraft) executable for your platform.
+- Stores history of paused/incomplete and completed matches
+- Export matches in PGN format for external analysis
+- Elo rating system for PvP matches with server leaderboard
 
 ## Download
 
