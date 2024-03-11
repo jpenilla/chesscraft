@@ -183,21 +183,15 @@ public interface PieceHandler {
               display.setInterpolationDelay(-1);
               // ensure interpolation duration change is sent
               this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-                if (board.hasGame() && board.game() == game) {
-                  final Transformation transformation = display.getTransformation();
-                  final Vector3f scale = transformation.getScale().mul(0.01f);
-                  display.setTransformation(new Transformation(
-                    transformation.getTranslation(),
-                    transformation.getLeftRotation(),
-                    scale,
-                    transformation.getRightRotation()
-                  ));
-                  this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-                    if (board.hasGame() && board.game() == game) {
-                      display.remove();
-                    }
-                  }, SHRINK_DURATION);
-                }
+                final Transformation transformation = display.getTransformation();
+                final Vector3f scale = transformation.getScale().mul(0.01f);
+                display.setTransformation(new Transformation(
+                  transformation.getTranslation(),
+                  transformation.getLeftRotation(),
+                  scale,
+                  transformation.getRightRotation()
+                ));
+                this.plugin.getServer().getScheduler().runTaskLater(this.plugin, display::remove, SHRINK_DURATION);
               }, 2L);
             } else {
               entity.remove();
@@ -233,11 +227,9 @@ public interface PieceHandler {
           display.setTeleportDuration(TELEPORT_DURATION);
           // ensure teleport duration change is sent
           this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-            if (board.hasGame() && board.game() == game) {
-              display.teleport(board.toWorld(toPos).toLocation(world));
-              world.playSound(board.moveSound(), display.getX(), display.getY(), display.getZ());
-              display.setTeleportDuration(0);
-            }
+            display.teleport(board.toWorld(toPos).toLocation(world));
+            world.playSound(board.moveSound(), display.getX(), display.getY(), display.getZ());
+            display.setTeleportDuration(0);
           }, 2L);
           // needed in case of promotion
           this.configureItemDisplay(board, display, destPiece);
