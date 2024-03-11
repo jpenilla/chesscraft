@@ -56,7 +56,9 @@ public final class ChessCraft extends JavaPlugin {
     while (!this.shutdownTasks.isEmpty()) {
       this.shutdownTasks.poll().run();
     }
-    this.database.close();
+    if (this.database != null) {
+      this.database.close();
+    }
   }
 
   public BoardManager boardManager() {
