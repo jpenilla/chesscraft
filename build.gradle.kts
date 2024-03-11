@@ -84,6 +84,12 @@ dependencies {
   runtimeDownload(libs.caffeine)
 }
 
+configurations.runtimeDownload {
+  exclude("org.checkerframework", "checker-qual")
+  exclude("org.slf4j")
+  exclude("com.google.code.gson")
+}
+
 indraSpotlessLicenser {
   licenseHeaderFile(rootProject.file("LICENSE_HEADER"))
 }
@@ -146,9 +152,11 @@ tasks {
     exclude("log4j.properties", "logback.xml")
     dependencies {
       exclude(dependency("com.google.code.findbugs:jsr305"))
+      exclude(dependency("io.leangen.geantyref:geantyref:.*"))
     }
   }
   writeDependencies {
+    reloc("io.leangen.geantyref")
     repos.set(listOf(
       "https://repo.papermc.io/repository/maven-public/",
       "https://repo.maven.apache.org/maven2/",
