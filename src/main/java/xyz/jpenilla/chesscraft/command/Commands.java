@@ -18,6 +18,7 @@
 package xyz.jpenilla.chesscraft.command;
 
 import io.leangen.geantyref.TypeToken;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +39,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.bukkit.data.SinglePlayerSelector;
 import org.incendo.cloud.bukkit.internal.BukkitBrigadierMapper;
+import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.component.DefaultValue;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.exception.CommandExecutionException;
@@ -48,6 +50,7 @@ import org.incendo.cloud.minecraft.extras.caption.ComponentCaptionFormatter;
 import org.incendo.cloud.paper.PaperCommandManager;
 import org.incendo.cloud.parser.flag.CommandFlag;
 import org.incendo.cloud.parser.flag.FlagContext;
+import org.incendo.cloud.parser.standard.IntegerParser;
 import org.incendo.cloud.translations.LocaleExtractor;
 import org.incendo.cloud.type.tuple.Pair;
 import xyz.jpenilla.chesscraft.BoardManager;
@@ -82,10 +85,12 @@ import static org.incendo.cloud.parser.standard.EnumParser.enumParser;
 import static org.incendo.cloud.parser.standard.IntegerParser.integerParser;
 import static org.incendo.cloud.parser.standard.StringParser.stringParser;
 import static org.incendo.cloud.parser.standard.UUIDParser.uuidParser;
+import static org.incendo.cloud.suggestion.SuggestionProvider.blockingStrings;
 import static org.incendo.cloud.translations.TranslationBundle.core;
 import static org.incendo.cloud.translations.bukkit.BukkitTranslationBundle.bukkit;
 import static org.incendo.cloud.translations.minecraft.extras.AudienceLocaleExtractor.audienceLocaleExtractor;
 import static org.incendo.cloud.translations.minecraft.extras.MinecraftExtrasTranslationBundle.minecraftExtras;
+import static org.incendo.cloud.type.range.Range.intRange;
 import static xyz.jpenilla.chesscraft.command.parser.ChessBoardParser.chessBoardParser;
 import static xyz.jpenilla.chesscraft.command.parser.PromotionParser.promotionParser;
 import static xyz.jpenilla.chesscraft.command.parser.TimeControlParser.timeControlParser;
@@ -147,7 +152,7 @@ public final class Commands {
       .literal("cpu")
       .required("board", chessBoardParser(ChessBoardParser.SuggestionsMode.PLAYABLE_ONLY))
       .required("color", enumParser(PieceColor.class))
-      .required("cpu_elo", integerParser(100, 4000))
+      .argument(eloComponent("cpu_elo"))
       .optional("time_control", timeControlParser())
       .senderType(Player.class)
       .permission(Permissions.COMMAND_CHALLENGE_CPU)
@@ -197,8 +202,8 @@ public final class Commands {
 
     this.mgr.command(chess.literal("cpu_match")
       .required("board", chessBoardParser())
-      .flag(CommandFlag.builder("white_elo").withAliases("w").withComponent(integerParser(100, 4000)))
-      .flag(CommandFlag.builder("black_elo").withAliases("b").withComponent(integerParser(100, 4000)))
+      .flag(CommandFlag.builder("white_elo").withAliases("w").withComponent(eloComponent("elo")))
+      .flag(CommandFlag.builder("black_elo").withAliases("b").withComponent(eloComponent("elo")))
       .flag(CommandFlag.builder("move_delay").withAliases("d").withComponent(integerParser(0)))
       .flag(CommandFlag.builder("time_control").withAliases("t").withComponent(timeControlParser()))
       .flag(CommandFlag.builder("replace").withAliases("r"))
@@ -253,6 +258,19 @@ public final class Commands {
     this.mgr.command(chess.literal("leaderboard")
       .permission(Permissions.COMMAND_LEADERBOARD)
       .futureHandler(this::leaderboard));
+  }
+
+  private static CommandComponent.Builder<CommandSender, Integer> eloComponent(final String name) {
+    return CommandComponent.<CommandSender, Integer>builder()
+      .valueType(Integer.class)
+      .name(name)
+      .parser(integerParser(100, 4000))
+      .suggestionProvider(blockingStrings((ctx, input) -> {
+        if (input.remainingInput().length() <= 1) {
+          return List.of("800", "1200", "1400", "1600", "1800", "2000", "2200", "2400");
+        }
+        return IntegerParser.getSuggestions(intRange(100, 4000), input);
+      }));
   }
 
   private void version(final CommandContext<CommandSender> ctx) {
