@@ -125,7 +125,7 @@ public final class ChessGame implements BoardStateHolder {
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
-    Util.scheduleOrRun(plugin, this::applyToWorld);
+    this.scheduleApply();
   }
 
   ChessGame(
@@ -158,7 +158,7 @@ public final class ChessGame implements BoardStateHolder {
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
-    Util.scheduleOrRun(plugin, this::applyToWorld);
+    this.scheduleApply();
   }
 
   public GameState snapshotState(final GameState.@Nullable Result result) {
@@ -332,11 +332,20 @@ public final class ChessGame implements BoardStateHolder {
     return this.black instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid());
   }
 
-  public void applyToWorld() {
-    this.applyToWorld(null, this.snapshotPieces());
+  private void scheduleApply() {
+    this.scheduleApply(null);
   }
 
-  public void applyToWorld(final @Nullable Move move, final BoardStateHolder snapshot) {
+  private void scheduleApply(final @Nullable Move move) {
+    final BoardStateHolder snapshot = this.snapshotPieces();
+    Util.scheduleOrRun(this.plugin, () -> this.applyToWorld(snapshot, move));
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot) {
+    this.applyToWorld(snapshot, null);
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot, final @Nullable Move move) {
     if (move == null) {
       this.board.pieceHandler().applyToWorld(this.board, snapshot, this.board.world());
     } else {
@@ -386,8 +395,7 @@ public final class ChessGame implements BoardStateHolder {
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
 
-        final BoardStateHolder snapshot = this.snapshotPieces();
-        Util.schedule(this.plugin, () -> this.applyToWorld(movePair, snapshot));
+        this.scheduleApply(movePair);
         this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),
@@ -619,7 +627,7 @@ public final class ChessGame implements BoardStateHolder {
     this.activeQuery = this.stockfish.uciNewGame();
     this.activeQuery.join();
     this.loadFen(Fen.STARTING_FEN);
-    this.applyToWorld();
+    this.applyToWorld(this.snapshotPieces());
   }
 
   private void loadFen(final Fen fen) {
