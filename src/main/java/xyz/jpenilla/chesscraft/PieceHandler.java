@@ -134,7 +134,7 @@ public interface PieceHandler {
 
     @Override
     public void applyMoveToWorld(final ChessBoard board, final BoardStateHolder game, final World world, final ChessGame.Move move) {
-      board.animationScheduler().schedule(() -> this.makeAnimation(board, game, world, move));
+      board.animationExecutor().schedule(() -> this.makeAnimation(board, game, world, move));
     }
 
     private @Nullable SteppedAnimation makeAnimation(final ChessBoard board, final BoardStateHolder game, final World world, final ChessGame.Move move) {

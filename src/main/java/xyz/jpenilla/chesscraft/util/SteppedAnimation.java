@@ -48,13 +48,13 @@ public final class SteppedAnimation {
     return !this.steps.isEmpty();
   }
 
-  public static final class Scheduler {
+  public static final class SequentialExecutor {
     private final Deque<Supplier<SteppedAnimation>> animations = new ConcurrentLinkedDeque<>();
     private final BukkitTask task;
     private int tick = 0;
     private volatile @Nullable SteppedAnimation current;
 
-    public Scheduler(final JavaPlugin plugin) {
+    public SequentialExecutor(final JavaPlugin plugin) {
       this.task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
     }
 

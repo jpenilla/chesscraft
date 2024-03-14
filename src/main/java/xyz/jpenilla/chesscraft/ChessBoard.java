@@ -54,7 +54,7 @@ public final class ChessBoard {
   private final PieceHandler pieceHandler;
   private final List<? extends BoardDisplaySettings<?>> displays;
   private @Nullable ChessGame game;
-  private final SteppedAnimation.Scheduler animationScheduler;
+  private final SteppedAnimation.SequentialExecutor animationExecutor;
 
   public ChessBoard(
     final ChessCraft plugin,
@@ -69,7 +69,7 @@ public final class ChessBoard {
     final Sound moveSound
   ) {
     this.plugin = plugin;
-    this.animationScheduler = new SteppedAnimation.Scheduler(plugin);
+    this.animationExecutor = new SteppedAnimation.SequentialExecutor(plugin);
     this.name = name;
     this.loc = loc;
     this.facing = facing;
@@ -85,12 +85,12 @@ public final class ChessBoard {
     this.pieceHandler = plugin.config().pieces().createHandler(plugin);
   }
 
-  public SteppedAnimation.Scheduler animationScheduler() {
-    return this.animationScheduler;
+  public SteppedAnimation.SequentialExecutor animationExecutor() {
+    return this.animationExecutor;
   }
 
   public void cancelCurrentAnimation() {
-    this.animationScheduler.clearCurrent();
+    this.animationExecutor.clearCurrent();
   }
 
   public Sound moveSound() {
