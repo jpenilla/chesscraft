@@ -287,7 +287,7 @@ public final class ChessBoard {
     }
     this.game = new ChessGame(this.plugin, this, state);
     this.game.audience().sendMessage(this.plugin.config().messages().matchResumed(this, state.white(), state.black()));
-    if (state.white().isCpu() && state.currentFen().nextMove() == PieceColor.WHITE) {
+    if (state.currentFen().nextMove() == PieceColor.WHITE ? state.whiteCpu() : state.blackCpu()) {
       this.game.cpuMove();
     }
   }
