@@ -96,14 +96,34 @@ public final class SteppedAnimation {
     private final Map<Integer, List<Runnable>> steps = new HashMap<>();
     private int startDelay = 0;
 
-    public SteppedAnimation.@This Builder step(final int delay, final Runnable task) {
+    public DelayScope step(final int delay, final Runnable task) {
       this.steps.computeIfAbsent(delay, $ -> new ArrayList<>()).add(task);
-      return this;
+      return new DelayScope(delay);
     }
 
     public SteppedAnimation.@This Builder startDelay(final int startDelay) {
       this.startDelay = startDelay;
       return this;
+    }
+
+    public final class DelayScope {
+      private final int delay;
+
+      private DelayScope(final int delay) {
+        this.delay = delay;
+      }
+
+      public DelayScope then(final int delay, final Runnable task) {
+        return Builder.this.step(this.delay + delay, task);
+      }
+
+      public Builder exitScope() {
+        return Builder.this;
+      }
+
+      public SteppedAnimation build() {
+        return Builder.this.build();
+      }
     }
 
     public SteppedAnimation build() {

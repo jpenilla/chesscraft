@@ -198,7 +198,7 @@ public interface PieceHandler {
                   scale,
                   transformation.getRightRotation()
                 ));
-              }).step(SHRINK_DURATION, display::remove);
+              }).then(SHRINK_DURATION, display::remove);
             } else {
               entity.remove();
             }
