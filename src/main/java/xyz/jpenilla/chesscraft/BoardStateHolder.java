@@ -23,4 +23,13 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 
 public interface BoardStateHolder {
   @Nullable Piece piece(final BoardPosition pos);
+
+  static BoardStateHolder of(final Piece[][] pieces) {
+    return new BoardStateHolder() {
+      @Override
+      public @Nullable Piece piece(final BoardPosition pos) {
+        return pieces[pos.rank()][pos.file()];
+      }
+    };
+  }
 }

@@ -40,7 +40,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.audience.Audience;
-import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -126,7 +125,7 @@ public final class ChessGame implements BoardStateHolder {
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
-    Util.scheduleOrRun(plugin, this::applyToWorld);
+    this.scheduleApply();
   }
 
   ChessGame(
@@ -159,7 +158,7 @@ public final class ChessGame implements BoardStateHolder {
     for (final BoardDisplaySettings<?> display : this.board.displays()) {
       this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
     }
-    Util.scheduleOrRun(plugin, this::applyToWorld);
+    this.scheduleApply();
   }
 
   public GameState snapshotState(final GameState.@Nullable Result result) {
@@ -299,6 +298,14 @@ public final class ChessGame implements BoardStateHolder {
     return this.pieces[pos.rank()][pos.file()];
   }
 
+  public BoardStateHolder snapshotPieces() {
+    final Piece[][] copy = ChessBoard.initBoard();
+    for (int i = 0; i < this.pieces.length; i++) {
+      System.arraycopy(this.pieces[i], 0, copy[i], 0, this.pieces[i].length);
+    }
+    return BoardStateHolder.of(copy);
+  }
+
   public ChessPlayer player(final PieceColor color) {
     if (color == PieceColor.WHITE) {
       return this.white;
@@ -325,15 +332,24 @@ public final class ChessGame implements BoardStateHolder {
     return this.black instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid());
   }
 
-  public void applyToWorld() {
-    this.applyToWorld(null);
+  private void scheduleApply() {
+    this.scheduleApply(null);
   }
 
-  public void applyToWorld(final @Nullable Move move) {
+  private void scheduleApply(final @Nullable Move move) {
+    final BoardStateHolder snapshot = this.snapshotPieces();
+    Util.scheduleOrRun(this.plugin, () -> this.applyToWorld(snapshot, move));
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot) {
+    this.applyToWorld(snapshot, null);
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot, final @Nullable Move move) {
     if (move == null) {
-      this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+      this.board.pieceHandler().applyToWorld(this.board, snapshot, this.board.world());
     } else {
-      this.board.pieceHandler().applyMoveToWorld(this.board, this, this.board.world(), move);
+      this.board.pieceHandler().applyMoveToWorld(this.board, snapshot, this.board.world(), move);
     }
     for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
       if (pair.second() instanceof AbstractTextDisplayHolder t) {
@@ -379,7 +395,7 @@ public final class ChessGame implements BoardStateHolder {
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
 
-        Util.schedule(this.plugin, () -> this.applyToWorld(movePair));
+        this.scheduleApply(movePair);
         this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),
@@ -611,7 +627,7 @@ public final class ChessGame implements BoardStateHolder {
     this.activeQuery = this.stockfish.uciNewGame();
     this.activeQuery.join();
     this.loadFen(Fen.STARTING_FEN);
-    this.applyToWorld();
+    this.applyToWorld(this.snapshotPieces());
   }
 
   private void loadFen(final Fen fen) {

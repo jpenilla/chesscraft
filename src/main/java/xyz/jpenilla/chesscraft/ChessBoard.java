@@ -38,6 +38,7 @@ import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
+import xyz.jpenilla.chesscraft.util.SteppedAnimation;
 
 public final class ChessBoard {
   // southwest corner pos
@@ -53,6 +54,7 @@ public final class ChessBoard {
   private final PieceHandler pieceHandler;
   private final List<? extends BoardDisplaySettings<?>> displays;
   private @Nullable ChessGame game;
+  private final SteppedAnimation.Scheduler animationScheduler;
 
   public ChessBoard(
     final ChessCraft plugin,
@@ -67,6 +69,7 @@ public final class ChessBoard {
     final Sound moveSound
   ) {
     this.plugin = plugin;
+    this.animationScheduler = new SteppedAnimation.Scheduler(plugin);
     this.name = name;
     this.loc = loc;
     this.facing = facing;
@@ -80,6 +83,14 @@ public final class ChessBoard {
     this.stockfishPath = stockfishPath;
     this.autoCpuGame = autoCpuGame;
     this.pieceHandler = plugin.config().pieces().createHandler(plugin);
+  }
+
+  public SteppedAnimation.Scheduler animationScheduler() {
+    return this.animationScheduler;
+  }
+
+  public void cancelCurrentAnimation() {
+    this.animationScheduler.clearCurrent();
   }
 
   public Sound moveSound() {
@@ -248,9 +259,7 @@ public final class ChessBoard {
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl
   ) {
-    // default delay to avoid CPU moving immediately after player and breaking animations.
-    // needs a proper fix where animation tasks are managed to run in order regardless of delays
-    this.startGame(white, black, timeControl, white.isCpu() || black.isCpu() ? 1 : -1);
+    this.startGame(white, black, timeControl, -1);
   }
 
   public void startGame(
@@ -266,6 +275,7 @@ public final class ChessBoard {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
+    this.cancelCurrentAnimation();
     this.game = new ChessGame(this.plugin, this, white, black, timeControl, moveDelay);
     this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
@@ -285,6 +295,7 @@ public final class ChessBoard {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
+    this.cancelCurrentAnimation();
     this.game = new ChessGame(this.plugin, this, state);
     this.game.audience().sendMessage(this.plugin.config().messages().matchResumed(this, state.white(), state.black()));
     if (state.currentFen().nextMove() == PieceColor.WHITE ? state.whiteCpu() : state.blackCpu()) {
