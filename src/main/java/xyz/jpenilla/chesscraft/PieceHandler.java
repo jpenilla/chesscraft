@@ -164,7 +164,7 @@ public interface PieceHandler {
         return;
       }
 
-      this.movePiece(board, game, world, movedPieceEntities, toPos, movedPiece);
+      this.movePiece(board, world, movedPieceEntities, toPos, movedPiece);
 
       // castling
       if (movedPiece.type() == PieceType.KING && Math.abs(toPos.file() - fromPos.file()) == 2) {
@@ -174,7 +174,7 @@ public interface PieceHandler {
         }
         final List<Entity> rook = captures.get(0);
         final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
-        this.movePiece(board, game, world, rook, rookDest, game.piece(rookDest));
+        this.movePiece(board, world, rook, rookDest, game.piece(rookDest));
       } else {
         for (final List<Entity> capture : captures) {
           for (final Entity entity : capture) {
@@ -216,7 +216,6 @@ public interface PieceHandler {
 
     private void movePiece(
       final ChessBoard board,
-      final BoardStateHolder game,
       final World world,
       final List<Entity> movedPiece,
       final BoardPosition toPos,
@@ -321,7 +320,7 @@ public interface PieceHandler {
       e -> e instanceof Display
     ));
     entities.addAll(world.getNearbyEntities(
-      new Location(world, pos.x() + 0.5 * board.scale(), pos.y(), pos.z() + 0.5 * board.scale()),
+      DisplayEntity.interactionLoc(board, world, pos),
       0.25,
       0.5,
       0.25,

@@ -248,7 +248,9 @@ public final class ChessBoard {
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl
   ) {
-    this.startGame(white, black, timeControl, -1);
+    // default delay to avoid CPU moving immediately after player and breaking animations.
+    // needs a proper fix where animation tasks are managed to run in order regardless of delays
+    this.startGame(white, black, timeControl, white.isCpu() || black.isCpu() ? 1 : -1);
   }
 
   public void startGame(
