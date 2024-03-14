@@ -53,7 +53,6 @@ import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Reflection;
-import xyz.jpenilla.chesscraft.util.SteppedAnimationScheduler;
 
 public interface PieceHandler {
   void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
@@ -165,9 +164,7 @@ public interface PieceHandler {
         return;
       }
 
-      final SteppedAnimationScheduler animation = new SteppedAnimationScheduler();
-
-      this.movePiece(board, world, movedPieceEntities, toPos, movedPiece, animation);
+      this.movePiece(board, world, movedPieceEntities, toPos, movedPiece);
 
       // castling
       if (movedPiece.type() == PieceType.KING && Math.abs(toPos.file() - fromPos.file()) == 2) {
@@ -177,7 +174,7 @@ public interface PieceHandler {
         }
         final List<Entity> rook = captures.get(0);
         final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
-        this.movePiece(board, world, rook, rookDest, game.piece(rookDest), animation);
+        this.movePiece(board, world, rook, rookDest, game.piece(rookDest));
       } else {
         for (final List<Entity> capture : captures) {
           for (final Entity entity : capture) {
@@ -185,7 +182,7 @@ public interface PieceHandler {
               display.setInterpolationDuration(SHRINK_DURATION);
               display.setInterpolationDelay(-1);
               // ensure interpolation duration change is sent
-              animation.step(0, () -> {
+              this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
                 final Transformation transformation = display.getTransformation();
                 final Vector3f scale = transformation.getScale().mul(0.01f);
                 display.setTransformation(new Transformation(
@@ -194,15 +191,14 @@ public interface PieceHandler {
                   scale,
                   transformation.getRightRotation()
                 ));
-              }).step(SHRINK_DURATION, display::remove);
+                this.plugin.getServer().getScheduler().runTaskLater(this.plugin, display::remove, SHRINK_DURATION);
+              }, 2L);
             } else {
               entity.remove();
             }
           }
         }
       }
-
-      board.scheduleAnimation(animation, /* ensure interpolation duration change is sent */ 1);
     }
 
     private void inconsistentState(
@@ -223,18 +219,17 @@ public interface PieceHandler {
       final World world,
       final List<Entity> movedPiece,
       final BoardPosition toPos,
-      final Piece destPiece,
-      final SteppedAnimationScheduler animation
+      final Piece destPiece
     ) {
       for (final Entity entity : movedPiece) {
         if (entity instanceof ItemDisplay display) {
           display.setTeleportDuration(TELEPORT_DURATION);
           // ensure teleport duration change is sent
-          animation.step(0, () -> {
+          this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
             display.teleport(board.toWorld(toPos).toLocation(world));
             world.playSound(board.moveSound(), display.getX(), display.getY(), display.getZ());
             display.setTeleportDuration(0);
-          });
+          }, 2L);
           // needed in case of promotion
           this.configureItemDisplay(board, display, destPiece);
         } else if (entity instanceof Interaction interaction) {

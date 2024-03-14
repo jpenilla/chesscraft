@@ -21,7 +21,6 @@ import it.unimi.dsi.fastutil.ints.IntIntPair;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
@@ -39,7 +38,6 @@ import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
-import xyz.jpenilla.chesscraft.util.SteppedAnimationScheduler;
 
 public final class ChessBoard {
   // southwest corner pos
@@ -55,7 +53,6 @@ public final class ChessBoard {
   private final PieceHandler pieceHandler;
   private final List<? extends BoardDisplaySettings<?>> displays;
   private @Nullable ChessGame game;
-  private @Nullable CompletableFuture<Void> animationFuture;
 
   public ChessBoard(
     final ChessCraft plugin,
@@ -83,18 +80,6 @@ public final class ChessBoard {
     this.stockfishPath = stockfishPath;
     this.autoCpuGame = autoCpuGame;
     this.pieceHandler = plugin.config().pieces().createHandler(plugin);
-  }
-
-  public void scheduleAnimation(final SteppedAnimationScheduler animation, final long delay) {
-    this.animationFuture = animation.schedule(this.plugin, delay, this.animationFuture);
-  }
-
-  public void cancelCurrentAnimation() {
-    final CompletableFuture<Void> current = this.animationFuture;
-    if (current != null) {
-      current.cancel(false);
-      this.animationFuture = null;
-    }
   }
 
   public Sound moveSound() {
@@ -263,7 +248,9 @@ public final class ChessBoard {
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl
   ) {
-    this.startGame(white, black, timeControl, -1);
+    // default delay to avoid CPU moving immediately after player and breaking animations.
+    // needs a proper fix where animation tasks are managed to run in order regardless of delays
+    this.startGame(white, black, timeControl, white.isCpu() || black.isCpu() ? 1 : -1);
   }
 
   public void startGame(
@@ -279,7 +266,6 @@ public final class ChessBoard {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
-    this.cancelCurrentAnimation();
     this.game = new ChessGame(this.plugin, this, white, black, timeControl, moveDelay);
     this.game.audience().sendMessage(this.plugin.config().messages().matchStarted(this, white, black));
     if (white.isCpu()) {
@@ -299,7 +285,6 @@ public final class ChessBoard {
     if (this.game != null) {
       throw new IllegalStateException("Board is occupied");
     }
-    this.cancelCurrentAnimation();
     this.game = new ChessGame(this.plugin, this, state);
     this.game.audience().sendMessage(this.plugin.config().messages().matchResumed(this, state.white(), state.black()));
     if (state.currentFen().nextMove() == PieceColor.WHITE ? state.whiteCpu() : state.blackCpu()) {

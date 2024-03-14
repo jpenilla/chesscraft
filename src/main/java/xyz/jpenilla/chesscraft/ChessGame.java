@@ -40,6 +40,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.audience.Audience;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
