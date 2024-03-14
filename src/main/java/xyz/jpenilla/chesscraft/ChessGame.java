@@ -298,6 +298,14 @@ public final class ChessGame implements BoardStateHolder {
     return this.pieces[pos.rank()][pos.file()];
   }
 
+  public BoardStateHolder snapshotPieces() {
+    final Piece[][] copy = ChessBoard.initBoard();
+    for (int i = 0; i < this.pieces.length; i++) {
+      System.arraycopy(this.pieces[i], 0, copy[i], 0, this.pieces[i].length);
+    }
+    return BoardStateHolder.of(copy);
+  }
+
   public ChessPlayer player(final PieceColor color) {
     if (color == PieceColor.WHITE) {
       return this.white;
@@ -325,14 +333,14 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   public void applyToWorld() {
-    this.applyToWorld(null);
+    this.applyToWorld(null, this.snapshotPieces());
   }
 
-  public void applyToWorld(final @Nullable Move move) {
+  public void applyToWorld(final @Nullable Move move, final BoardStateHolder snapshot) {
     if (move == null) {
-      this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+      this.board.pieceHandler().applyToWorld(this.board, snapshot, this.board.world());
     } else {
-      this.board.pieceHandler().applyMoveToWorld(this.board, this, this.board.world(), move);
+      this.board.pieceHandler().applyMoveToWorld(this.board, snapshot, this.board.world(), move);
     }
     for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
       if (pair.second() instanceof AbstractTextDisplayHolder t) {
@@ -378,7 +386,8 @@ public final class ChessGame implements BoardStateHolder {
         this.loadFen(fen);
         this.moves.add(movePair.boardAfter(fen));
 
-        Util.schedule(this.plugin, () -> this.applyToWorld(movePair));
+        final BoardStateHolder snapshot = this.snapshotPieces();
+        Util.schedule(this.plugin, () -> this.applyToWorld(movePair, snapshot));
         this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),

@@ -21,7 +21,6 @@ import it.unimi.dsi.fastutil.ints.IntIntPair;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
@@ -39,7 +38,7 @@ import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
-import xyz.jpenilla.chesscraft.util.SteppedAnimationScheduler;
+import xyz.jpenilla.chesscraft.util.SteppedAnimation;
 
 public final class ChessBoard {
   // southwest corner pos
@@ -55,7 +54,7 @@ public final class ChessBoard {
   private final PieceHandler pieceHandler;
   private final List<? extends BoardDisplaySettings<?>> displays;
   private @Nullable ChessGame game;
-  private @Nullable CompletableFuture<Void> animationFuture;
+  private final SteppedAnimation.Scheduler animationScheduler;
 
   public ChessBoard(
     final ChessCraft plugin,
@@ -70,6 +69,7 @@ public final class ChessBoard {
     final Sound moveSound
   ) {
     this.plugin = plugin;
+    this.animationScheduler = new SteppedAnimation.Scheduler(plugin);
     this.name = name;
     this.loc = loc;
     this.facing = facing;
@@ -85,16 +85,12 @@ public final class ChessBoard {
     this.pieceHandler = plugin.config().pieces().createHandler(plugin);
   }
 
-  public void scheduleAnimation(final SteppedAnimationScheduler animation, final long delay) {
-    this.animationFuture = animation.schedule(this.plugin, delay, this.animationFuture);
+  public SteppedAnimation.Scheduler animationScheduler() {
+    return this.animationScheduler;
   }
 
   public void cancelCurrentAnimation() {
-    final CompletableFuture<Void> current = this.animationFuture;
-    if (current != null) {
-      current.cancel(false);
-      this.animationFuture = null;
-    }
+    this.animationScheduler.clearCurrent();
   }
 
   public Sound moveSound() {

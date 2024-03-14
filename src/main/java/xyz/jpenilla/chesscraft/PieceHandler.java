@@ -53,7 +53,7 @@ import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.jpenilla.chesscraft.util.MatchExporter;
 import xyz.jpenilla.chesscraft.util.Reflection;
-import xyz.jpenilla.chesscraft.util.SteppedAnimationScheduler;
+import xyz.jpenilla.chesscraft.util.SteppedAnimation;
 
 public interface PieceHandler {
   void applyToWorld(ChessBoard board, BoardStateHolder game, World world);
@@ -134,6 +134,10 @@ public interface PieceHandler {
 
     @Override
     public void applyMoveToWorld(final ChessBoard board, final BoardStateHolder game, final World world, final ChessGame.Move move) {
+      board.animationScheduler().schedule(() -> this.makeAnimation(board, game, world, move));
+    }
+
+    private @Nullable SteppedAnimation makeAnimation(final ChessBoard board, final BoardStateHolder game, final World world, final ChessGame.Move move) {
       final BoardPosition fromPos = BoardPosition.fromString(move.notation().substring(0, 2));
       final BoardPosition toPos = BoardPosition.fromString(move.notation().substring(2, 4));
 
@@ -155,25 +159,25 @@ public interface PieceHandler {
       final List<Entity> movedPieceEntities = pieceAt(world, board, board.toWorld(fromPos));
 
       if (movedPieceEntities.size() != 2) {
-        this.inconsistentState(board, game, world);
-        return;
+        this.inconsistentState(board, game, world, move);
+        return null;
       }
 
       final @Nullable Piece movedPiece = game.piece(toPos);
       if (movedPiece == null) {
-        this.inconsistentState(board, game, world);
-        return;
+        this.inconsistentState(board, game, world, move);
+        return null;
       }
 
-      final SteppedAnimationScheduler animation = new SteppedAnimationScheduler();
+      final SteppedAnimation.Builder animation = new SteppedAnimation.Builder();
 
       this.movePiece(board, world, movedPieceEntities, toPos, movedPiece, animation);
 
       // castling
       if (movedPiece.type() == PieceType.KING && Math.abs(toPos.file() - fromPos.file()) == 2) {
         if (captures.size() != 1 || captures.get(0).size() != 2) {
-          this.inconsistentState(board, game, world);
-          return;
+          this.inconsistentState(board, game, world, move);
+          return null;
         }
         final List<Entity> rook = captures.get(0);
         final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
@@ -202,16 +206,21 @@ public interface PieceHandler {
         }
       }
 
-      board.scheduleAnimation(animation, /* ensure interpolation duration change is sent */ 1);
+      return animation
+        // ensure interpolation duration change is sent
+        .startDelay(1)
+        .build();
     }
 
     private void inconsistentState(
       final ChessBoard board,
       final BoardStateHolder game,
-      final World world
+      final World world,
+      final ChessGame.Move move
     ) {
       this.plugin.getSLF4JLogger().warn(
-        "Found inconsistent board state, reapplying entire board\n{}",
+        "Found inconsistent board state (move: {}), reapplying entire board\n{}",
+        move.notation(),
         MatchExporter.writePgn(board.game().snapshotState(null), this.plugin.database()).join(),
         new Throwable()
       );
@@ -224,7 +233,7 @@ public interface PieceHandler {
       final List<Entity> movedPiece,
       final BoardPosition toPos,
       final Piece destPiece,
-      final SteppedAnimationScheduler animation
+      final SteppedAnimation.Builder animation
     ) {
       for (final Entity entity : movedPiece) {
         if (entity instanceof ItemDisplay display) {

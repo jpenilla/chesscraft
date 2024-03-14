@@ -215,6 +215,7 @@ public final class BoardManager implements Listener {
           this.pauseMatch(board);
         }
       }
+      board.animationScheduler().cancel();
     });
     this.boards.clear();
     this.displays.clear();
