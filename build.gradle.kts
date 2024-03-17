@@ -142,6 +142,7 @@ tasks {
   shadowJar {
     reloc("org.incendo")
     reloc("io.leangen.geantyref")
+    reloc("org.apache.commons")
     reloc("xyz.niflheim")
     reloc("org.spongepowered.configurate")
     reloc("net.kyori.adventure.serializer.configurate4")
@@ -157,6 +158,7 @@ tasks {
   }
   writeDependencies {
     reloc("io.leangen.geantyref")
+    reloc("org.apache.commons")
     repos.set(listOf(
       "https://repo.papermc.io/repository/maven-public/",
       "https://repo.maven.apache.org/maven2/",
