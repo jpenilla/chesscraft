@@ -98,7 +98,8 @@ val runVersions = listOf(
   "19.4",
   "20.1",
   "20.2",
-  "20.4"
+  "20.4",
+  "20.6"
 )
 
 tasks {
@@ -109,7 +110,10 @@ tasks {
   }
   jar {
     manifest {
-      attributes("Multi-Release" to true)
+      attributes(
+        "Multi-Release" to true,
+        "paperweight-mappings-namespace" to "mojang",
+      )
     }
   }
   assemble {
@@ -128,6 +132,11 @@ tasks {
       runDirectory.set(layout.projectDirectory.dir("run$n"))
       pluginJars.from(shadowJar.flatMap { it.archiveFile })
     }
+  }
+  withType<RunServer>().configureEach {
+    javaLauncher.set(project.javaToolchains.launcherFor {
+      languageVersion.set(JavaLanguageVersion.of(21))
+    })
   }
   processResources {
     val props = mapOf(

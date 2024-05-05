@@ -137,9 +137,9 @@ public final class Commands {
 
     this.mgr.command(chess.literal("set_checkerboard")
       .required("board", chessBoardParser())
-      .flag(CommandFlag.builder("black").withComponent(materialParser()))
-      .flag(CommandFlag.builder("white").withComponent(materialParser()))
-      .flag(CommandFlag.builder("border").withComponent(materialParser()))
+      .flag(this.mgr.flagBuilder("black").withComponent(materialParser()))
+      .flag(this.mgr.flagBuilder("white").withComponent(materialParser()))
+      .flag(this.mgr.flagBuilder("border").withComponent(materialParser()))
       .permission(Permissions.COMMAND_SET_CHECKERBOARD)
       .handler(this::setCheckerboard));
 
@@ -202,11 +202,11 @@ public final class Commands {
 
     this.mgr.command(chess.literal("cpu_match")
       .required("board", chessBoardParser())
-      .flag(CommandFlag.builder("white_elo").withAliases("w").withComponent(eloComponent("elo")))
-      .flag(CommandFlag.builder("black_elo").withAliases("b").withComponent(eloComponent("elo")))
-      .flag(CommandFlag.builder("move_delay").withAliases("d").withComponent(integerParser(0)))
-      .flag(CommandFlag.builder("time_control").withAliases("t").withComponent(timeControlParser()))
-      .flag(CommandFlag.builder("replace").withAliases("r"))
+      .flag(this.mgr.flagBuilder("white_elo").withAliases("w").withComponent(eloComponent("elo")))
+      .flag(this.mgr.flagBuilder("black_elo").withAliases("b").withComponent(eloComponent("elo")))
+      .flag(this.mgr.flagBuilder("move_delay").withAliases("d").withComponent(integerParser(0)))
+      .flag(this.mgr.flagBuilder("time_control").withAliases("t").withComponent(timeControlParser()))
+      .flag(this.mgr.flagBuilder("replace").withAliases("r"))
       .permission(Permissions.COMMAND_CPU_MATCH)
       .handler(this::cpuMatch));
 
