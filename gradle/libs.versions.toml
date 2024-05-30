@@ -40,4 +40,4 @@ flyway = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" 
 flywayMysql = { group = "org.flywaydb", name = "flyway-mysql", version.ref = "flyway" }
 mysql = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
-mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version = "3.3.3" }
+mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version = "3.4.0" }
