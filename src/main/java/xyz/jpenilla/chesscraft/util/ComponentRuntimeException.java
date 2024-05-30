@@ -25,10 +25,9 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.framework.qual.DefaultQualifier;
 
+@SuppressWarnings("serial")
 @DefaultQualifier(NonNull.class)
 public class ComponentRuntimeException extends RuntimeException implements ComponentMessageThrowable {
-  private static final long serialVersionUID = 1854482972105684474L;
-
   private final @Nullable Component message;
 
   protected ComponentRuntimeException(final @Nullable Component message) {
