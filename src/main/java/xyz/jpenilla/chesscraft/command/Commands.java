@@ -47,7 +47,7 @@ import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.key.CloudKey;
 import org.incendo.cloud.minecraft.extras.MinecraftExceptionHandler;
 import org.incendo.cloud.minecraft.extras.caption.ComponentCaptionFormatter;
-import org.incendo.cloud.paper.PaperCommandManager;
+import org.incendo.cloud.paper.LegacyPaperCommandManager;
 import org.incendo.cloud.parser.flag.CommandFlag;
 import org.incendo.cloud.parser.flag.FlagContext;
 import org.incendo.cloud.parser.standard.IntegerParser;
@@ -99,7 +99,7 @@ public final class Commands {
   public static final CloudKey<ChessCraft> PLUGIN = cloudKey("chesscraft", ChessCraft.class);
 
   private final ChessCraft plugin;
-  private final PaperCommandManager<CommandSender> mgr;
+  private final LegacyPaperCommandManager<CommandSender> mgr;
   private final BoardManager boardManager;
   private final PaginationHelper pagination;
 
@@ -758,13 +758,13 @@ public final class Commands {
     return this.plugin.config().messages();
   }
 
-  private static PaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
-    final PaperCommandManager<CommandSender> mgr =
-      PaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
+  private static LegacyPaperCommandManager<CommandSender> createCommandManager(final ChessCraft plugin) {
+    final LegacyPaperCommandManager<CommandSender> mgr =
+      LegacyPaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
     mgr.registerCommandPreProcessor(ctx -> ctx.commandContext().set(PLUGIN, plugin));
     mgr.registerBrigadier();
 
-    final BukkitBrigadierMapper<CommandSender> brigMapper = new BukkitBrigadierMapper<>(mgr, mgr.brigadierManager());
+    final BukkitBrigadierMapper<CommandSender> brigMapper = new BukkitBrigadierMapper<>(plugin.getLogger(), mgr.brigadierManager());
     brigMapper.mapSimpleNMS(TypeToken.get(TimeControlParser.class), "resource_location", true);
 
     MinecraftExceptionHandler.<CommandSender>createNative()
