@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -127,7 +128,7 @@ public final class StockfishProvider {
 
     final JsonArray result;
     try {
-      result = new Gson().fromJson(new InputStreamReader(new URL(GITHUB_RELEASE_LIST).openStream(), Charsets.UTF_8), JsonArray.class);
+      result = new Gson().fromJson(new InputStreamReader(URI.create(GITHUB_RELEASE_LIST).toURL().openStream(), Charsets.UTF_8), JsonArray.class);
     } catch (final IOException exception) {
       throw new UncheckedIOException("Failed to fetch Stockfish release list from GitHub.", exception);
     }
@@ -190,7 +191,7 @@ public final class StockfishProvider {
   }
 
   private boolean tryDownload(final String version, final Variant variant, final Path file, final String urlString) throws IOException {
-    final URL url = new URL(urlString);
+    final URL url = URI.create(urlString).toURL();
     final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
     conn.setRequestMethod("GET");
     conn.connect();

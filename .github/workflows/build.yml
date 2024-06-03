@@ -17,3 +17,4 @@ jobs:
       modrinth-publish: true
       init-submodules: true
       artifacts-path: 'build/libs/*-all.jar'
+      jdk-version: 21

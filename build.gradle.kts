@@ -3,7 +3,7 @@ import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
-  id("com.github.johnrengelman.shadow") version "8.1.1"
+  id("io.github.goooler.shadow") version "8.1.7"
   id("xyz.jpenilla.run-paper") version "2.3.0"
   val indraVer = "3.1.3"
   id("net.kyori.indra") version indraVer
@@ -18,7 +18,7 @@ plugins {
 decorateVersion()
 
 indra {
-  javaVersions().target(17)
+  javaVersions().target(21)
 }
 
 repositories {

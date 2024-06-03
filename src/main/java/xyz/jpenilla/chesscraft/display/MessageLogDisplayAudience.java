@@ -54,7 +54,7 @@ public final class MessageLogDisplayAudience extends AbstractTextDisplayHolder i
   public void sendMessage(final Identity source, final Component message, final MessageType type) {
     this.messages.add(message);
     while (this.messages.size() > this.lines * 2) {
-      this.messages.remove(0);
+      this.messages.removeFirst();
     }
     this.updateIfEntityExists();
   }

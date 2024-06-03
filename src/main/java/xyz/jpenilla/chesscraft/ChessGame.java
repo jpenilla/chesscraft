@@ -423,7 +423,7 @@ public final class ChessGame implements BoardStateHolder {
 
   private CompletableFuture<Void> checkForWinAfterMove() {
     // threefold repetition rule
-    final Move lastMove = this.moves.get(this.moves.size() - 1);
+    final Move lastMove = this.moves.getLast();
     final long timesPositionSeen = this.moves.stream().filter(e -> Objects.deepEquals(e.boardAfter().pieces(), lastMove.boardAfter().pieces())).count();
     if (timesPositionSeen == 3) {
       this.announceDrawByRepetition();

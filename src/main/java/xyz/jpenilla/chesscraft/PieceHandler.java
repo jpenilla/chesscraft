@@ -19,7 +19,7 @@ package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -175,11 +175,11 @@ public interface PieceHandler {
 
       // castling
       if (movedPiece.type() == PieceType.KING && Math.abs(toPos.file() - fromPos.file()) == 2) {
-        if (captures.size() != 1 || captures.get(0).size() != 2) {
+        if (captures.size() != 1 || captures.getFirst().size() != 2) {
           this.inconsistentState(board, game, world, move);
           return null;
         }
-        final List<Entity> rook = captures.get(0);
+        final List<Entity> rook = captures.getFirst();
         final BoardPosition rookDest = new BoardPosition(toPos.rank(), toPos.file() == 2 ? 3 : 5);
         this.movePiece(board, world, rook, rookDest, game.piece(rookDest), animation);
       } else {
@@ -437,7 +437,7 @@ public interface PieceHandler {
         final PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
         final PlayerTextures textures = profile.getTextures();
         try {
-          textures.setSkin(new URL("https://textures.minecraft.net/texture/" + this.options.texture(piece)));
+          textures.setSkin(URI.create("https://textures.minecraft.net/texture/" + this.options.texture(piece)).toURL());
         } catch (final IOException ex) {
           throw new RuntimeException(ex);
         }
