@@ -133,11 +133,6 @@ tasks {
       pluginJars.from(shadowJar.flatMap { it.archiveFile })
     }
   }
-  withType<RunServer>().configureEach {
-    javaLauncher.set(project.javaToolchains.launcherFor {
-      languageVersion.set(JavaLanguageVersion.of(21))
-    })
-  }
   processResources {
     val props = mapOf(
       "version" to project.version
