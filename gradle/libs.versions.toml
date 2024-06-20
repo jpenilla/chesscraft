@@ -22,7 +22,7 @@ brigadier = "com.mojang:brigadier:1.0.18"
 
 # paper
 paperApi = "io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT"
-paperTrail = "io.papermc:paper-trail:0.0.1-SNAPSHOT"
+paperTrail = "io.papermc:paper-trail:1.0.1"
 
 # config
 configurate-yaml = "org.spongepowered:configurate-yaml:4.1.2"
