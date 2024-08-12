@@ -6,7 +6,7 @@ jdbi = "3.45.2"
 hikari = "5.1.0"
 mysql = "9.0.0"
 flyway = "10.17.0"
-h2 = "2.2.224"
+h2 = "2.3.232"
 
 [libraries]
 # cloud
