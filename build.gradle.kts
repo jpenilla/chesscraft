@@ -4,7 +4,7 @@ import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
   id("io.github.goooler.shadow") version "8.1.8"
-  id("xyz.jpenilla.run-paper") version "2.3.0"
+  id("xyz.jpenilla.run-paper") version "2.3.1"
   val indraVer = "3.1.3"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
