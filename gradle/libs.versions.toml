@@ -2,7 +2,7 @@
 
 [versions]
 # database
-jdbi = "3.45.2"
+jdbi = "3.45.4"
 hikari = "5.1.0"
 mysql = "8.4.0"
 flyway = "10.17.0"
