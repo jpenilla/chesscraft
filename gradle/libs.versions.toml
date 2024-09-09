@@ -30,7 +30,7 @@ adventure-serializer-configurate4 = "net.kyori:adventure-serializer-configurate4
 
 # misc libs
 caffeine = "com.github.ben-manes.caffeine:caffeine:3.1.8"
-commonsCompress = "org.apache.commons:commons-compress:1.26.2"
+commonsCompress = "org.apache.commons:commons-compress:1.27.1"
 bstatsBukkit = "org.bstats:bstats-bukkit:3.0.3"
 
 # database
