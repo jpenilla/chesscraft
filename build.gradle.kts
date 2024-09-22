@@ -3,7 +3,7 @@ import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
-  id("io.github.goooler.shadow") version "8.1.8"
+  id("com.gradleup.shadow") version "8.3.2"
   id("xyz.jpenilla.run-paper") version "2.3.1"
   val indraVer = "3.1.3"
   id("net.kyori.indra") version indraVer
@@ -95,12 +95,7 @@ indraSpotlessLicenser {
 }
 
 val runVersions = listOf(
-  "19.4",
-  "20.1",
-  "20.2",
-  "20.4",
-  "20.6",
-  "21",
+  "21.1",
 )
 
 tasks {

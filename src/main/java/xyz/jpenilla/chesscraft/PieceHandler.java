@@ -52,7 +52,6 @@ import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
 import xyz.jpenilla.chesscraft.util.MatchExporter;
-import xyz.jpenilla.chesscraft.util.Reflection;
 import xyz.jpenilla.chesscraft.util.SteppedAnimation;
 
 public interface PieceHandler {
@@ -101,7 +100,7 @@ public interface PieceHandler {
           displayConfigure.accept(existingItemDisplay);
           existingItemDisplay.teleport(pos.toLocation(world));
         } else {
-          Reflection.spawn(pos.toLocation(world), ItemDisplay.class, displayConfigure);
+          world.spawn(pos.toLocation(world), ItemDisplay.class, displayConfigure);
         }
 
         final Consumer<Interaction> interactionConfigure = interaction -> this.configureInteraction(board, interaction, piece);
@@ -111,7 +110,7 @@ public interface PieceHandler {
           interactionConfigure.accept(existingInteraction);
           existingInteraction.teleport(interactionLoc);
         } else {
-          Reflection.spawn(interactionLoc, Interaction.class, interactionConfigure);
+          world.spawn(interactionLoc, Interaction.class, interactionConfigure);
         }
       });
     }
@@ -361,7 +360,7 @@ public interface PieceHandler {
         if (piece == null) {
           return;
         }
-        Reflection.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
+        world.spawn(pos.toLocation(world), org.bukkit.entity.ItemFrame.class, itemFrame -> {
           itemFrame.setRotation(rotation(board.facing(), piece));
           itemFrame.setItem(this.options.item(piece));
           itemFrame.setFacingDirection(BlockFace.UP);
@@ -369,7 +368,7 @@ public interface PieceHandler {
           itemFrame.setVisible(false);
           itemFrame.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
         });
-        Reflection.spawn(new Location(world, pos.x() + 0.5, pos.y() + this.options.heightOffset(piece.type()), pos.z() + 0.5), ArmorStand.class, stand -> {
+        world.spawn(new Location(world, pos.x() + 0.5, pos.y() + this.options.heightOffset(piece.type()), pos.z() + 0.5), ArmorStand.class, stand -> {
           stand.setInvulnerable(true);
           stand.getPersistentDataContainer().set(BoardManager.PIECE_KEY, PersistentDataType.STRING, board.name());
           stand.setGravity(false);

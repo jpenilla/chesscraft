@@ -284,7 +284,7 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private static void particle(final Player player, final Color particleColor, final double x, final double y, final double z) {
-    new ParticleBuilder(Particle.REDSTONE)
+    new ParticleBuilder(Particle.DUST)
       .count(1)
       .color(particleColor)
       .offset(0, 0, 0)

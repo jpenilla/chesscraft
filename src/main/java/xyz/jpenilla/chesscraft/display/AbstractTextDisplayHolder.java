@@ -28,7 +28,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.framework.qual.DefaultQualifier;
-import xyz.jpenilla.chesscraft.util.Reflection;
 import xyz.jpenilla.chesscraft.util.Util;
 
 @DefaultQualifier(NonNull.class)
@@ -78,7 +77,7 @@ public abstract class AbstractTextDisplayHolder {
         this.entityId = existing.getUniqueId();
         this.updateEntity(existing);
       } else {
-        final TextDisplay spawned = Reflection.spawn(this.pos, TextDisplay.class, this::updateEntity);
+        final TextDisplay spawned = this.pos.getWorld().spawn(this.pos, TextDisplay.class, this::updateEntity);
         this.entityId = spawned.getUniqueId();
       }
     }
