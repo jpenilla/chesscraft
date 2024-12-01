@@ -225,8 +225,8 @@ public final class Messages {
 
   private String madeMove = "<player_color>♚</player_color><player_displayname><gray>:</gray> <move>";
 
-  public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String moveFrom, final String moveTo) {
-    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), unparsed("move", moveFrom + moveTo), unparsed("move_from", moveFrom), unparsed("move_to", moveTo));
+  public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String move) {
+    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), unparsed("move", move), unparsed("move_from", move.substring(0, 2)), unparsed("move_to", move.substring(2, 4)));
   }
 
   private String notInThisGame = "<red>You are not a player in this match.";
