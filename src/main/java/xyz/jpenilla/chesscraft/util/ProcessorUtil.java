@@ -17,9 +17,9 @@
  */
 package xyz.jpenilla.chesscraft.util;
 
-import cpufeatures.CpuArchitecture;
-import cpufeatures.CpuFeatures;
-import java.util.List;
+import java.util.Locale;
+import org.bytedeco.cpu_features.X86Features;
+import org.bytedeco.cpu_features.global.cpu_features;
 import org.slf4j.Logger;
 import xyz.niflheim.stockfish.engine.enums.Variant;
 
@@ -27,24 +27,42 @@ public final class ProcessorUtil {
   private ProcessorUtil() {
   }
 
-  public static Variant bestVariant(final Logger logger) {
-    CpuFeatures.load();
-    final CpuArchitecture arch = CpuFeatures.getArchitecture();
-    final List<String> features = switch (arch) {
-      case AARCH64 -> CpuFeatures.getAarch64Info().featureList().stream().map(Object::toString).toList();
-      case X86 -> CpuFeatures.getX86Info().featureList().stream().map(Object::toString).toList();
-      default -> {
-        logger.info("Unable to determine best Stockfish variant for architecture '{}', falling back to default variant.", arch);
-        yield List.of();
+  public static Variant bestVariant(final Logger logger, final boolean bmi2Available) {
+    final CpuArchitecture arch = CpuArchitecture.get();
+    switch (arch) {
+      case AARCH64 -> {
+        // POPCNT builds are called 'modern' with >=SF16, and we want macOS modern build as well
+        return Variant.POPCNT;
       }
-    };
-    if (features.contains("BMI2")) {
-      return Variant.BMI2;
-    } else if (features.contains("AVX2")) {
-      return Variant.AVX2;
-    } else if (features.contains("POPCNT")) {
-      return Variant.POPCNT;
+      case X86 -> {
+        final X86Features features = cpu_features.GetX86Info().features();
+        if (bmi2Available && features.bmi2() != 0) {
+          return Variant.BMI2;
+        } else if (features.avx2() != 0) {
+          return Variant.AVX2;
+        } else if (features.popcnt() != 0) {
+          return Variant.POPCNT;
+        }
+      }
+      default ->
+        logger.info("Unable to determine best Stockfish variant for architecture '{}', falling back to default variant.", arch);
     }
     return Variant.DEFAULT;
+  }
+
+  private enum CpuArchitecture {
+    UNKNOWN, AARCH64, ARM, X86;
+
+    public static CpuArchitecture get() {
+      final String arch = System.getProperty("os.arch")
+        .toLowerCase(Locale.ROOT)
+        .replaceAll("[^a-z0-9]+", "");
+      return switch (arch) {
+        case "aarch64" -> AARCH64;
+        case "arm", "arm32" -> ARM;
+        case "x8664", "amd64", "ia32e", "em64t", "x64" -> X86;
+        default -> UNKNOWN;
+      };
+    }
   }
 }

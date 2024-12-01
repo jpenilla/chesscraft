@@ -20,12 +20,30 @@ package xyz.jpenilla.chesscraft.data;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.ChessBoard;
+import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 
-public record PVPChallenge(
-  ChessBoard board,
-  Player challenger,
-  Player player,
-  PieceColor challengerColor,
-  @Nullable TimeControlSettings timeControl
-) {}
+public interface PVPChallenge {
+  ChessBoard board();
+
+  Player challenger();
+
+  Player player();
+
+  PieceColor challengerColor();
+
+  default ChessPlayer white() {
+    return ChessPlayer.player(this.challengerColor() == PieceColor.WHITE ? this.challenger() : this.player());
+  }
+
+  default ChessPlayer black() {
+    return ChessPlayer.player(this.challengerColor() == PieceColor.BLACK ? this.challenger() : this.player());
+  }
+
+  @Nullable TimeControlSettings timeControl();
+
+  interface ResumeMatch extends PVPChallenge {
+    GameState state();
+  }
+}

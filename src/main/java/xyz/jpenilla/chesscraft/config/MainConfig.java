@@ -17,13 +17,16 @@
  */
 package xyz.jpenilla.chesscraft.config;
 
+import java.util.List;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @ConfigSerializable
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class MainConfig {
-  private String stockfishEngine = "15.1:AUTO";
+  private String stockfishEngine = "16:AUTO";
+  private DatabaseSettings databaseSettings = new DatabaseSettings();
   private PieceOptions pieces = new PieceOptions.DisplayEntity();
+  private List<String> defaultDisplays = List.of("log", "status", "position-labels");
   private Messages messages = new Messages();
 
   public String stockfishEngine() {
@@ -34,7 +37,15 @@ public final class MainConfig {
     return this.pieces;
   }
 
+  public List<String> defaultDisplays() {
+    return this.defaultDisplays;
+  }
+
   public Messages messages() {
     return this.messages;
+  }
+
+  public DatabaseSettings databaseSettings() {
+    return this.databaseSettings;
   }
 }

@@ -18,21 +18,27 @@
 package xyz.jpenilla.chesscraft;
 
 import java.nio.file.Path;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import xyz.jpenilla.chesscraft.command.Commands;
 import xyz.jpenilla.chesscraft.config.ConfigHelper;
 import xyz.jpenilla.chesscraft.config.MainConfig;
+import xyz.jpenilla.chesscraft.db.Database;
 import xyz.jpenilla.chesscraft.util.StockfishProvider;
 
 public final class ChessCraft extends JavaPlugin {
+  private final Deque<Runnable> shutdownTasks = new ConcurrentLinkedDeque<>();
   private BoardManager boardManager;
+  private Database database;
   private @MonotonicNonNull MainConfig config;
 
   @Override
   public void onEnable() {
     this.reloadMainConfig();
+    this.database = Database.init(this);
     final Path stockfishPath = new StockfishProvider(this, this.getDataFolder().toPath().resolve("engines"))
       .engine(this.config.stockfishEngine());
     this.boardManager = new BoardManager(this, stockfishPath);
@@ -47,6 +53,12 @@ public final class ChessCraft extends JavaPlugin {
     if (this.boardManager != null) {
       this.boardManager.close();
     }
+    while (!this.shutdownTasks.isEmpty()) {
+      this.shutdownTasks.poll().run();
+    }
+    if (this.database != null) {
+      this.database.close();
+    }
   }
 
   public BoardManager boardManager() {
@@ -55,6 +67,10 @@ public final class ChessCraft extends JavaPlugin {
 
   public MainConfig config() {
     return this.config;
+  }
+
+  public Database database() {
+    return this.database;
   }
 
   public void reloadMainConfig() {
@@ -72,5 +88,9 @@ public final class ChessCraft extends JavaPlugin {
 
   private Path configFile() {
     return this.getDataFolder().toPath().resolve("config.yml");
+  }
+
+  public Deque<Runnable> shutdownTasks() {
+    return this.shutdownTasks;
   }
 }

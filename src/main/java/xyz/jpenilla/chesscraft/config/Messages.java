@@ -17,7 +17,11 @@
  */
 package xyz.jpenilla.chesscraft.config;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -28,14 +32,28 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import xyz.jpenilla.chesscraft.ChessBoard;
 import xyz.jpenilla.chesscraft.ChessGame;
 import xyz.jpenilla.chesscraft.ChessPlayer;
+import xyz.jpenilla.chesscraft.GameState;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.db.Database;
+import xyz.jpenilla.chesscraft.util.OptionTagResolver;
+
+import static java.util.Objects.requireNonNull;
+import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
+import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component;
+import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.parsed;
+import static net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.unparsed;
 
 @ConfigSerializable
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 public final class Messages {
-  private String checkmate = "<winner_color>♚</winner_color><winner_displayname> <green>beat <loser_color>♚</loser_color><loser_displayname> by checkmate!";
+  private String checkmate = "<winner_color>♚</winner_color><winner_displayname> <green>beat <loser_color>♚</loser_color></green><loser_displayname><green> by checkmate!";
 
   public Component checkmate(final ChessPlayer black, final ChessPlayer white, final PieceColor winner) {
     final ChessPlayer win = winner == PieceColor.BLACK ? black : white;
@@ -43,13 +61,25 @@ public final class Messages {
     return parse(this.checkmate, winLoseTags(win, loss, winner));
   }
 
-  private String stalemate = "<black>♚</black><black_displayname> <green>ended in a stalemate with <white>♚</white><white_displayname>!";
+  private String stalemate = "<black>♚</black><black_displayname> <green>ended in a stalemate with <white>♚</white></green><white_displayname><green>!";
 
   public Component stalemate(final ChessPlayer black, final ChessPlayer white) {
     return parse(this.stalemate, blackWhitePlayerTags(black, white));
   }
 
-  private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color><winner_displayname>!";
+  private String drawByRepetition = "<black>♚</black><black_displayname> <green>ended in a draw by repetition with <white>♚</white></green><white_displayname><green>!";
+
+  public Component drawByRepetition(final ChessPlayer black, final ChessPlayer white) {
+    return parse(this.drawByRepetition, blackWhitePlayerTags(black, white));
+  }
+
+  private String drawByFiftyMoveRule = "<black>♚</black><black_displayname> <green>ended in a draw by the fifty move rule with <white>♚</white></green><white_displayname><green>!";
+
+  public Component drawByFiftyMoveRule(final ChessPlayer black, final ChessPlayer white) {
+    return parse(this.drawByFiftyMoveRule, blackWhitePlayerTags(black, white));
+  }
+
+  private String forfeit = "<loser_color>♚</loser_color><loser_displayname> <green>forfeited to <winner_color>♚</winner_color></green><winner_displayname><green>!";
 
   public Component forfeit(final ChessPlayer black, final ChessPlayer white, final PieceColor forfeited) {
     final ChessPlayer win = forfeited == PieceColor.WHITE ? black : white;
@@ -76,7 +106,7 @@ public final class Messages {
   }
 
   private static TagResolver name(final String name) {
-    return Placeholder.unparsed("name", name);
+    return unparsed("name", name);
   }
 
   private String noSuchBoard = "No board exists with the name '<name>'";
@@ -85,13 +115,19 @@ public final class Messages {
     return parse(this.noSuchBoard, name(name));
   }
 
+  private String noMatchToCancel = "<red>No match to cancel at board '<name>'.";
+
+  public Component noMatchToCancel(final String name) {
+    return parse(this.noMatchToCancel, name(name));
+  }
+
   private String boardOccupied = "<red>The <name> board is currently occupied!";
 
   public Component boardOccupied(final String name) {
     return parse(this.boardOccupied, name(name));
   }
 
-  private String challengeSent = "<green>Challenge has been sent! <opponent_displayname> has 30 seconds to accept.";
+  private String challengeSent = "<green>Challenge has been sent! </green><opponent_displayname><green> has 30 seconds to accept.";
 
   public Component challengeSent(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
     return parse(this.challengeSent, playerOpponentTags(player, opponent, playerColor));
@@ -107,7 +143,19 @@ public final class Messages {
     return parse(
       this.challengeReceived,
       challengerPlayerTags(challenger, player, challengerColor),
-      timeControl != null ? Placeholder.unparsed("time_control", timeControl.toString()) : Placeholder.component("time_control", parse(this.noTimeControls))
+      timeControl != null ? unparsed("time_control", timeControl.toString()) : component("time_control", parse(this.noTimeControls))
+    );
+  }
+
+  private String resumeChallengeReceived = "<green>You have been challenged to resume your match with </green><challenger_color>♚</challenger_color><challenger_displayname><green>!\n" +
+    "Time controls<gray>:</gray> <white><time_control></white>\n" +
+    "Type <white><click:run_command:'/chess accept'><hover:show_text:'<green>Click to run'>/chess accept</white> to accept. Challenge expires in 30 seconds.";
+
+  public Component resumeChallengeReceived(final ChessPlayer challenger, final ChessPlayer player, final PieceColor challengerColor, final @Nullable TimeControlSettings timeControl) {
+    return parse(
+      this.resumeChallengeReceived,
+      challengerPlayerTags(challenger, player, challengerColor),
+      timeControl != null ? unparsed("time_control", timeControl.toString()) : component("time_control", parse(this.noTimeControls))
     );
   }
 
@@ -135,20 +183,26 @@ public final class Messages {
     return parse(this.alreadyInGame);
   }
 
-  private String opponentAlreadyInGame = "<red><opponent_displayname> is already in an active match.";
+  private String opponentAlreadyInGame = "<opponent_displayname><red> is already in an active match.";
 
   public Component opponentAlreadyInGame(final Player opponent) {
     return parse(
       this.opponentAlreadyInGame,
-      Placeholder.component("opponent_name", opponent.name()),
-      Placeholder.component("opponent_displayname", opponent.displayName())
+      component("opponent_name", opponent.name()),
+      component("opponent_displayname", opponent.displayName())
     );
   }
 
   private String matchStarted = "<green>Match has started!";
 
   public Component matchStarted(final ChessBoard board, final ChessPlayer white, final ChessPlayer black) {
-    return parse(this.matchStarted, blackWhitePlayerTags(black, white), Placeholder.unparsed("board", board.name()));
+    return parse(this.matchStarted, blackWhitePlayerTags(black, white), unparsed("board", board.name()));
+  }
+
+  private String matchResumed = "<green>Match has resumed!";
+
+  public Component matchResumed(final ChessBoard board, final ChessPlayer white, final ChessPlayer black) {
+    return parse(this.matchResumed, blackWhitePlayerTags(black, white), unparsed("board", board.name()));
   }
 
   private String mustBeInMatch = "<red>You must be in a match to use this command.";
@@ -160,19 +214,19 @@ public final class Messages {
   private String nextPromotionSet = "<green>Your next pawn to reach the 1/8 rank will promote to <type>, instead of the default QUEEN.";
 
   public Component nextPromotionSet(final PieceType type) {
-    return parse(this.nextPromotionSet, Placeholder.unparsed("type", type.toString()));
+    return parse(this.nextPromotionSet, unparsed("type", type.toString()));
   }
 
-  private String cpuThinking = "<italic><gray>CPU is thinking...";
+  private String cpuThinking = "<italic><cpu_color>♚</cpu_color><gray>CPU is thinking...";
 
-  public Component cpuThinking() {
-    return parse(this.cpuThinking);
+  public Component cpuThinking(final PieceColor color) {
+    return parse(this.cpuThinking, TagResolver.resolver("cpu_color", Tag.styling(color.textColor())));
   }
 
   private String madeMove = "<player_color>♚</player_color><player_displayname><gray>:</gray> <move>";
 
   public Component madeMove(final ChessPlayer mover, final ChessPlayer opponent, final PieceColor moverColor, final String moveFrom, final String moveTo) {
-    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), Placeholder.unparsed("move", moveFrom + moveTo), Placeholder.unparsed("move_from", moveFrom), Placeholder.unparsed("move_to", moveTo));
+    return parse(this.madeMove, playerOpponentTags(mover, opponent, moverColor), unparsed("move", moveFrom + moveTo), unparsed("move_from", moveFrom), unparsed("move_to", moveTo));
   }
 
   private String notInThisGame = "<red>You are not a player in this match.";
@@ -185,6 +239,12 @@ public final class Messages {
 
   public Component notYourMove() {
     return parse(this.notYourMove);
+  }
+
+  private String chessEngineProcessing = "<red>Chess engine is currently processing, please try again shortly.";
+
+  public Component chessEngineProcessing() {
+    return parse(this.chessEngineProcessing);
   }
 
   private String notYourPiece = "<red>Not your piece.";
@@ -213,15 +273,15 @@ public final class Messages {
     return parse(
       this.timeDisplay,
       playerOpponentTags(player, opp, playerColor),
-      Placeholder.unparsed("player_time", game.time(player).timeLeft()),
-      Placeholder.unparsed("opponent_time", game.time(opp).timeLeft())
+      unparsed("player_time", game.time(player).timeLeftString()),
+      unparsed("opponent_time", game.time(opp).timeLeftString())
     );
   }
 
   private String invalidTimeControl = "Invalid time control '<input>', expected format is '<time>[:<increment>]'";
 
   public Component invalidTimeControl(final String input) {
-    return parse(this.invalidTimeControl, Placeholder.unparsed("input", input));
+    return parse(this.invalidTimeControl, unparsed("input", input));
   }
 
   private String ranOutOfTime = "<player_color>♚</player_color><player_displayname> ran out of time!";
@@ -238,6 +298,281 @@ public final class Messages {
     return parse(this.resetBoard, name(board.name()));
   }
 
+  private String matchCancelled = "<red>Match cancelled.";
+
+  public Component matchCancelled() {
+    return parse(this.matchCancelled);
+  }
+
+  private String pauseProposedSender = "<opponent_color>♚</opponent_color><opponent_displayname> has been notified that you wish to pause the match.";
+
+  public Component pauseProposedSender(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(this.pauseProposedSender, playerOpponentTags(player, opp, playerColor));
+  }
+
+  private String pauseProposedRecipient = "<hover:show_text:'Click to accept'><click:run_command:'/chess accept_pause'><opponent_color>♚</opponent_color><opponent_displayname> has proposed a pause on the match. Use <white>/chess accept_pause</white> to accept.";
+
+  public Component pauseProposedRecipient(final ChessGame game, final PieceColor playerColor) {
+    final ChessPlayer player = game.player(playerColor);
+    final ChessPlayer opp = game.player(playerColor.other());
+    return parse(this.pauseProposedRecipient, playerOpponentTags(player, opp, playerColor));
+  }
+
+  private String pausedMatch = "<green>Match has been paused.";
+
+  public Component pausedMatch() {
+    return parse(this.pausedMatch);
+  }
+
+  private String noPauseProposed = "<red>Your match does not have a pause proposed. Use /chess pause_match to propose one.";
+
+  public Component noPauseProposed() {
+    return parse(this.noPauseProposed);
+  }
+
+  private String opponentOffline = "<red><opponent_name> is not online!";
+
+  public Component opponentOffline(final ChessPlayer opponent) {
+    return parse(this.opponentOffline, component("opponent_displayname", opponent.displayName()), component("opponent_name", opponent.name()));
+  }
+
+  private String noSuchMatch = "<red>There is no match recorded with the id <match_id>.";
+
+  public Component noSuchMatch(final UUID id) {
+    return parse(this.noSuchMatch, parsed("match_id", id.toString()));
+  }
+
+  private String noPausedMatch = "<red>There is no paused match with the id <match_id>";
+
+  public Component noPausedMatch(final UUID uuid) {
+    return parse(this.noPausedMatch, parsed("match_id", uuid.toString()));
+  }
+
+  private String noPausedMatches = "<red>No paused matches found.";
+
+  public Component noPausedMatches() {
+    return parse(this.noPausedMatches);
+  }
+
+  private String noCompleteMatches = "<red>No complete matches found.";
+
+  public Component noCompleteMatches() {
+    return parse(this.noCompleteMatches);
+  }
+
+  private String youAreNotInThisMatch = "<red>You are not a player in that match.";
+
+  public Component youAreNotInThisMatch() {
+    return parse(this.youAreNotInThisMatch);
+  }
+
+  private String pausedMatchInfo = "<click:suggest_command:'/chess resume_match <match_id> '><white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname> <gray><i><time></gray> <export_button>";
+
+  public Component pausedMatchInfo(final Database db, final GameState state, final boolean showExportButton) {
+    return parse(
+      this.pausedMatchInfo,
+      blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
+      parsed("match_id", state.id().toString()),
+      this.exportButton(showExportButton),
+      this.timeTag(state)
+    );
+  }
+
+  private String completeMatchInfo = "<white>♚</white><white_displayname> <i><gray>vs</i> <black>♚</black><black_displayname><gray>:</gray> <result><rating_change> <gray><i><time></gray> <export_button>";
+
+  public Component completeMatchInfo(final Database db, final GameState state, final UUID perspective, final boolean showExportButton) {
+    requireNonNull(state.result(), "result");
+    final TagResolver ratingChange;
+    if (state.result().noRatingChange()) {
+      ratingChange = component("rating_change", empty());
+    } else {
+      final int eloChange = state.color(perspective) == PieceColor.WHITE ? state.result().whiteEloChange() : state.result().blackEloChange();
+      ratingChange = component(
+        "rating_change",
+        textOfChildren(space(), this.plusMinus(eloChange), text(Math.abs(eloChange)))
+      );
+    }
+    return parse(
+      this.completeMatchInfo,
+      blackWhitePlayerTags(state.blackOffline(db).join(), state.whiteOffline(db).join()),
+      component("result", state.result().describe(this)),
+      parsed("match_id", state.id().toString()),
+      ratingChange,
+      this.exportButton(showExportButton),
+      this.timeTag(state)
+    );
+  }
+
+  private String exportButton = "<hover:show_text:'Click to export match in PGN format'><click:run_command:'/chess export_match <match_id>'><green>↓";
+
+  private TagResolver exportButton(final boolean allow) {
+    return TagResolver.resolver("export_button", (queue, context) -> {
+      if (allow) {
+        return Tag.selfClosingInserting(context.deserialize(this.exportButton));
+      }
+      return Tag.selfClosingInserting(Component.empty());
+    });
+  }
+
+  private String cannotExportIncomplete = "<red>You do not have permission to export incomplete matches.";
+
+  public Component cannotExportIncomplete() {
+    return parse(this.cannotExportIncomplete);
+  }
+
+  private String cannotExportOthers = "<red>You do not have permission to export matches that you are not a participant in.";
+
+  public Component cannotExportOthers() {
+    return parse(this.cannotExportOthers);
+  }
+
+  private String clickToCopyPgn = "<green>Click to copy exported PGN.";
+
+  public Component clickToCopyPgn() {
+    return parse(this.clickToCopyPgn);
+  }
+
+  private String leaderboardHeader = "<green><bold>ChesCraft server leaderboard";
+
+  public Component leaderboardHeader() {
+    return parse(this.leaderboardHeader);
+  }
+
+  private TagResolver timeTag(final GameState state) {
+    final Timestamp timestamp = requireNonNull(state.lastUpdated(), "lastUpdated");
+    final LocalDateTime localDateTime = timestamp.toLocalDateTime();
+    final int hour = localDateTime.getHour();
+
+    return component(
+      "time",
+      this.timestamp(
+        localDateTime.getYear(),
+        localDateTime.getMonthValue(),
+        localDateTime.getDayOfMonth(),
+        hour > 12 ? hour - 12 : hour,
+        hour,
+        localDateTime.getMinute(),
+        hour <= 11
+      )
+    );
+  }
+
+  private String pausedMatchesHeader = "<green><bold>Paused matches for <displayname>";
+
+  public Component pausedMatchesHeader(final Component username, final Component displayName) {
+    return parse(this.pausedMatchesHeader, component("username", username), component("displayname", displayName));
+  }
+
+  private String matchHistoryHeader = "<green><bold>Match history</green> <displayname> <gray>(<white><rating></white>)";
+
+  public Component matchHistoryHeader(final Component username, final Component displayName, final int rating) {
+    return parse(this.matchHistoryHeader, component("username", username), component("displayname", displayName), parsed("rating", String.valueOf(rating)));
+  }
+
+  private String clickForPreviousPage = "Click for previous page";
+
+  public Component clickForPreviousPage() {
+    return parse(this.clickForPreviousPage);
+  }
+
+  private String clickForNextPage = "Click for next page";
+
+  public Component clickForNextPage() {
+    return parse(this.clickForNextPage);
+  }
+
+  private String pageOutOfRange = "<red>Page <page> is out of range! There are only <pages> pages.";
+
+  public Component pageOutOfRange(final int page, final int pages) {
+    return parse(this.pageOutOfRange, parsed("page", String.valueOf(page)), parsed("pages", String.valueOf(pages)));
+  }
+
+  private String paginationFooter = "<gray>Page <page><white>/</white><pages> <aqua><buttons>";
+
+  public Component paginationFooter(final int page, final int pages, final ComponentLike buttons) {
+    return parse(
+      this.paginationFooter,
+      parsed("page", String.valueOf(page)),
+      parsed("pages", String.valueOf(pages)),
+      component("buttons", buttons)
+    );
+  }
+
+  private String nonPlayerMustProvidePlayer = "<red>Must specify the player.";
+
+  public Component nonPlayerMustProvidePlayer() {
+    return parse(this.nonPlayerMustProvidePlayer);
+  }
+
+  private String timestamp = "<month>/<day>/<year_short> <hour>:<minute><am:AM:PM>";
+
+  public Component timestamp(
+    final int year,
+    final int month,
+    final int day,
+    final int hour,
+    final int hour24,
+    final int minute,
+    final boolean am
+  ) {
+    return parse(
+      this.timestamp,
+      parsed("year", String.valueOf(year)),
+      parsed("year_short", String.valueOf(year).substring(2)),
+      parsed("month", String.valueOf(month)),
+      parsed("day", String.valueOf(day)),
+      parsed("hour", String.valueOf(hour)),
+      parsed("hour_military", String.valueOf(hour24)),
+      parsed("minute", String.format("%02d", minute)),
+      new OptionTagResolver("am", am)
+    );
+  }
+
+  private String resultWin = "<winner_color>♚</winner_color>Checkmate";
+
+  public Component resultWin(final PieceColor winner) {
+    return parse(this.resultWin, Placeholder.styling("winner_color", winner.textColor()), Placeholder.styling("loser_color", winner.other().textColor()));
+  }
+
+  private String resultOutOfTime = "<loser_color>♚</loser_color>Out of time";
+
+  public Component resultOutOfTime(final PieceColor loser) {
+    return parse(this.resultOutOfTime, Placeholder.styling("winner_color", loser.other().textColor()), Placeholder.styling("loser_color", loser.textColor()));
+  }
+
+  private String resultStalemate = "Stalemate";
+
+  public Component resultStalemate() {
+    return parse(this.resultStalemate);
+  }
+
+  private String resultDrawByRepetition = "Draw by repetition";
+
+  public Component resultDrawByRepetition() {
+    return parse(this.resultDrawByRepetition);
+  }
+
+  private String resultDrawByFiftyMoveRule = "Draw by 50 move rule";
+
+  public Component resultDrawByFiftyMoveRule() {
+    return parse(this.resultDrawByFiftyMoveRule);
+  }
+
+  private String resultForfeit = "<forfeit_color>♚</forfeit_color>Forfeit";
+
+  public Component resultForfeit(final PieceColor forfeited) {
+    return parse(this.resultForfeit, Placeholder.styling("forfeit_color", forfeited.textColor()), Placeholder.styling("winner_color", forfeited.other().textColor()));
+  }
+
+  private final transient Component plus = text('+', GREEN);
+  private final transient Component minus = text('-', RED);
+
+  private Component plusMinus(final int num) {
+    return num > 0 ? this.plus : this.minus;
+  }
+
   private String on = "<green>On";
 
   public Component on() {
@@ -252,9 +587,9 @@ public final class Messages {
 
   private TagResolver onOff(final boolean value) {
     if (value) {
-      return Placeholder.component("on_off", this.on());
+      return component("on_off", this.on());
     }
-    return Placeholder.component("on_off", this.off());
+    return component("on_off", this.off());
   }
 
   private static TagResolver playerOpponentTags(final ChessPlayer player, final ChessPlayer opponent, final PieceColor playerColor) {
@@ -273,7 +608,7 @@ public final class Messages {
     return playerTags(win, "winner", lose, "loser", winColor);
   }
 
-  private static TagResolver playerTags(
+  public static TagResolver playerTags(
     final ChessPlayer p1,
     final String p1prefix,
     final ChessPlayer p2,
@@ -281,14 +616,21 @@ public final class Messages {
     final PieceColor p1Color
   ) {
     return TagResolver.resolver(
-      TagResolver.resolver(p1prefix + "_color", Tag.styling(p1Color.textColor())),
-      TagResolver.resolver(p2prefix + "_color", Tag.styling(p1Color.other().textColor())),
-      Placeholder.unparsed(p1prefix + "_color_name", p1Color.toString()),
-      Placeholder.unparsed(p2prefix + "_color_name", p1Color.other().toString()),
-      Placeholder.component(p1prefix + "_name", p1.name()),
-      Placeholder.component(p2prefix + "_name", p2.name()),
-      Placeholder.component(p1prefix + "_displayname", p1.displayName()),
-      Placeholder.component(p2prefix + "_displayname", p2.displayName())
+      playerTags(p1, p1prefix, p1Color),
+      playerTags(p2, p2prefix, p1Color.other())
+    );
+  }
+
+  public static TagResolver playerTags(
+    final ChessPlayer player,
+    final String prefix,
+    final PieceColor color
+  ) {
+    return TagResolver.resolver(
+      TagResolver.resolver(prefix + "_color", Tag.styling(color.textColor())),
+      unparsed(prefix + "_color_name", color.toString()),
+      component(prefix + "_name", player.name()),
+      component(prefix + "_displayname", player.displayName())
     );
   }
 

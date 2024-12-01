@@ -23,10 +23,10 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import xyz.jpenilla.chesscraft.util.Elo;
 
 public interface ChessPlayer extends Audience {
-  ChessPlayer CPU = new Cpu();
-
   default Component displayName() {
     return this.name();
   }
@@ -34,10 +34,57 @@ public interface ChessPlayer extends Audience {
   Component name();
 
   default boolean isCpu() {
-    return this == CPU;
+    return this instanceof Cpu;
   }
 
-  record Player(UUID uuid) implements ChessPlayer, ForwardingAudience.Single {
+  static Player player(final org.bukkit.entity.Player player) {
+    return new OnlinePlayer(player.getUniqueId());
+  }
+
+  interface Player extends ChessPlayer {
+    UUID uuid();
+  }
+
+  static Player offlinePlayer(final OfflinePlayer offlinePlayer) {
+    return new Player() {
+      @Override
+      public Component name() {
+        return Component.text(offlinePlayer.getName());
+      }
+
+      @Override
+      public Component displayName() {
+        if (offlinePlayer.isOnline()) {
+          return offlinePlayer.getPlayer().displayName();
+        }
+        return Player.super.displayName();
+      }
+
+      @Override
+      public UUID uuid() {
+        return offlinePlayer.getUniqueId();
+      }
+    };
+  }
+
+  record CachedPlayer(
+    UUID uuid,
+    Component name,
+    Component displayName,
+    int rating,
+    int peakRating,
+    int ratedMatches
+  ) implements Player {
+    public Elo.RatingData ratingData() {
+      return new Elo.RatingData(this.rating, this.peakRating, this.ratedMatches);
+    }
+  }
+
+  static ChessPlayer cpu(final int elo) {
+    return new Cpu(elo, UUID.randomUUID());
+  }
+
+  record OnlinePlayer(UUID uuid) implements Player, ForwardingAudience.Single {
     @Override
     public Audience audience() {
       return player();
@@ -58,15 +105,9 @@ public interface ChessPlayer extends Audience {
     }
   }
 
-  static ChessPlayer player(final org.bukkit.entity.Player player) {
-    return new Player(player.getUniqueId());
-  }
-
-  final class Cpu implements ChessPlayer, ForwardingAudience.Single {
+  // UUID so two CPUs with same elo aren't equal
+  record Cpu(int elo, UUID id) implements ChessPlayer, ForwardingAudience.Single {
     private static final Component NAME = Component.text("CPU");
-
-    private Cpu() {
-    }
 
     @Override
     public Audience audience() {

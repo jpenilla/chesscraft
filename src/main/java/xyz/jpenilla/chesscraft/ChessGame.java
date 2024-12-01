@@ -18,13 +18,27 @@
 package xyz.jpenilla.chesscraft;
 
 import com.destroystokyo.paper.ParticleBuilder;
+import com.destroystokyo.paper.util.SneakyThrow;
+import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.ints.IntIntPair;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.kyori.adventure.audience.Audience;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
@@ -35,20 +49,23 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import xyz.jpenilla.chesscraft.data.BoardPosition;
 import xyz.jpenilla.chesscraft.data.Fen;
 import xyz.jpenilla.chesscraft.data.TimeControlSettings;
-import xyz.jpenilla.chesscraft.data.Vec3;
+import xyz.jpenilla.chesscraft.data.Vec3i;
 import xyz.jpenilla.chesscraft.data.piece.Piece;
 import xyz.jpenilla.chesscraft.data.piece.PieceColor;
 import xyz.jpenilla.chesscraft.data.piece.PieceType;
+import xyz.jpenilla.chesscraft.display.AbstractTextDisplayHolder;
+import xyz.jpenilla.chesscraft.display.BoardDisplaySettings;
 import xyz.jpenilla.chesscraft.util.TimeUtil;
+import xyz.jpenilla.chesscraft.util.Util;
+import xyz.niflheim.stockfish.engine.QueryTypes;
 import xyz.niflheim.stockfish.engine.StockfishClient;
 import xyz.niflheim.stockfish.engine.enums.Option;
-import xyz.niflheim.stockfish.engine.enums.Query;
-import xyz.niflheim.stockfish.engine.enums.QueryType;
 import xyz.niflheim.stockfish.exceptions.StockfishInitException;
 
 public final class ChessGame implements BoardStateHolder {
   public static final NamespacedKey HIDE_LEGAL_MOVES_KEY = new NamespacedKey("chesscraft", "hide_legal_moves");
 
+  private final UUID id;
   private final ChessBoard board;
   private final StockfishClient stockfish;
   // Rank 0-7 (8-1), File 0-7 (A-H)
@@ -56,16 +73,22 @@ public final class ChessGame implements BoardStateHolder {
   private final ChessCraft plugin;
   private final ChessPlayer white;
   private final ChessPlayer black;
+  private final int moveDelay;
+  private final CountDownLatch delayLatch = new CountDownLatch(1);
+  private final TimeControlSettings timeControlSettings;
   private PieceType whiteNextPromotion = PieceType.QUEEN;
   private PieceType blackNextPromotion = PieceType.QUEEN;
   private final @Nullable TimeControl whiteTime;
   private final @Nullable TimeControl blackTime;
   private final @Nullable BukkitTask timeControlTask;
+  private final List<Move> moves;
+  private final List<Pair<BoardDisplaySettings<?>, ?>> displays = new ArrayList<>();
   private String currentFen;
   private PieceColor nextMove;
   private String selectedPiece;
   private Set<String> validDestinations;
   private CompletableFuture<?> activeQuery;
+  private volatile boolean active = true;
 
   ChessGame(
     final ChessCraft plugin,
@@ -73,16 +96,19 @@ public final class ChessGame implements BoardStateHolder {
     final ChessPlayer white,
     final ChessPlayer black,
     final @Nullable TimeControlSettings timeControl,
-    final int cpuElo
+    final int moveDelay
   ) {
+    this.id = UUID.randomUUID();
     this.plugin = plugin;
     this.board = board;
     this.white = white;
     this.black = black;
     this.pieces = ChessBoard.initBoard();
+    this.moves = new CopyOnWriteArrayList<>();
+    this.moveDelay = moveDelay;
     this.loadFen(Fen.STARTING_FEN);
     try {
-      this.stockfish = this.createStockfishClient(cpuElo);
+      this.stockfish = this.createStockfishClient();
     } catch (final Exception ex) {
       throw new RuntimeException("Failed to initialize and/or connect to chess engine process", ex);
     }
@@ -95,7 +121,62 @@ public final class ChessGame implements BoardStateHolder {
       this.blackTime = null;
       this.timeControlTask = null;
     }
-    this.applyToWorld();
+    this.timeControlSettings = timeControl;
+    for (final BoardDisplaySettings<?> display : this.board.displays()) {
+      this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
+    }
+    this.scheduleApply();
+  }
+
+  ChessGame(
+    final ChessCraft plugin,
+    final ChessBoard board,
+    final GameState state
+  ) {
+    this.id = state.id();
+    this.plugin = plugin;
+    this.board = board;
+    this.white = state.white();
+    this.black = state.black();
+    this.pieces = ChessBoard.initBoard();
+    this.moves = new CopyOnWriteArrayList<>(state.moves());
+    this.moveDelay = state.cpuMoveDelay();
+    this.loadFen(state.currentFen());
+    try {
+      this.stockfish = this.createStockfishClient();
+    } catch (final Exception ex) {
+      throw new RuntimeException("Failed to initialize and/or connect to chess engine process", ex);
+    }
+    this.whiteTime = state.whiteTime() == null ? null : state.whiteTime().copy();
+    this.blackTime = state.blackTime() == null ? null : state.blackTime().copy();
+    if (this.whiteTime != null || this.blackTime != null) {
+      this.timeControlTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tickTime, 0L, 1L);
+    } else {
+      this.timeControlTask = null;
+    }
+    this.timeControlSettings = state.timeControlSettings();
+    for (final BoardDisplaySettings<?> display : this.board.displays()) {
+      this.displays.add(Pair.of(display, display.getOrCreateState(this.plugin, this.board)));
+    }
+    this.scheduleApply();
+  }
+
+  public GameState snapshotState(final GameState.@Nullable Result result) {
+    return new GameState(
+      this.id,
+      this.white instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.white instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
+      this.whiteTime == null ? null : this.whiteTime.copy(),
+      this.black instanceof ChessPlayer.Player player ? player.uuid() : null,
+      this.black instanceof ChessPlayer.Cpu cpu ? cpu.elo() : -1,
+      this.blackTime == null ? null : this.blackTime.copy(),
+      List.copyOf(this.moves),
+      Fen.read(this.currentFen),
+      this.moveDelay,
+      this.timeControlSettings,
+      result,
+      Timestamp.valueOf(LocalDateTime.now())
+    );
   }
 
   public ChessPlayer white() {
@@ -104,6 +185,14 @@ public final class ChessGame implements BoardStateHolder {
 
   public ChessPlayer black() {
     return this.black;
+  }
+
+  public boolean cpuVsCpu() {
+    return this.white.isCpu() && this.black.isCpu();
+  }
+
+  public PieceColor nextMove() {
+    return this.nextMove;
   }
 
   public void handleInteract(final Player player, final BoardPosition rightClicked) {
@@ -115,7 +204,7 @@ public final class ChessGame implements BoardStateHolder {
       player.sendMessage(this.plugin.config().messages().notYourMove());
       return;
     } else if (this.activeQuery != null && !this.activeQuery.isDone()) {
-      player.sendRichMessage("<red>Chess engine is currently processing, please try again shortly.");
+      player.sendMessage(this.plugin.config().messages().chessEngineProcessing());
       return;
     }
 
@@ -147,10 +236,10 @@ public final class ChessGame implements BoardStateHolder {
       return;
     }
 
-    final Vec3 selectedPos = this.board.toWorld(this.selectedPiece);
+    final Vec3i selectedPos = this.board.toWorld(this.selectedPiece);
 
     final ChessPlayer c = this.player(this.nextMove);
-    if (!(c instanceof ChessPlayer.Player chessPlayer)) {
+    if (!(c instanceof ChessPlayer.OnlinePlayer chessPlayer)) {
       return;
     }
     final Player player = chessPlayer.player();
@@ -163,7 +252,7 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  private void blockParticles(final Player player, final Vec3 block, final Color particleColor) {
+  private void blockParticles(final Player player, final Vec3i block, final Color particleColor) {
     // 0.02 buffer around pieces
     final double min = 0.18D * this.board.scale();
     final double max = 0.82D * this.board.scale();
@@ -195,7 +284,7 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private static void particle(final Player player, final Color particleColor, final double x, final double y, final double z) {
-    new ParticleBuilder(Particle.REDSTONE)
+    new ParticleBuilder(Particle.DUST)
       .count(1)
       .color(particleColor)
       .offset(0, 0, 0)
@@ -207,6 +296,14 @@ public final class ChessGame implements BoardStateHolder {
   @Override
   public @Nullable Piece piece(final BoardPosition pos) {
     return this.pieces[pos.rank()][pos.file()];
+  }
+
+  public BoardStateHolder snapshotPieces() {
+    final Piece[][] copy = ChessBoard.initBoard();
+    for (int i = 0; i < this.pieces.length; i++) {
+      System.arraycopy(this.pieces[i], 0, copy[i], 0, this.pieces[i].length);
+    }
+    return BoardStateHolder.of(copy);
   }
 
   public ChessPlayer player(final PieceColor color) {
@@ -228,18 +325,44 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   public boolean hasPlayer(final Player player) {
-    final ChessPlayer w = ChessPlayer.player(player);
-    return this.white.equals(w) || this.black.equals(w);
+    final ChessPlayer.Player chessPlayer = ChessPlayer.player(player);
+    if (this.white instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid())) {
+      return true;
+    }
+    return this.black instanceof ChessPlayer.Player p && p.uuid().equals(chessPlayer.uuid());
   }
 
-  public void applyToWorld() {
-    this.board.pieceHandler().applyToWorld(this.board, this, this.board.world());
+  private void scheduleApply() {
+    this.scheduleApply(null);
+  }
+
+  private void scheduleApply(final @Nullable Move move) {
+    final BoardStateHolder snapshot = this.snapshotPieces();
+    Util.scheduleOrRun(this.plugin, () -> this.applyToWorld(snapshot, move));
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot) {
+    this.applyToWorld(snapshot, null);
+  }
+
+  private void applyToWorld(final BoardStateHolder snapshot, final @Nullable Move move) {
+    if (move == null) {
+      this.board.pieceHandler().applyToWorld(this.board, snapshot, this.board.world());
+    } else {
+      this.board.pieceHandler().applyMoveToWorld(this.board, snapshot, this.board.world(), move);
+    }
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
+      if (pair.second() instanceof AbstractTextDisplayHolder t) {
+        t.ensureSpawned();
+        t.updateNow();
+      }
+    }
   }
 
   private CompletableFuture<Void> selectPiece(final String sel) {
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenAccept(valid -> {
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenAccept(legal -> {
       this.selectedPiece = sel;
-      this.validDestinations = Arrays.stream(valid.split(" "))
+      this.validDestinations = legal.stream()
         .filter(move -> move.startsWith(sel))
         .map(move -> move.substring(2, 4))
         .collect(Collectors.toSet());
@@ -253,8 +376,7 @@ public final class ChessGame implements BoardStateHolder {
     if (color != this.nextMove) {
       throw new IllegalArgumentException("Wrong move");
     }
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(response -> {
-      final Set<String> validMoves = new HashSet<>(Arrays.asList(response.split(" ")));
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenCompose(validMoves -> {
       // engine will not make invalid moves, player moves are checked earlier
       if (validMoves.stream().noneMatch(valid -> valid.equals(move) || valid.startsWith(move))) {
         throw new IllegalArgumentException("Invalid move");
@@ -263,10 +385,18 @@ public final class ChessGame implements BoardStateHolder {
       // Append promotion if needed
       final String finalMove = validMoves.contains(move) ? move : move + this.nextPromotionAndReset(color);
 
-      return this.stockfish.submit(new Query.Builder(QueryType.Make_Move, this.currentFen).setMove(finalMove).build()).thenCompose(newFen -> {
-        this.loadFen(Fen.read(newFen));
-        this.plugin.getServer().getScheduler().runTask(this.plugin, this::applyToWorld);
-        this.players().sendMessage(this.plugin.config().messages().madeMove(
+      final Move movePair = new Move(finalMove, color, null);
+      if (!this.active) {
+        // handle CPU running out of time control time
+        return CompletableFuture.completedFuture(null);
+      }
+      return this.stockfish.submit(QueryTypes.MAKE_MOVES.builder(Fen.STARTING_FEN.fenString()).setMoves(this.moveSequenceString(movePair)).build()).thenCompose(newFen -> {
+        final Fen fen = Fen.read(newFen);
+        this.loadFen(fen);
+        this.moves.add(movePair.boardAfter(fen));
+
+        this.scheduleApply(movePair);
+        this.audience().sendMessage(this.plugin.config().messages().madeMove(
           this.player(color),
           this.player(color.other()),
           color,
@@ -277,15 +407,69 @@ public final class ChessGame implements BoardStateHolder {
         return this.checkForWinAfterMove();
       });
     }).thenCompose($ -> {
-      if (this.player(this.nextMove).isCpu()) {
+      if (this.player(this.nextMove).isCpu() && this.active) {
         return this.cpuMoveFuture();
       }
       return CompletableFuture.completedFuture(null);
     });
   }
 
+  private String moveSequenceString(final Move... extraMoves) {
+    return Stream.concat(this.moves.stream(), Arrays.stream(extraMoves)).map(Move::notation).collect(Collectors.joining(" "));
+  }
+
+  private String moveSequenceString() {
+    return this.moves.stream().map(Move::notation).collect(Collectors.joining(" "));
+  }
+
   private CompletableFuture<Void> checkForWinAfterMove() {
-    return this.stockfish.submit(new Query.Builder(QueryType.Legal_Moves, this.currentFen).build()).thenCompose(legal -> {
+    // threefold repetition rule
+    final Move lastMove = this.moves.getLast();
+    final long timesPositionSeen = this.moves.stream().filter(e -> Objects.deepEquals(e.boardAfter().pieces(), lastMove.boardAfter().pieces())).count();
+    if (timesPositionSeen == 3) {
+      this.announceDrawByRepetition();
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.REPETITION, null)),
+        true
+      );
+      this.board.endGame();
+      return CompletableFuture.completedFuture(null);
+    }
+
+    // fifty move rule
+    if (this.moves.size() > 100) {
+      final List<Move> last100 = Util.peekLast(this.moves, 100);
+      boolean draw = true;
+      Reference2IntMap<PieceType> lastCounts = null;
+      Map<IntIntPair, Piece> lastPawns = null;
+      for (final Move move : last100) {
+        final Reference2IntMap<PieceType> newCounts = move.boardAfter().pieceTotals();
+        if (lastCounts != null && !newCounts.equals(lastCounts)) {
+          draw = false;
+          break;
+        }
+        lastCounts = newCounts;
+
+        final Map<IntIntPair, Piece> newPawns = move.boardAfter().pawnPositions();
+        if (lastPawns != null && !newPawns.equals(lastPawns)) {
+          draw = false;
+          break;
+        }
+        lastPawns = newPawns;
+      }
+
+      if (draw) {
+        this.announceDrawByFifty();
+        this.plugin.database().saveMatchAsync(
+          this.snapshotState(GameState.Result.create(GameState.ResultType.DRAW_BY_50, null)),
+          true
+        );
+        this.board.endGame();
+        return CompletableFuture.completedFuture(null);
+      }
+    }
+
+    return this.stockfish.submit(QueryTypes.LEGAL_MOVES.builder(this.currentFen).build()).thenCompose(legal -> {
       if (!legal.isEmpty()) {
         final @Nullable TimeControl time = this.nextMove == PieceColor.WHITE ? this.blackTime : this.whiteTime;
         if (time != null) {
@@ -293,11 +477,16 @@ public final class ChessGame implements BoardStateHolder {
         }
         return CompletableFuture.completedFuture(null);
       }
-      return this.stockfish.submit(new Query.Builder(QueryType.Checkers, this.currentFen).build()).thenAccept(checkers -> {
+      return this.stockfish.submit(QueryTypes.CHECKERS.builder(this.currentFen).build()).thenAccept(checkers -> {
         if (checkers.isEmpty()) {
           this.announceStalemate();
+          this.plugin.database().saveMatchAsync(this.snapshotState(GameState.Result.create(GameState.ResultType.STALEMATE, null)), true);
         } else {
           this.announceWin(this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
+          this.plugin.database().saveMatchAsync(
+            this.snapshotState(GameState.Result.create(GameState.ResultType.WIN, this.nextMove == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE)),
+            true
+          );
         }
         this.board.endGame();
       });
@@ -315,29 +504,76 @@ public final class ChessGame implements BoardStateHolder {
   }
 
   private CompletableFuture<Void> cpuMoveFuture() {
-    this.players().sendMessage(this.plugin.config().messages().cpuThinking());
-    return this.stockfish.submit(new Query.Builder(QueryType.Best_Move, this.currentFen)
-        //.setDepth(10)
-        .setMovetime(1000L)
-        .build())
-      .thenCompose(bestMove -> this.move(bestMove, this.nextMove));
+    this.audience().sendMessage(this.plugin.config().messages().cpuThinking(this.nextMove));
+    return this.moveDelayFuture().thenCompose($ -> {
+      if (!this.active) {
+        // handle CPU running out of time control time
+        return CompletableFuture.completedFuture(null);
+      }
+      return this.stockfish.submit(QueryTypes.BEST_MOVE.builder(Fen.STARTING_FEN.fenString())
+          .setMoves(this.moveSequenceString())
+          //.setDepth(10)
+          .setMovetime(500L)
+          .setUciElo(((ChessPlayer.Cpu) this.player(this.nextMove)).elo())
+          .build())
+        .thenCompose(bestMove -> {
+          if (!this.active) {
+            // handle CPU running out of time control time
+            return CompletableFuture.completedFuture(null);
+          }
+          return this.move(bestMove, this.nextMove);
+        });
+    });
   }
 
-  public Audience players() {
-    return Audience.audience(this.white, this.black);
+  private CompletableFuture<Void> moveDelayFuture() {
+    if (this.moveDelay == -1) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return CompletableFuture.runAsync(() -> {
+      try {
+        this.delayLatch.await(this.moveDelay, TimeUnit.SECONDS);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    });
+  }
+
+  public Audience audience() {
+    final List<Audience> audiences = new ArrayList<>();
+    audiences.add(this.white);
+    audiences.add(this.black);
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
+      if (pair.second() instanceof Audience audience) {
+        audiences.add(audience);
+      }
+    }
+    return Audience.audience(audiences);
   }
 
   private void announceWin(final PieceColor winner) {
-    this.players().sendMessage(this.plugin.config().messages().checkmate(this.black, this.white, winner));
+    this.audience().sendMessage(this.plugin.config().messages().checkmate(this.black, this.white, winner));
   }
 
   private void announceStalemate() {
-    this.players().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
+    this.audience().sendMessage(this.plugin.config().messages().stalemate(this.black, this.white));
+  }
+
+  private void announceDrawByRepetition() {
+    this.audience().sendMessage(this.plugin.config().messages().drawByRepetition(this.black, this.white));
+  }
+
+  private void announceDrawByFifty() {
+    this.audience().sendMessage(this.plugin.config().messages().drawByFiftyMoveRule(this.black, this.white));
   }
 
   public void forfeit(final PieceColor color) {
-    this.players().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
-    this.board.endGame();
+    this.board.endGameAndWait();
+    this.plugin.database().saveMatchAsync(
+      this.snapshotState(GameState.Result.create(GameState.ResultType.FORFEIT, color)),
+      true
+    );
+    this.audience().sendMessage(this.plugin.config().messages().forfeit(this.black, this.white, color));
   }
 
   private String nextPromotionAndReset(final PieceColor color) {
@@ -356,12 +592,31 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  public void close(final boolean removePieces) {
+  @SuppressWarnings("unchecked")
+  public void close(final boolean removePieces, final boolean wait) {
+    this.active = false;
+    this.delayLatch.countDown();
+    if (wait) {
+      final @Nullable CompletableFuture<?> query = this.activeQuery;
+      if (query != null) {
+        try {
+          query.get(5L, TimeUnit.SECONDS);
+        } catch (final Throwable e) {
+          SneakyThrow.sneaky(e);
+        }
+      }
+    }
     if (removePieces) {
       this.board.pieceHandler().removeFromWorld(this.board, this.board.world());
     }
     if (this.timeControlTask != null) {
       this.timeControlTask.cancel();
+    }
+    for (final Pair<BoardDisplaySettings<?>, ?> pair : this.displays) {
+      if (pair.first().removeAfterGame()) {
+        ((BoardDisplaySettings<Object>) pair.first()).remove(pair.second());
+      }
+      ((BoardDisplaySettings<Object>) pair.first()).gameEnded(pair.second());
     }
     this.stockfish.close();
   }
@@ -373,7 +628,7 @@ public final class ChessGame implements BoardStateHolder {
     this.activeQuery = this.stockfish.uciNewGame();
     this.activeQuery.join();
     this.loadFen(Fen.STARTING_FEN);
-    this.applyToWorld();
+    this.applyToWorld(this.snapshotPieces());
   }
 
   private void loadFen(final Fen fen) {
@@ -393,23 +648,29 @@ public final class ChessGame implements BoardStateHolder {
     }
   }
 
-  private StockfishClient createStockfishClient(final int cpuElo) throws StockfishInitException {
+  private StockfishClient createStockfishClient() throws StockfishInitException {
     final StockfishClient.Builder builder = new StockfishClient.Builder()
       .setPath(this.board.stockfishPath())
       .setOption(Option.Threads, 2);
-    if (cpuElo != -1) {
-      builder.setOption(Option.UCI_LIMITSTRENGTH, true)
-        .setOption(Option.UCI_ELO, cpuElo);
-    }
     return builder.build();
   }
 
   private void tickTime() {
+    Objects.requireNonNull(this.whiteTime, "whiteTime");
+    Objects.requireNonNull(this.blackTime, "blackTime");
     if (this.nextMove == PieceColor.WHITE && this.whiteTime.tick()) {
-      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
+      this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.WHITE));
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.OUT_OF_TIME, PieceColor.WHITE)),
+        true
+      );
       this.board.endGame();
     } else if (this.nextMove == PieceColor.BLACK && this.blackTime.tick()) {
-      this.players().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
+      this.audience().sendMessage(this.plugin.config().messages().ranOutOfTime(this, PieceColor.BLACK));
+      this.plugin.database().saveMatchAsync(
+        this.snapshotState(GameState.Result.create(GameState.ResultType.OUT_OF_TIME, PieceColor.BLACK)),
+        true
+      );
       this.board.endGame();
     }
     if (this.plugin.getServer().getCurrentTick() % 4 == 0) {
@@ -427,6 +688,16 @@ public final class ChessGame implements BoardStateHolder {
     throw new IllegalArgumentException();
   }
 
+  public record Move(String notation, PieceColor color, @Nullable Fen boardAfter) {
+    public Move boardAfter(final Fen fen) {
+      return new Move(this.notation, this.color, fen);
+    }
+
+    public Fen boardAfter() {
+      return Objects.requireNonNull(this.boardAfter);
+    }
+  }
+
   public static final class TimeControl {
     private final long increment;
     private volatile long timeLeft;
@@ -434,6 +705,11 @@ public final class ChessGame implements BoardStateHolder {
     TimeControl(final TimeControlSettings timeControl) {
       this.timeLeft = timeControl.time().toSeconds() * 20;
       this.increment = timeControl.increment().toSeconds() * 20;
+    }
+
+    public TimeControl(final long timeLeft, final long increment) {
+      this.timeLeft = timeLeft;
+      this.increment = increment;
     }
 
     synchronized void move() {
@@ -445,9 +721,13 @@ public final class ChessGame implements BoardStateHolder {
       return this.timeLeft < 1;
     }
 
-    public String timeLeft() {
+    public String timeLeftString() {
       final Duration d = Duration.ofMillis(Math.round(this.timeLeft / 20.0D * 1000.0D));
       return TimeUtil.formatDurationClock(d);
+    }
+
+    public TimeControl copy() {
+      return new TimeControl(this.timeLeft, this.increment);
     }
   }
 }
