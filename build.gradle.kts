@@ -155,6 +155,7 @@ tasks {
       exclude(dependency("com.google.code.findbugs:jsr305"))
       exclude(dependency("io.leangen.geantyref:geantyref:.*"))
     }
+    mergeServiceFiles()
   }
   writeDependencies {
     reloc("io.leangen.geantyref")
