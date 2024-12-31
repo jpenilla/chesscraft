@@ -17,12 +17,16 @@
  */
 package xyz.jpenilla.chesscraft.config;
 
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
+import net.kyori.adventure.key.Key;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.intellij.lang.annotations.Subst;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -55,7 +59,6 @@ public interface PieceOptions {
 
   @ConfigSerializable
   final class DisplayEntity implements PieceOptions {
-    private Material material = Material.PAPER;
     private Map<PieceType, Double> heights = Map.of(
       PieceType.PAWN, 2.0D - 11.5D / 16.0D,
       PieceType.BISHOP, 2.0D - 3.5D / 16.0D,
@@ -64,33 +67,18 @@ public interface PieceOptions {
       PieceType.QUEEN, 2.0D - 4.0D / 16.0D,
       PieceType.KING, 2.0D
     );
-    private Map<PieceType, Integer> whiteCustomModelData = Map.of(
-      PieceType.PAWN, 7,
-      PieceType.BISHOP, 8,
-      PieceType.KNIGHT, 9,
-      PieceType.ROOK, 10,
-      PieceType.QUEEN, 11,
-      PieceType.KING, 12
-    );
-    private Map<PieceType, Integer> blackCustomModelData = Map.of(
-      PieceType.PAWN, 1,
-      PieceType.BISHOP, 2,
-      PieceType.KNIGHT, 3,
-      PieceType.ROOK, 4,
-      PieceType.QUEEN, 5,
-      PieceType.KING, 6
-    );
 
-    private int customModelData(final Piece piece) {
+    private Key itemModel(final Piece piece) {
+      @Subst("pawn") final String type = piece.type().name().toLowerCase(Locale.ROOT);
       if (piece.color() == PieceColor.WHITE) {
-        return this.whiteCustomModelData.get(piece.type());
+        return Key.key("chesscraft", "chess_" + type + "_white");
       }
-      return this.blackCustomModelData.get(piece.type());
+      return Key.key("chesscraft", "chess_" + type + "_black");
     }
 
     public ItemStack item(final Piece piece) {
-      final ItemStack stack = new ItemStack(this.material);
-      stack.editMeta(meta -> meta.setCustomModelData(this.customModelData(piece)));
+      final ItemStack stack = ItemStack.of(Material.PAPER);
+      stack.setData(DataComponentTypes.ITEM_MODEL, this.itemModel(piece));
       return stack;
     }
 
@@ -111,7 +99,6 @@ public interface PieceOptions {
 
   @ConfigSerializable
   final class ItemFrame implements PieceOptions {
-    private Material material = Material.PAPER;
     private Map<PieceType, Double> heightOffsets = Map.of(
       PieceType.PAWN, -11.5D / 16.0D,
       PieceType.BISHOP, -3.5D / 16.0D,
@@ -120,37 +107,22 @@ public interface PieceOptions {
       PieceType.QUEEN, -4.0D / 16.0D,
       PieceType.KING, 0.0D
     );
-    private Map<PieceType, Integer> whiteCustomModelData = Map.of(
-      PieceType.PAWN, 7,
-      PieceType.BISHOP, 8,
-      PieceType.KNIGHT, 9,
-      PieceType.ROOK, 10,
-      PieceType.QUEEN, 11,
-      PieceType.KING, 12
-    );
-    private Map<PieceType, Integer> blackCustomModelData = Map.of(
-      PieceType.PAWN, 1,
-      PieceType.BISHOP, 2,
-      PieceType.KNIGHT, 3,
-      PieceType.ROOK, 4,
-      PieceType.QUEEN, 5,
-      PieceType.KING, 6
-    );
 
     public double heightOffset(final PieceType type) {
       return this.heightOffsets.getOrDefault(type, 0.0D);
     }
 
-    private int customModelData(final Piece piece) {
+    private Key itemModel(final Piece piece) {
+      @Subst("pawn") final String type = piece.type().name().toLowerCase(Locale.ROOT);
       if (piece.color() == PieceColor.WHITE) {
-        return this.whiteCustomModelData.get(piece.type());
+        return Key.key("chesscraft", "chess_" + type + "_white");
       }
-      return this.blackCustomModelData.get(piece.type());
+      return Key.key("chesscraft", "chess_" + type + "_black");
     }
 
     public ItemStack item(final Piece piece) {
-      final ItemStack stack = new ItemStack(this.material);
-      stack.editMeta(meta -> meta.setCustomModelData(this.customModelData(piece)));
+      final ItemStack stack = ItemStack.of(Material.PAPER);
+      stack.setData(DataComponentTypes.ITEM_MODEL, this.itemModel(piece));
       return stack;
     }
 

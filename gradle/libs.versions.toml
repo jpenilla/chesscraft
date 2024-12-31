@@ -21,7 +21,7 @@ cloud-minecraft-extras = { module = "org.incendo:cloud-minecraft-extras" }
 brigadier = "com.mojang:brigadier:1.0.18"
 
 # paper
-paperApi = "io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT"
+paperApi = "io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT"
 paperTrail = "io.papermc:paper-trail:1.0.1"
 
 # config
