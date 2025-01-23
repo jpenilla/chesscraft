@@ -12,7 +12,7 @@ plugins {
   id("io.papermc.hangar-publish-plugin") version "0.1.2"
   id("me.modmuss50.mod-publish-plugin") version "0.8.4"
   id("net.kyori.blossom") version "2.1.0"
-  id("xyz.jpenilla.gremlin-gradle") version "0.0.6"
+  id("xyz.jpenilla.gremlin-gradle") version "0.0.7"
 }
 
 decorateVersion()
