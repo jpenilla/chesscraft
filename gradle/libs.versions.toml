@@ -25,7 +25,7 @@ paperApi = "io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT"
 paperTrail = "io.papermc:paper-trail:1.0.1"
 
 # config
-configurate-yaml = "org.spongepowered:configurate-yaml:4.1.2"
+configurate-yaml = "org.spongepowered:configurate-yaml:4.2.0"
 adventure-serializer-configurate4 = "net.kyori:adventure-serializer-configurate4:4.17.0"
 
 # misc libs
