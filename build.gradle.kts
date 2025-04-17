@@ -44,7 +44,9 @@ dependencies {
   implementation(libs.cloud.minecraft.extras) {
     isTransitive = false
   }
-  implementation(libs.configurate.yaml)
+  implementation(libs.configurate.yaml) {
+    exclude("net.kyori", "option")
+  }
   implementation(libs.adventure.serializer.configurate4) {
     isTransitive = false
   }
