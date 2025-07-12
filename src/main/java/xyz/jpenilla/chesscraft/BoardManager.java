@@ -312,8 +312,7 @@ public final class BoardManager implements Listener {
     for (final ChessBoard board : this.activeBoards()) {
       final ChessGame game = board.game();
       if (game.hasPlayer(event.getPlayer())) {
-        board.endGameAndWait();
-        game.audience().sendMessage(this.plugin.config().messages().matchCancelled());
+        game.forfeit(game.color(ChessPlayer.player(event.getPlayer())));
       }
     }
     for (final PVPChallenge challenge : List.copyOf(this.challenges.asMap().values())) {
