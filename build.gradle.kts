@@ -98,6 +98,7 @@ indraSpotlessLicenser {
 
 val runVersions = listOf(
   "21.4",
+  "21.8",
 )
 
 tasks {
@@ -189,7 +190,13 @@ sourceSets {
 }
 
 val releaseNotes = providers.environmentVariable("RELEASE_NOTES")
-val versions = listOf("1.21.4")
+val versions = listOf(
+  "1.21.4",
+  "1.21.5",
+  "1.21.6",
+  "1.21.7",
+  "1.21.8",
+)
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
 hangarPublish.publications.register("plugin") {
