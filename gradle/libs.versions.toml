@@ -4,7 +4,7 @@
 # database
 jdbi = "3.49.5"
 hikari = "6.3.1"
-mysql = "9.3.0"
+mysql = "9.4.0"
 flyway = "11.10.3"
 h2 = "2.3.232"
 
