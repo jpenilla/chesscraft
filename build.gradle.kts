@@ -3,8 +3,8 @@ import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
-  id("com.gradleup.shadow") version "8.3.8"
-  id("xyz.jpenilla.run-paper") version "2.3.1"
+  id("com.gradleup.shadow") version "9.0.2"
+  id("xyz.jpenilla.run-paper") version "3.0.0-beta.1"
   val indraVer = "3.2.0"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
@@ -12,7 +12,7 @@ plugins {
   id("io.papermc.hangar-publish-plugin") version "0.1.3"
   id("me.modmuss50.mod-publish-plugin") version "0.8.4"
   id("net.kyori.blossom") version "2.1.0"
-  id("xyz.jpenilla.gremlin-gradle") version "0.0.8"
+  id("xyz.jpenilla.gremlin-gradle") version "0.0.9"
 }
 
 decorateVersion()
@@ -23,8 +23,7 @@ indra {
 
 repositories {
   mavenCentral()
-  sonatype.ossSnapshots()
-  sonatype.s01Snapshots()
+  sonatype.snapshots()
   maven("https://repo.papermc.io/repository/maven-public/")
 }
 
