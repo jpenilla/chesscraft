@@ -157,7 +157,12 @@ tasks {
       exclude(dependency("com.google.code.findbugs:jsr305"))
       exclude(dependency("io.leangen.geantyref:geantyref:.*"))
     }
+
     mergeServiceFiles()
+    // Needed for mergeServiceFiles to work properly in Shadow 9+
+    filesMatching("META-INF/services/**") {
+      duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
   }
   writeDependencies {
     reloc("io.leangen.geantyref")
