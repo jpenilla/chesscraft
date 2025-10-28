@@ -29,7 +29,7 @@ configurate-yaml = "org.spongepowered:configurate-yaml:4.2.0"
 adventure-serializer-configurate4 = "net.kyori:adventure-serializer-configurate4:4.20.0"
 
 # misc libs
-caffeine = "com.github.ben-manes.caffeine:caffeine:3.2.2"
+caffeine = "com.github.ben-manes.caffeine:caffeine:3.2.3"
 commonsCompress = "org.apache.commons:commons-compress:1.28.0"
 bstatsBukkit = "org.bstats:bstats-bukkit:3.1.0"
 
