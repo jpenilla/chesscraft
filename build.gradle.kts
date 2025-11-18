@@ -11,7 +11,7 @@ plugins {
   id("net.kyori.indra.licenser.spotless") version indraVer
   id("io.papermc.hangar-publish-plugin") version "0.1.3"
   id("me.modmuss50.mod-publish-plugin") version "1.1.0"
-  id("net.kyori.blossom") version "2.1.0"
+  id("net.kyori.blossom") version "2.2.0"
   id("xyz.jpenilla.gremlin-gradle") version "0.0.9"
 }
 
