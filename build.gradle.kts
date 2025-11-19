@@ -186,15 +186,6 @@ tasks {
       modrinth("miniplaceholders", "4zOT6txC")
     }
   }
-  processResources {
-    val props = mapOf(
-      "version" to project.version
-    )
-    inputs.properties(props)
-    filesMatching("*.yml") {
-      expand(props)
-    }
-  }
   fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
   shadowJar {
     reloc("org.incendo")
