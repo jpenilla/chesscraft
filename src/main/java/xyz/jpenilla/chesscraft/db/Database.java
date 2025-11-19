@@ -26,10 +26,12 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -72,6 +74,9 @@ public final class Database implements Listener {
   private final AsyncLoadingCache<UUID, ChessPlayer.CachedPlayer> playerCache = Caffeine.newBuilder()
     .expireAfterAccess(Duration.ofMinutes(15))
     .buildAsync((key, executor) -> Database.this.queryPlayer(key).thenApply(o -> o.orElse(null)).toCompletableFuture());
+
+  private final Map<Integer, CompletableFuture<Pair<UUID, Integer>>> leaderboardCache = new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<UUID, Integer>> loadedLeaderboardCache = new ConcurrentHashMap<>();
 
   private Database(final ChessCraft plugin, final HikariDataSource dataSource, final Jdbi jdbi) {
     this.plugin = plugin;
@@ -161,6 +166,32 @@ public final class Database implements Listener {
       .collectIntoList()).toCompletableFuture();
   }
 
+  public @Nullable Pair<UUID, Integer> getLeaderboardEntry(final int position) {
+    final boolean[] computed = { false };
+    final CompletableFuture<Pair<UUID, Integer>> future = this.leaderboardCache.computeIfAbsent(position, pos -> {
+      computed[0] = true;
+      return this.plugin.database().queryLeaderboard(pos).thenApply(list -> list.get(pos - 1));
+    });
+    if (computed[0]) {
+      future.whenComplete((entry, ex) -> {
+        if (ex != null) {
+          this.leaderboardCache.remove(position, future);
+          this.plugin.getSLF4JLogger().warn("Failed to load leaderboard entry at position {}", position, ex);
+        } else if (entry != null) {
+          this.loadedLeaderboardCache.put(position, entry);
+        } else {
+          this.leaderboardCache.remove(position, future);
+          this.loadedLeaderboardCache.remove(position);
+        }
+      });
+    }
+    if (future.isDone() && !future.isCompletedExceptionally()) {
+      return future.join();
+    }
+    // Use stale cache while loading
+    return this.loadedLeaderboardCache.get(position);
+  }
+
   public void saveMatchAsync(final GameState state, final boolean insertResult) {
     if (state.whiteCpu() && state.blackCpu()) {
       return;
@@ -207,6 +238,7 @@ public final class Database implements Listener {
           .execute();
       }
     });
+    this.leaderboardCache.clear();
   }
 
   private record EloChange(int whiteElo, int whiteChange, int blackElo, int blackChange) {}

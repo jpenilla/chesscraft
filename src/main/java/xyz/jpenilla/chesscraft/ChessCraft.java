@@ -44,6 +44,7 @@ public final class ChessCraft extends JavaPlugin {
     this.boardManager = new BoardManager(this, stockfishPath);
     this.boardManager.load();
     new Commands(this).register();
+    MiniPlaceholdersExpansion.register(this);
 
     new Metrics(this, 17745);
   }

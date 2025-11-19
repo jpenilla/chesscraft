@@ -1,5 +1,7 @@
 import me.modmuss50.mpp.ReleaseType
 import xyz.jpenilla.gremlin.gradle.ShadowGremlin
+import xyz.jpenilla.resourcefactory.bukkit.Permission
+import xyz.jpenilla.resourcefactory.paper.PaperPluginYaml.Load
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
@@ -13,12 +15,59 @@ plugins {
   id("me.modmuss50.mod-publish-plugin") version "1.1.0"
   id("net.kyori.blossom") version "2.2.0"
   id("xyz.jpenilla.gremlin-gradle") version "0.0.9"
+  val resourceFactoryVer = "1.3.1"
+  id("xyz.jpenilla.resource-factory-paper-convention") version resourceFactoryVer
+  id("xyz.jpenilla.resource-factory-bukkit-convention") version resourceFactoryVer
 }
 
 decorateVersion()
 
 indra {
   javaVersions().target(21)
+}
+
+paperPluginYaml {
+  name = "ChessCraft"
+  main = "xyz.jpenilla.chesscraft.ChessCraft"
+  loader = "xyz.jpenilla.chesscraft.dependency.xyz.jpenilla.gremlin.runtime.platformsupport.DefaultsPaperPluginLoader"
+  author = "jmp"
+  apiVersion = "1.21.4"
+  dependencies {
+    server("MiniPlaceholders", Load.BEFORE, false)
+  }
+  permissions {
+    register("chesscraft.command.accept") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.challenge.cpu") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.challenge.player") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.deny") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.forfeit") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.help") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.next_promotion") {
+      default = Permission.Default.TRUE
+    }
+    register("chesscraft.command.show_legal_moves") {
+      default = Permission.Default.TRUE
+    }
+  }
+}
+
+bukkitPluginYaml {
+  name = "ChessCraft"
+  main = "xyz.jpenilla.chesscraft.dependency.io.papermc.papertrail.RequiresPaperPlugins"
+  author = "jmp"
+  apiVersion = "1.13"
 }
 
 repositories {
@@ -31,6 +80,7 @@ dependencies {
   compileOnly(libs.paperApi) {
     exclude("org.yaml", "snakeyaml")
   }
+  compileOnly(libs.miniplaceholders)
   implementation("xyz.niflheim:stockfish-java:4.0.0-SNAPSHOT") // from included build
   implementation(platform(libs.cloud.bom))
   implementation(platform(libs.cloud.minecraft.bom))
@@ -97,7 +147,7 @@ indraSpotlessLicenser {
 
 val runVersions = listOf(
   "21.4",
-  "21.8",
+  "21.10",
 )
 
 tasks {
@@ -131,13 +181,9 @@ tasks {
       pluginJars.from(shadowJar.flatMap { it.archiveFile })
     }
   }
-  processResources {
-    val props = mapOf(
-      "version" to project.version
-    )
-    inputs.properties(props)
-    filesMatching("*.yml") {
-      expand(props)
+  withType<RunServer>().configureEach {
+    downloadPlugins {
+      modrinth("miniplaceholders", "4zOT6txC")
     }
   }
   fun Task.reloc(pkg: String) = ShadowGremlin.relocate(this, pkg, "xyz.jpenilla.chesscraft.dependency.$pkg")
