@@ -5,7 +5,7 @@ import xyz.jpenilla.runpaper.task.RunServer
 plugins {
   id("com.gradleup.shadow") version "9.2.2"
   id("xyz.jpenilla.run-paper") version "3.0.2"
-  val indraVer = "3.2.0"
+  val indraVer = "4.0.0"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
   id("net.kyori.indra.licenser.spotless") version indraVer
@@ -225,8 +225,8 @@ publishMods.modrinth {
   accessToken = providers.environmentVariable("MODRINTH_TOKEN")
 }
 
-fun lastCommitHash(): String = indraGit.commit()?.name?.substring(0, 7)
-  ?: error("Could not determine commit hash")
+fun lastCommitHash(): String = indraGit.commit().map { it.name.substring(0, 7) }
+  .orNull ?: error("Could not determine commit hash")
 
 fun decorateVersion() {
   val versionString = version as String
