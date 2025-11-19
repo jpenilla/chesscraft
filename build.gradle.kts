@@ -61,9 +61,9 @@ dependencies {
 
   fun cpuFeaturesNatives(platform: String, onlyJavaCpp: Boolean = false) {
     if (!onlyJavaCpp) {
-      runtimeDownload("org.bytedeco", "cpu_features", "0.7.0-1.5.8", classifier = platform)
+      runtimeDownload("org.bytedeco:cpu_features:0.7.0-1.5.8:$platform")
     }
-    runtimeDownload("org.bytedeco", "javacpp", "1.5.8", classifier = platform)
+    runtimeDownload("org.bytedeco:javacpp:1.5.8:$platform")
   }
 
   cpuFeaturesNatives("linux-x86_64")
