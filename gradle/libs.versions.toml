@@ -32,6 +32,7 @@ adventure-serializer-configurate4 = "net.kyori:adventure-serializer-configurate4
 caffeine = "com.github.ben-manes.caffeine:caffeine:3.2.3"
 commonsCompress = "org.apache.commons:commons-compress:1.28.0"
 bstatsBukkit = "org.bstats:bstats-bukkit:3.1.0"
+miniplaceholders = "io.github.miniplaceholders:miniplaceholders-api:3.0.1"
 
 # database
 jdbiCore = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
