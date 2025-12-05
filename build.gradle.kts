@@ -3,7 +3,7 @@ import xyz.jpenilla.gremlin.gradle.ShadowGremlin
 import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
-  id("com.gradleup.shadow") version "9.2.2"
+  id("com.gradleup.shadow") version "9.3.0"
   id("xyz.jpenilla.run-paper") version "3.0.2"
   val indraVer = "4.0.0"
   id("net.kyori.indra") version indraVer
