@@ -97,7 +97,7 @@ indraSpotlessLicenser {
 
 val runVersions = listOf(
   "21.4",
-  "21.8",
+  "21.11",
 )
 
 tasks {
@@ -200,6 +200,9 @@ val versions = listOf(
   "1.21.6",
   "1.21.7",
   "1.21.8",
+  "1.21.9",
+  "1.21.10",
+  "1.21.11",
 )
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
