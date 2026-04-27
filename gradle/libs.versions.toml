@@ -5,7 +5,7 @@
 jdbi = "3.52.1"
 hikari = "7.0.2"
 mysql = "9.7.0"
-flyway = "11.20.3"
+flyway = "12.5.0"
 h2 = "2.4.240"
 
 [libraries]
