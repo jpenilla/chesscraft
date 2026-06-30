@@ -96,9 +96,10 @@ indraSpotlessLicenser {
 }
 
 val runVersions = listOf(
-  "21.4",
-  "21.11",
+  "1.21.4",
+  "1.21.11",
   "26.1.2",
+  "26.2",
 )
 
 tasks {
@@ -122,12 +123,12 @@ tasks {
     options.compilerArgs.add("-Xlint:-classfile")
   }
   runServer {
-    minecraftVersion("1.${runVersions.last()}")
+    minecraftVersion(runVersions.last())
   }
   runVersions.take(runVersions.size - 1).forEach { ver ->
     val n = ver.replace(".", "_")
     register("run$n", RunServer::class) {
-      minecraftVersion("1.$ver")
+      minecraftVersion(ver)
       runDirectory.set(layout.projectDirectory.dir("run$n"))
       pluginJars.from(shadowJar.flatMap { it.archiveFile })
     }
@@ -207,6 +208,7 @@ val versions = listOf(
   "26.1",
   "26.1.1",
   "26.1.2",
+  "26.2",
 )
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
