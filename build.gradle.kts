@@ -5,7 +5,7 @@ import xyz.jpenilla.runpaper.task.RunServer
 plugins {
   id("com.gradleup.shadow") version "9.6.1"
   id("xyz.jpenilla.run-paper") version "3.0.2"
-  val indraVer = "4.0.0"
+  val indraVer = "4.1.0"
   id("net.kyori.indra") version indraVer
   id("net.kyori.indra.git") version indraVer
   id("net.kyori.indra.licenser.spotless") version indraVer
