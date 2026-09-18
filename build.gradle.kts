@@ -100,6 +100,7 @@ val runVersions = listOf(
   "1.21.11",
   "26.1.2",
   "26.2",
+  "26.3",
 )
 
 tasks {
@@ -209,6 +210,7 @@ val versions = listOf(
   "26.1.1",
   "26.1.2",
   "26.2",
+  "26.3",
 )
 val shadowJar = tasks.shadowJar.flatMap { it.archiveFile }
 
